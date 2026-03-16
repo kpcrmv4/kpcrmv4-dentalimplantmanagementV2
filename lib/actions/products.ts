@@ -132,7 +132,7 @@ export async function createProduct(formData: FormData) {
 
   const { data, error } = await supabase
     .from("products")
-    .insert(productData as Record<string, unknown>)
+    .insert(productData)
     .select()
     .single()
 
@@ -184,7 +184,7 @@ export async function updateProduct(id: string, formData: FormData) {
 
   const { data, error } = await supabase
     .from("products")
-    .update(productData as Record<string, unknown>)
+    .update(productData)
     .eq("id", id)
     .select()
     .single()
