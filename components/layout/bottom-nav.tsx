@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { MoreHorizontal, X } from "lucide-react"
+import { MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { roleMenus, sidebarMenus, type NavItem } from "@/lib/config/navigation"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
