@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { Plus, ClipboardList, Clock, Calendar as CalendarIcon, User } from "lucide-react"
+import { Plus, ClipboardList, Calendar as CalendarIcon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
@@ -242,7 +242,7 @@ export default async function CasesPage({
 
                 {/* Timeline items */}
                 <div className="relative ml-4 border-l-2 border-muted pl-4">
-                  {dateCases.map((c: Record<string, unknown>, idx: number) => {
+                  {dateCases.map((c: Record<string, unknown>) => {
                     const patient = c.patients as Record<string, string> | null
                     const st =
                       STATUS_CONFIG[c.case_status as string] ??
