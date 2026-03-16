@@ -192,6 +192,30 @@ export type InvoiceSearchResult = {
   invoiceNumber: string | null
 }
 
+export type DentistPerformanceRow = {
+  dentist_id: string
+  dentist_name: string
+  total_cases: number
+  completed_cases: number
+  total_revenue: number
+  total_cost: number
+  profit: number
+  avg_cost_per_case: number
+}
+
+export async function getDentistPerformance(from: string, to: string): Promise<DentistPerformanceRow[]> {
+  const supabase = await createClient()
+
+  // @ts-expect-error RPC not yet in generated types — added via migration 006
+  const { data, error } = await supabase.rpc("get_dentist_performance", {
+    p_from: from,
+    p_to: to,
+  })
+
+  if (error) throw error
+  return (data ?? []) as unknown as DentistPerformanceRow[]
+}
+
 export async function searchByInvoice(invoiceNumber: string): Promise<InvoiceSearchResult[]> {
   const supabase = await createClient()
 

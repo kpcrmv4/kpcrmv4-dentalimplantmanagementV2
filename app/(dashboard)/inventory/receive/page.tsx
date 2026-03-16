@@ -1,113 +1,252 @@
 "use client"
 
-import { useState, useEffect, startTransition } from "react"
+import { useState, useEffect, useTransition, startTransition, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2, Check } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getSuppliers, getProductsBySupplier, receiveGoods } from "@/lib/actions/inventory"
-import type { ProductCategory } from "@/types/database"
+import { Badge } from "@/components/ui/badge"
+import { getPendingPOs, getPOItems, receiveGoods } from "@/lib/actions/inventory"
 
-interface ReceiveItem {
-  product_id: string
-  product_name: string
-  product_ref: string
-  product_category: string
+// --- Types ---
+
+interface LotEntry {
   lot_number: string
   quantity: number
   expiry_date: string
-  unit: string
 }
 
-const STEPS = ["เลือก Supplier", "เลือกสินค้า", "กรอกรายละเอียด", "ยืนยัน"]
+interface POLineItem {
+  id: string
+  product_id: string
+  quantity_ordered: number
+  product_name: string
+  product_ref: string
+  product_brand: string | null
+  product_category: string
+  product_unit: string
+}
+
+interface ItemLots {
+  lots: LotEntry[]
+  sameExpiry: boolean
+  expanded: boolean
+}
+
+interface PendingPO {
+  id: string
+  po_number: string
+  expected_delivery_date: string | null
+  created_at: string
+  supplier_name: string
+  item_count: number
+}
+
+// --- Constants ---
+
+const STEPS = ["เลือกใบ PO", "ตรวจสอบรายการ", "ยืนยัน"]
+
+function createDefaultLot(qty: number): LotEntry {
+  return { lot_number: "", quantity: qty, expiry_date: "" }
+}
+
+// --- Component ---
 
 export default function ReceiveInventoryPage() {
   const router = useRouter()
+  const [isPending] = useTransition()
+
+  // Step state
   const [step, setStep] = useState(0)
-  const [suppliers, setSuppliers] = useState<Array<{ id: string; code: string; name: string }>>([])
-  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; category: string; unit: string }>>([])
-  const [selectedSupplier, setSelectedSupplier] = useState<string>("")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
-  const [items, setItems] = useState<ReceiveItem[]>([])
+
+  // Step 0: PO selection
+  const [pendingPOs, setPendingPOs] = useState<PendingPO[]>([])
+  const [loadingPOs, setLoadingPOs] = useState(true)
+  const [selectedPO, setSelectedPO] = useState<PendingPO | null>(null)
+
+  // Step 1: Items + LOT entries
+  const [poItems, setPOItems] = useState<POLineItem[]>([])
+  const [itemLotsMap, setItemLotsMap] = useState<Record<string, ItemLots>>({})
+  const [loadingItems, setLoadingItems] = useState(false)
+
+  // Step 2: Confirm
   const [invoiceNumber, setInvoiceNumber] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // --- Load pending POs on mount ---
   useEffect(() => {
-    getSuppliers().then(setSuppliers).catch(() => {})
+    setLoadingPOs(true)
+    getPendingPOs()
+      .then(setPendingPOs)
+      .catch(() => {})
+      .finally(() => setLoadingPOs(false))
   }, [])
 
-  useEffect(() => {
-    if (selectedSupplier) {
-      const cat = categoryFilter !== "all" ? categoryFilter as ProductCategory : undefined
-      getProductsBySupplier(selectedSupplier, cat).then(setProducts).catch(() => {})
+  // --- Handlers ---
+
+  const handleSelectPO = useCallback(async (po: PendingPO) => {
+    setSelectedPO(po)
+    setLoadingItems(true)
+    try {
+      const items = await getPOItems(po.id)
+      setPOItems(items)
+      // Initialize LOT entries: 1 LOT per item with full ordered quantity
+      const lotsMap: Record<string, ItemLots> = {}
+      for (const item of items) {
+        lotsMap[item.id] = {
+          lots: [createDefaultLot(item.quantity_ordered)],
+          sameExpiry: false,
+          expanded: true,
+        }
+      }
+      setItemLotsMap(lotsMap)
+      startTransition(() => setStep(1))
+    } catch {
+      // ignore
+    } finally {
+      setLoadingItems(false)
     }
-  }, [selectedSupplier, categoryFilter])
+  }, [])
 
-  function handleSelectSupplier(supplierId: string) {
-    setSelectedSupplier(supplierId)
-    setSelectedProducts([])
-    setItems([])
-    setCategoryFilter("all")
-    startTransition(() => setStep(1))
+  function toggleExpanded(itemId: string) {
+    setItemLotsMap((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], expanded: !prev[itemId].expanded },
+    }))
   }
 
-  function toggleProduct(productId: string) {
-    setSelectedProducts((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
-    )
-  }
-
-  function goToDetails() {
-    const newItems = selectedProducts.map((pid) => {
-      const product = products.find((p) => p.id === pid)!
-      const existing = items.find((i) => i.product_id === pid)
-      return existing ?? {
-        product_id: pid,
-        product_name: product.name,
-        product_ref: product.ref,
-        product_category: product.category,
-        lot_number: "",
-        quantity: 1,
-        expiry_date: "",
-        unit: product.unit,
+  function addLot(itemId: string) {
+    setItemLotsMap((prev) => {
+      const current = prev[itemId]
+      return {
+        ...prev,
+        [itemId]: {
+          ...current,
+          lots: [...current.lots, createDefaultLot(0)],
+        },
       }
     })
-    setItems(newItems)
+  }
+
+  function removeLot(itemId: string, lotIndex: number) {
+    setItemLotsMap((prev) => {
+      const current = prev[itemId]
+      if (current.lots.length <= 1) return prev
+      return {
+        ...prev,
+        [itemId]: {
+          ...current,
+          lots: current.lots.filter((_, i) => i !== lotIndex),
+        },
+      }
+    })
+  }
+
+  function updateLot(itemId: string, lotIndex: number, field: keyof LotEntry, value: string | number) {
+    setItemLotsMap((prev) => {
+      const current = prev[itemId]
+      const newLots = current.lots.map((lot, i) => {
+        if (i !== lotIndex) {
+          // If sameExpiry is on and we're updating expiry on the first lot, apply to all
+          if (field === "expiry_date" && lotIndex === 0 && current.sameExpiry) {
+            return { ...lot, expiry_date: value as string }
+          }
+          return lot
+        }
+        return { ...lot, [field]: value }
+      })
+      // If sameExpiry and updating expiry on lot 0, sync all
+      if (field === "expiry_date" && lotIndex === 0 && current.sameExpiry) {
+        for (let i = 0; i < newLots.length; i++) {
+          newLots[i] = { ...newLots[i], expiry_date: value as string }
+        }
+      }
+      return { ...prev, [itemId]: { ...current, lots: newLots } }
+    })
+  }
+
+  function toggleSameExpiry(itemId: string) {
+    setItemLotsMap((prev) => {
+      const current = prev[itemId]
+      const newSameExpiry = !current.sameExpiry
+      let newLots = current.lots
+      if (newSameExpiry && current.lots.length > 0) {
+        const firstExpiry = current.lots[0].expiry_date
+        newLots = current.lots.map((lot) => ({ ...lot, expiry_date: firstExpiry }))
+      }
+      return { ...prev, [itemId]: { ...current, sameExpiry: newSameExpiry, lots: newLots } }
+    })
+  }
+
+  // --- Validation ---
+
+  function validateAllLots(): string | null {
+    for (const item of poItems) {
+      const itemLots = itemLotsMap[item.id]
+      if (!itemLots || itemLots.lots.length === 0) {
+        return `กรุณาเพิ่ม LOT สำหรับ ${item.product_name}`
+      }
+      for (let i = 0; i < itemLots.lots.length; i++) {
+        const lot = itemLots.lots[i]
+        if (!lot.lot_number.trim()) {
+          return `กรุณาระบุ LOT Number สำหรับ ${item.product_name} (LOT #${i + 1})`
+        }
+        if (lot.quantity <= 0) {
+          return `จำนวนต้องมากกว่า 0 สำหรับ ${item.product_name} (LOT #${i + 1})`
+        }
+      }
+    }
+    return null
+  }
+
+  const validationError = validateAllLots()
+  const isStep1Valid = validationError === null
+
+  function goToConfirm() {
+    if (!isStep1Valid) return
     startTransition(() => setStep(2))
   }
 
-  function updateItem(index: number, field: keyof ReceiveItem, value: string | number) {
-    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)))
-  }
+  // --- Build flat items for submission ---
 
-  function removeItem(index: number) {
-    setItems((prev) => prev.filter((_, i) => i !== index))
-    setSelectedProducts((prev) => prev.filter((_, i) => i !== index))
+  function buildReceiveItems() {
+    const items: Array<{
+      product_id: string
+      lot_number: string
+      quantity: number
+      expiry_date: string | null
+      po_id: string | null
+      invoice_number: string | null
+    }> = []
+
+    for (const poItem of poItems) {
+      const itemLots = itemLotsMap[poItem.id]
+      if (!itemLots) continue
+      for (const lot of itemLots.lots) {
+        items.push({
+          product_id: poItem.product_id,
+          lot_number: lot.lot_number,
+          quantity: lot.quantity,
+          expiry_date: lot.expiry_date || null,
+          po_id: selectedPO?.id ?? null,
+          invoice_number: invoiceNumber || null,
+        })
+      }
+    }
+    return items
   }
 
   async function handleSubmit() {
     setSubmitting(true)
     setError(null)
     try {
-      await receiveGoods(
-        items.map((item) => ({
-          product_id: item.product_id,
-          lot_number: item.lot_number,
-          quantity: item.quantity,
-          expiry_date: item.expiry_date || null,
-          po_id: null,
-          invoice_number: invoiceNumber || null,
-        }))
-      )
+      const items = buildReceiveItems()
+      await receiveGoods(items, selectedPO?.id ?? null)
       router.push("/inventory")
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
@@ -116,9 +255,13 @@ export default function ReceiveInventoryPage() {
     }
   }
 
-  const isDetailsValid = items.every(
-    (item) => item.lot_number.trim() && item.quantity > 0
-  )
+  // --- Helpers ---
+
+  function getTotalLotQty(itemId: string): number {
+    return (itemLotsMap[itemId]?.lots ?? []).reduce((sum, lot) => sum + lot.quantity, 0)
+  }
+
+  // --- Render ---
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
@@ -146,221 +289,311 @@ export default function ReceiveInventoryPage() {
         ))}
       </div>
 
-      {/* Step 0: Select Supplier */}
+      {/* Step 0: เลือกใบ PO */}
       {step === 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">เลือก Supplier</CardTitle>
+            <CardTitle className="text-sm">เลือกใบสั่งซื้อ (PO) ที่รอรับของ</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {suppliers.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => handleSelectSupplier(s.id)}
-                className={`w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${
-                  selectedSupplier === s.id ? "border-primary bg-primary/5" : ""
-                }`}
-              >
-                <p className="text-sm font-medium">{s.name}</p>
-                <p className="text-xs text-muted-foreground">{s.code}</p>
-              </button>
-            ))}
+            {loadingPOs || loadingItems ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                กำลังโหลด...
+              </p>
+            ) : pendingPOs.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                ไม่มีใบ PO ที่รอรับของ
+              </p>
+            ) : (
+              pendingPOs.map((po) => {
+                const isOverdue =
+                  po.expected_delivery_date &&
+                  po.expected_delivery_date < new Date().toISOString().split("T")[0]
+
+                return (
+                  <button
+                    key={po.id}
+                    onClick={() => handleSelectPO(po)}
+                    disabled={isPending || loadingItems}
+                    className="flex w-full items-start justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold">{po.po_number}</p>
+                        {isOverdue && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                            เกินกำหนด
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{po.supplier_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {po.expected_delivery_date
+                          ? `กำหนดส่ง: ${po.expected_delivery_date}`
+                          : "ไม่ระบุกำหนดส่ง"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Package className="h-3.5 w-3.5" />
+                      <span className="text-xs">{po.item_count} รายการ</span>
+                    </div>
+                  </button>
+                )
+              })
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Step 1: Select Products */}
-      {step === 1 && (
+      {/* Step 1: ตรวจสอบรายการ */}
+      {step === 1 && selectedPO && (
         <>
+          {/* PO Info */}
           <Card>
-            <CardHeader className="pb-2">
+            <CardContent className="p-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">
-                  เลือกสินค้า ({selectedProducts.length} รายการ)
-                </CardTitle>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-36 h-8 text-xs">
-                    <SelectValue placeholder="หมวดหมู่" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    <SelectItem value="implant">Implant</SelectItem>
-                    <SelectItem value="abutment">Abutment</SelectItem>
-                    <SelectItem value="crown">Crown</SelectItem>
-                    <SelectItem value="instrument">Instrument</SelectItem>
-                    <SelectItem value="consumable">Consumable</SelectItem>
-                    <SelectItem value="other">อื่นๆ</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <p className="text-sm font-semibold">{selectedPO.po_number}</p>
+                  <p className="text-xs text-muted-foreground">{selectedPO.supplier_name}</p>
+                </div>
+                <Badge variant="outline" className="text-[10px]">
+                  {poItems.length} รายการ
+                </Badge>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {products.length === 0 ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  ไม่พบสินค้าของ Supplier นี้
-                </p>
-              ) : (
-                products.map((p) => {
-                  const isSelected = selectedProducts.includes(p.id)
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => toggleProduct(p.id)}
-                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                        isSelected ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                        isSelected ? "border-primary bg-primary text-primary-foreground" : ""
-                      }`}>
-                        {isSelected ? <Check className="h-3 w-3" /> : null}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {p.brand ?? ""} · REF: {p.ref}
-                        </p>
-                      </div>
-                    </button>
-                  )
-                })
-              )}
             </CardContent>
           </Card>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setStep(0)}>
-              ย้อนกลับ
-            </Button>
-            <Button
-              size="sm"
-              disabled={selectedProducts.length === 0}
-              onClick={goToDetails}
-            >
-              ถัดไป ({selectedProducts.length})
-            </Button>
-          </div>
-        </>
-      )}
 
-      {/* Step 2: Enter Details */}
-      {step === 2 && (
-        <>
+          {/* Items list */}
           <div className="space-y-3">
-            <div>
-              <Label className="text-xs">เลขที่ใบส่งของ (Invoice)</Label>
-              <Input
-                placeholder="INV-XXXX"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <Separator />
-            {items.map((item, idx) => (
-              <Card key={item.product_id}>
-                <CardContent className="space-y-2 p-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{item.product_name}</p>
-                      <p className="text-xs text-muted-foreground">REF: {item.product_ref}</p>
-                    </div>
+            {poItems.map((item) => {
+              const itemLots = itemLotsMap[item.id]
+              if (!itemLots) return null
+              const totalQty = getTotalLotQty(item.id)
+              const qtyMatch = totalQty === item.quantity_ordered
+              const qtyOver = totalQty > item.quantity_ordered
+
+              return (
+                <Card key={item.id}>
+                  <CardContent className="p-0">
+                    {/* Item header - clickable to expand/collapse */}
                     <button
-                      onClick={() => removeItem(idx)}
-                      className="p-1 text-muted-foreground hover:text-destructive"
+                      type="button"
+                      onClick={() => toggleExpanded(item.id)}
+                      className="flex w-full items-center justify-between p-3 text-left"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.product_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          REF: {item.product_ref}
+                          {item.product_brand ? ` · ${item.product_brand}` : ""}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            สั่ง: {item.quantity_ordered} {item.product_unit}
+                          </span>
+                          <span className={`text-xs font-medium ${
+                            qtyMatch
+                              ? "text-green-600"
+                              : qtyOver
+                                ? "text-destructive"
+                                : "text-orange-500"
+                          }`}>
+                            รับ: {totalQty} {item.product_unit}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {itemLots.lots.length} LOT
+                          </Badge>
+                        </div>
+                      </div>
+                      {itemLots.expanded ? (
+                        <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
                     </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <Label className="text-[10px]">LOT Number *</Label>
-                      <Input
-                        placeholder="LOT"
-                        value={item.lot_number}
-                        onChange={(e) => updateItem(idx, "lot_number", e.target.value)}
-                        className="mt-0.5"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[10px]">จำนวน ({item.unit}) *</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        onChange={(e) => updateItem(idx, "quantity", parseInt(e.target.value) || 0)}
-                        className="mt-0.5"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[10px]">วันหมดอายุ</Label>
-                      <Input
-                        type="date"
-                        value={item.expiry_date}
-                        onChange={(e) => updateItem(idx, "expiry_date", e.target.value)}
-                        className="mt-0.5"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                    {/* Expanded LOT entries */}
+                    {itemLots.expanded && (
+                      <div className="border-t px-3 pb-3 space-y-3">
+                        {/* Same expiry checkbox */}
+                        <label className="flex items-center gap-2 pt-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={itemLots.sameExpiry}
+                            onChange={() => toggleSameExpiry(item.id)}
+                            className="h-3.5 w-3.5 rounded border-gray-300"
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            วันหมดอายุเหมือนกันทุก LOT
+                          </span>
+                        </label>
+
+                        {itemLots.lots.map((lot, lotIdx) => (
+                          <div key={lotIdx} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-medium text-muted-foreground">
+                                LOT #{lotIdx + 1}
+                              </span>
+                              {itemLots.lots.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeLot(item.id, lotIdx)}
+                                  className="p-0.5 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <Label className="text-[10px]">LOT Number *</Label>
+                                <Input
+                                  placeholder="LOT"
+                                  value={lot.lot_number}
+                                  onChange={(e) =>
+                                    updateLot(item.id, lotIdx, "lot_number", e.target.value)
+                                  }
+                                  className="mt-0.5 h-8 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px]">จำนวน ({item.product_unit}) *</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={lot.quantity || ""}
+                                  onChange={(e) =>
+                                    updateLot(item.id, lotIdx, "quantity", parseInt(e.target.value) || 0)
+                                  }
+                                  className="mt-0.5 h-8 text-xs"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px]">วันหมดอายุ</Label>
+                                <Input
+                                  type="date"
+                                  value={lot.expiry_date}
+                                  onChange={(e) =>
+                                    updateLot(item.id, lotIdx, "expiry_date", e.target.value)
+                                  }
+                                  disabled={itemLots.sameExpiry && lotIdx > 0}
+                                  className="mt-0.5 h-8 text-xs"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-7 text-xs"
+                          onClick={() => addLot(item.id)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          เพิ่ม LOT
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
+
+          {validationError && (
+            <p className="text-xs text-destructive">{validationError}</p>
+          )}
+
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setStep(1)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedPO(null)
+                startTransition(() => setStep(0))
+              }}
+            >
               ย้อนกลับ
             </Button>
-            <Button
-              size="sm"
-              disabled={!isDetailsValid || items.length === 0}
-              onClick={() => startTransition(() => setStep(3))}
-            >
-              ตรวจสอบ
+            <Button size="sm" disabled={!isStep1Valid} onClick={goToConfirm}>
+              ถัดไป
             </Button>
           </div>
         </>
       )}
 
-      {/* Step 3: Confirm */}
-      {step === 3 && (
+      {/* Step 2: ยืนยัน */}
+      {step === 2 && selectedPO && (
         <>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">สรุปรายการรับของ</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {invoiceNumber ? (
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">
-                  Invoice: {invoiceNumber}
+                  ใบ PO: {selectedPO.po_number}
                 </p>
-              ) : null}
-              <p className="text-xs text-muted-foreground">
-                Supplier: {suppliers.find((s) => s.id === selectedSupplier)?.name}
-              </p>
+                <p className="text-xs text-muted-foreground">
+                  Supplier: {selectedPO.supplier_name}
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-xs">เลขที่ใบส่งของ (Invoice)</Label>
+                <Input
+                  placeholder="INV-XXXX"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+
               <Separator />
-              {items.map((item) => (
-                <div key={item.product_id} className="flex items-center justify-between rounded-lg border p-2">
-                  <div>
-                    <p className="text-sm font-medium">{item.product_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      REF: {item.product_ref} · LOT: {item.lot_number}
-                      {item.expiry_date ? ` · Exp: ${item.expiry_date}` : ""}
-                    </p>
+
+              {poItems.map((item) => {
+                const itemLots = itemLotsMap[item.id]
+                if (!itemLots) return null
+                return (
+                  <div key={item.id} className="rounded-lg border p-2 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{item.product_name}</p>
+                        <p className="text-xs text-muted-foreground">REF: {item.product_ref}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        สั่ง {item.quantity_ordered} {item.product_unit}
+                      </span>
+                    </div>
+                    {itemLots.lots.map((lot, lotIdx) => (
+                      <div
+                        key={lotIdx}
+                        className="ml-3 flex items-center justify-between text-xs text-muted-foreground"
+                      >
+                        <span>
+                          LOT: {lot.lot_number}
+                          {lot.expiry_date ? ` · Exp: ${lot.expiry_date}` : ""}
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {lot.quantity} {item.product_unit}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-sm font-medium">
-                    {item.quantity} {item.unit}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </CardContent>
           </Card>
 
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setStep(2)}>
+            <Button variant="outline" size="sm" onClick={() => startTransition(() => setStep(1))}>
               แก้ไข
             </Button>
-            <Button size="sm" disabled={submitting} onClick={handleSubmit}>
+            <Button size="sm" disabled={submitting || isPending} onClick={handleSubmit}>
               {submitting ? "กำลังบันทึก..." : "ยืนยันรับของ"}
             </Button>
           </div>

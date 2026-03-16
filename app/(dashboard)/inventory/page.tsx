@@ -1,39 +1,55 @@
 import Link from "next/link"
 import { Plus, Package, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getStockSummary, getProductIdsWithActivePOs } from "@/lib/actions/inventory"
+import { getStockSummary, getProductIdsWithActivePOs, getInventoryByLot } from "@/lib/actions/inventory"
 import { InventorySearch } from "./inventory-search"
 import { InventoryList } from "./inventory-list"
 
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string }>
+  searchParams: Promise<{ q?: string; filter?: string; view?: string; expiry_before?: string }>
 }) {
   const params = await searchParams
   const search = params.q || ""
   const filter = params.filter || ""
+  const view = params.view || ""
+  const expiryBefore = params.expiry_before || ""
 
-  let products = await getStockSummary()
+  const isLotView = view === "lot"
 
-  if (search) {
-    const q = search.toLowerCase()
-    products = products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.ref.toLowerCase().includes(q) ||
-        (p.brand?.toLowerCase().includes(q) ?? false)
-    )
-  }
-  if (filter === "low") {
-    products = products.filter((p) => p.isLowStock)
-  }
-  if (filter === "ordering") {
-    const activePOProductIds = await getProductIdsWithActivePOs()
-    products = products.filter((p) => activePOProductIds.has(p.id))
+  // Fetch data based on view mode
+  let products: Awaited<ReturnType<typeof getStockSummary>> = []
+  let lotItems: Awaited<ReturnType<typeof getInventoryByLot>> = []
+
+  if (isLotView) {
+    lotItems = await getInventoryByLot({
+      search: search || undefined,
+      expiry_before: expiryBefore || undefined,
+    })
+  } else {
+    products = await getStockSummary()
+
+    if (search) {
+      const q = search.toLowerCase()
+      products = products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.ref.toLowerCase().includes(q) ||
+          (p.brand?.toLowerCase().includes(q) ?? false)
+      )
+    }
+    if (filter === "low") {
+      products = products.filter((p) => p.isLowStock)
+    }
+    if (filter === "ordering") {
+      const activePOProductIds = await getProductIdsWithActivePOs()
+      products = products.filter((p) => activePOProductIds.has(p.id))
+    }
   }
 
-  const lowStockCount = products.filter((p) => p.isLowStock).length
+  const lowStockCount = isLotView ? 0 : products.filter((p) => p.isLowStock).length
+  const isEmpty = isLotView ? lotItems.length === 0 : products.length === 0
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
@@ -64,15 +80,22 @@ export default async function InventoryPage({
         </div>
       </div>
 
-      <InventorySearch defaultValue={search} currentFilter={filter} />
+      <InventorySearch
+        defaultValue={search}
+        currentFilter={filter}
+        currentView={view}
+        currentExpiryBefore={expiryBefore}
+      />
 
-      {products.length === 0 ? (
+      {isEmpty ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Package className="mb-2 h-10 w-10" />
           <p className="text-sm">ไม่พบสินค้า</p>
         </div>
+      ) : isLotView ? (
+        <InventoryList products={[]} lotItems={lotItems} viewMode="lot" />
       ) : (
-        <InventoryList products={products} />
+        <InventoryList products={products} lotItems={[]} viewMode="product" />
       )}
     </div>
   )

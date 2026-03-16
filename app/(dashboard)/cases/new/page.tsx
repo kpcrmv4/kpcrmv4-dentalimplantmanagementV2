@@ -226,6 +226,18 @@ export default function NewCasePage() {
                 <Label htmlFor="scheduled_time">เวลานัด</Label>
                 <Input id="scheduled_time" name="scheduled_time" type="time" />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price_to_patient">ราคาเคส (บาท)</Label>
+                <Input
+                  id="price_to_patient"
+                  name="price_to_patient"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

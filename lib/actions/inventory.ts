@@ -100,6 +100,56 @@ export async function getInventoryForProduct(productId: string) {
   return data ?? []
 }
 
+export async function getPendingPOs() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("purchase_orders")
+    .select(`
+      id, po_number, expected_delivery_date, created_at, status,
+      suppliers(name),
+      purchase_order_items(id)
+    `)
+    .eq("status", "ordered")
+    .order("created_at", { ascending: false })
+
+  if (error) throw error
+
+  return (data ?? []).map((po) => ({
+    id: po.id,
+    po_number: po.po_number,
+    expected_delivery_date: po.expected_delivery_date,
+    created_at: po.created_at,
+    supplier_name: (po.suppliers as unknown as { name: string } | null)?.name ?? "-",
+    item_count: (po.purchase_order_items as unknown as Array<{ id: string }>)?.length ?? 0,
+  }))
+}
+
+export async function getPOItems(poId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("purchase_order_items")
+    .select("id, product_id, quantity, products(name, ref, brand, category, unit)")
+    .eq("po_id", poId)
+
+  if (error) throw error
+
+  return (data ?? []).map((item) => {
+    const product = item.products as unknown as {
+      name: string; ref: string; brand: string | null; category: string; unit: string
+    } | null
+    return {
+      id: item.id,
+      product_id: item.product_id,
+      quantity_ordered: item.quantity,
+      product_name: product?.name ?? "-",
+      product_ref: product?.ref ?? "-",
+      product_brand: product?.brand ?? null,
+      product_category: product?.category ?? "-",
+      product_unit: product?.unit ?? "ชิ้น",
+    }
+  })
+}
+
 export async function receiveGoods(
   items: Array<{
     product_id: string
@@ -108,16 +158,27 @@ export async function receiveGoods(
     expiry_date: string | null
     po_id: string | null
     invoice_number: string | null
-  }>
+  }>,
+  poId?: string | null
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
 
+  // Validate lot_number is not empty
+  for (const item of items) {
+    if (!item.lot_number || !item.lot_number.trim()) {
+      throw new Error("กรุณาระบุ LOT Number ของสินค้าทุกรายการ")
+    }
+    if (item.quantity <= 0) {
+      throw new Error("จำนวนต้องมากกว่า 0")
+    }
+  }
+
   // Batch insert inventory rows
   const rows = items.map((item) => ({
     product_id: item.product_id,
-    lot_number: item.lot_number,
+    lot_number: item.lot_number.trim(),
     quantity: item.quantity,
     reserved_quantity: 0,
     expiry_date: item.expiry_date || null,
@@ -128,6 +189,17 @@ export async function receiveGoods(
 
   const { error } = await supabase.from("inventory").insert(rows)
   if (error) throw error
+
+  // Update PO status to "received" if poId provided
+  if (poId) {
+    const { error: poError } = await supabase
+      .from("purchase_orders")
+      .update({ status: "received" })
+      .eq("id", poId)
+    if (poError) throw poError
+    revalidatePath("/orders")
+    revalidatePath(`/orders/${poId}`)
+  }
 
   revalidatePath("/inventory")
   revalidatePath("/dashboard")
@@ -208,6 +280,60 @@ export async function getProductIdsWithActivePOs(): Promise<Set<string>> {
     .select("product_id, purchase_orders!inner(status)")
     .in("purchase_orders.status", ["draft", "pending_approval", "approved", "ordered"])
   return new Set((data ?? []).map((d) => d.product_id))
+}
+
+export async function getInventoryByLot(filters?: {
+  search?: string
+  expiry_before?: string
+  category?: ProductCategory
+}) {
+  const supabase = await createClient()
+  let query = supabase
+    .from("inventory")
+    .select(`
+      id, lot_number, quantity, reserved_quantity, expiry_date, received_date,
+      products!inner(id, ref, name, brand, category, unit, min_stock_level, suppliers(name))
+    `)
+    .gt("quantity", 0)
+    .order("expiry_date", { ascending: true, nullsFirst: false })
+
+  if (filters?.category) {
+    query = query.eq("products.category", filters.category)
+  }
+  if (filters?.search) {
+    query = query.or(
+      `products.name.ilike.%${filters.search}%,products.ref.ilike.%${filters.search}%,lot_number.ilike.%${filters.search}%`,
+    )
+  }
+  if (filters?.expiry_before) {
+    query = query.lte("expiry_date", filters.expiry_before)
+  }
+
+  const { data, error } = await query.limit(500)
+  if (error) throw error
+
+  return (data ?? []).map((row) => {
+    const product = row.products as unknown as {
+      id: string; ref: string; name: string; brand: string | null
+      category: string; unit: string; min_stock_level: number
+      suppliers: { name: string } | null
+    }
+    const available = row.quantity - row.reserved_quantity
+    return {
+      id: row.id,
+      product_id: product.id,
+      product_name: product.name,
+      ref: product.ref,
+      brand: product.brand,
+      unit: product.unit,
+      supplier_name: product.suppliers?.name ?? null,
+      lot_number: row.lot_number,
+      expiry_date: row.expiry_date,
+      quantity: row.quantity,
+      reserved_quantity: row.reserved_quantity,
+      available,
+    }
+  })
 }
 
 export async function getDeadStock(days: number = 90) {

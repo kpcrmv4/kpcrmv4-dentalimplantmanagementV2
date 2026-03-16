@@ -93,6 +93,9 @@ export async function createCase(formData: FormData) {
     }
   }
 
+  const priceToPatientRaw = formData.get("price_to_patient") as string
+  const priceToPatient = priceToPatientRaw ? parseFloat(priceToPatientRaw) : null
+
   const { data, error } = await supabase
     .from("cases")
     .insert({
@@ -106,6 +109,7 @@ export async function createCase(formData: FormData) {
       procedure_type: (formData.get("procedure_type") as string) || null,
       tooth_positions: toothPositions,
       notes: (formData.get("notes") as string) || null,
+      price_to_patient: priceToPatient,
       created_by: user.id,
     })
     .select()
@@ -235,6 +239,17 @@ export async function assignLot(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
+
+  // Role check: only assistant and stock_staff can assign LOT
+  const { data: userData } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  if (!userData || !["assistant", "stock_staff", "admin"].includes(userData.role)) {
+    throw new Error("เฉพาะเจ้าหน้าที่สต็อกหรือผู้ช่วยเท่านั้นที่สามารถระบุ LOT ได้")
+  }
 
   // Validate available stock on the chosen lot
   const { data: inv } = await supabase
