@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,15 +16,7 @@ import {
 import { getCostReport, type CostReportItem } from "@/lib/actions/reports"
 import { formatNumber, formatCurrency, formatDate } from "@/lib/utils"
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  implant: "Implant",
-  abutment: "Abutment",
-  crown: "Crown",
-  instrument: "เครื่องมือ",
-  consumable: "วัสดุสิ้นเปลือง",
-  other: "อื่นๆ",
-}
+import { getProductCategories } from "@/lib/actions/settings"
 
 export function CostPerCaseTab() {
   const [from, setFrom] = useState("")
@@ -33,6 +25,13 @@ export function CostPerCaseTab() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [isPending, startTransition] = useTransition()
   const [searched, setSearched] = useState(false)
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    getProductCategories().then((cats) => {
+      setCategoryLabels(Object.fromEntries(cats.map((c: { slug: string; name: string }) => [c.slug, c.name])))
+    })
+  }, [])
 
   function handleSearch() {
     if (!from || !to) return
@@ -155,7 +154,7 @@ export function CostPerCaseTab() {
                                       <TableCell>{item.productName}</TableCell>
                                       <TableCell>{item.productRef}</TableCell>
                                       <TableCell>
-                                        {CATEGORY_LABELS[item.category] ?? item.category}
+                                        {categoryLabels[item.category] ?? item.category}
                                       </TableCell>
                                       <TableCell className="text-right">
                                         {formatNumber(item.quantity)}

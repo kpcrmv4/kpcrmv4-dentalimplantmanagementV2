@@ -1,6 +1,5 @@
 import { Suspense } from "react"
-import { getProducts } from "@/lib/actions/products"
-import type { ProductCategory } from "@/types/database"
+import { getProducts, getCategories } from "@/lib/actions/products"
 import { ShopClient } from "./shop-client"
 
 export default async function ShopPage({
@@ -9,11 +8,14 @@ export default async function ShopPage({
   searchParams: Promise<{ category?: string; q?: string; case_id?: string }>
 }) {
   const params = await searchParams
-  const category = params.category as ProductCategory | undefined
+  const category = params.category || undefined
   const search = params.q || undefined
   const caseId = params.case_id || null
 
-  const products = await getProducts({ category, search })
+  const [products, categories] = await Promise.all([
+    getProducts({ category, search }),
+    getCategories(),
+  ])
 
   return (
     <Suspense fallback={<ShopSkeleton />}>
@@ -22,6 +24,7 @@ export default async function ShopPage({
         currentCategory={category ?? null}
         currentSearch={search ?? ""}
         caseId={caseId}
+        categories={categories}
       />
     </Suspense>
   )

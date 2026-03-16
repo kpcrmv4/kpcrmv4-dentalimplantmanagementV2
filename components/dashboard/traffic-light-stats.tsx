@@ -32,7 +32,7 @@ function StatCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold text-center">{value}</div>
       </CardContent>
     </Card>
   )

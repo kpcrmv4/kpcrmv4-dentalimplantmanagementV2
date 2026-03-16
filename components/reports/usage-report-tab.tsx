@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo } from "react"
+import { useState, useEffect, useTransition, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,20 +23,7 @@ import {
 import { getUsageReport, type UsageReportRow } from "@/lib/actions/reports"
 import { formatNumber, formatCurrency, formatDate } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
-
-const CATEGORY_OPTIONS = [
-  { value: "all", label: "ทั้งหมด" },
-  { value: "implant", label: "Implant" },
-  { value: "abutment", label: "Abutment" },
-  { value: "crown", label: "Crown" },
-  { value: "instrument", label: "เครื่องมือ" },
-  { value: "consumable", label: "วัสดุสิ้นเปลือง" },
-  { value: "other", label: "อื่นๆ" },
-]
-
-const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-  CATEGORY_OPTIONS.filter((o) => o.value !== "all").map((o) => [o.value, o.label])
-)
+import { getProductCategories } from "@/lib/actions/settings"
 
 export function UsageReportTab() {
   const [from, setFrom] = useState("")
@@ -45,6 +32,15 @@ export function UsageReportTab() {
   const [data, setData] = useState<UsageReportRow[]>([])
   const [isPending, startTransition] = useTransition()
   const [searched, setSearched] = useState(false)
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ value: string; label: string }>>([])
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    getProductCategories().then((cats) => {
+      setCategoryOptions([{ value: "all", label: "ทั้งหมด" }, ...cats.map((c: { slug: string; name: string }) => ({ value: c.slug, label: c.name }))])
+      setCategoryLabels(Object.fromEntries(cats.map((c: { slug: string; name: string }) => [c.slug, c.name])))
+    })
+  }, [])
 
   function handleSearch() {
     if (!from || !to) return
@@ -110,7 +106,7 @@ export function UsageReportTab() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map((opt) => (
+                  {categoryOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -165,7 +161,7 @@ export function UsageReportTab() {
                           <TableCell>{row.product_name}</TableCell>
                           <TableCell>{row.product_ref}</TableCell>
                           <TableCell>
-                            {CATEGORY_LABELS[row.product_category] ?? row.product_category}
+                            {categoryLabels[row.product_category] ?? row.product_category}
                           </TableCell>
                           <TableCell className="text-right">
                             {formatNumber(row.quantity_used)}
