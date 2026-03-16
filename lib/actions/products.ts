@@ -19,7 +19,7 @@ export async function getProducts(filters?: {
     .order("name")
 
   if (filters?.category) {
-    query = query.eq("category", filters.category)
+    query = query.eq("category", filters.category as never)
   }
   if (filters?.search) {
     query = query.or(
