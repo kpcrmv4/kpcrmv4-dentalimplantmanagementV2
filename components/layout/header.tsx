@@ -28,7 +28,7 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
           <Package className="h-3.5 w-3.5 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold">DentalStock</span>
+        <span className="text-sm font-semibold">Dental Implant</span>
       </div>
 
       {/* Desktop spacer */}

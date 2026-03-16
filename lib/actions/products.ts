@@ -1,7 +1,10 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache"
 import type { ProductCategory } from "@/types/database"
+
+// ─── Existing Functions ──────────────────────────────────────────────
 
 export async function getProducts(filters?: {
   category?: ProductCategory
@@ -81,4 +84,336 @@ export async function searchDuplicates(name: string, ref: string) {
 
   if (error) throw error
   return data ?? []
+}
+
+// ─── Create Product ──────────────────────────────────────────────────
+
+export async function createProduct(formData: FormData) {
+  const supabase = await createClient()
+
+  const ref = formData.get("ref") as string | null
+  const name = formData.get("name") as string | null
+
+  if (!ref?.trim() || !name?.trim()) {
+    throw new Error("กรุณากรอกรหัสสินค้าและชื่อสินค้า")
+  }
+
+  const costPriceRaw = formData.get("cost_price") as string | null
+  const minStockRaw = formData.get("min_stock_level") as string | null
+
+  const productData = {
+    ref: ref.trim(),
+    name: name.trim(),
+    brand: (formData.get("brand") as string | null)?.trim() || null,
+    category: (formData.get("category") as ProductCategory) || "other",
+    description: (formData.get("description") as string | null)?.trim() || null,
+    unit: (formData.get("unit") as string | null)?.trim() || "ชิ้น",
+    min_stock_level: minStockRaw ? parseInt(minStockRaw, 10) : 0,
+    cost_price: costPriceRaw ? parseFloat(costPriceRaw) : null,
+    supplier_id: (formData.get("supplier_id") as string | null) || null,
+    image_url: (formData.get("image_url") as string | null)?.trim() || null,
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .insert(productData)
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("รหัสสินค้านี้มีอยู่ในระบบแล้ว")
+    }
+    throw new Error("ไม่สามารถสร้างสินค้าได้: " + error.message)
+  }
+
+  revalidatePath("/inventory")
+  return data
+}
+
+// ─── Update Product ──────────────────────────────────────────────────
+
+export async function updateProduct(id: string, formData: FormData) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error("กรุณาเข้าสู่ระบบก่อนทำรายการ")
+  }
+
+  const ref = formData.get("ref") as string | null
+  const name = formData.get("name") as string | null
+
+  if (!ref?.trim() || !name?.trim()) {
+    throw new Error("กรุณากรอกรหัสสินค้าและชื่อสินค้า")
+  }
+
+  const costPriceRaw = formData.get("cost_price") as string | null
+  const minStockRaw = formData.get("min_stock_level") as string | null
+
+  const productData = {
+    ref: ref.trim(),
+    name: name.trim(),
+    brand: (formData.get("brand") as string | null)?.trim() || null,
+    category: (formData.get("category") as ProductCategory) || "other",
+    description: (formData.get("description") as string | null)?.trim() || null,
+    unit: (formData.get("unit") as string | null)?.trim() || "ชิ้น",
+    min_stock_level: minStockRaw ? parseInt(minStockRaw, 10) : 0,
+    cost_price: costPriceRaw ? parseFloat(costPriceRaw) : null,
+    supplier_id: (formData.get("supplier_id") as string | null) || null,
+    image_url: (formData.get("image_url") as string | null)?.trim() || null,
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .update(productData)
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("รหัสสินค้านี้มีอยู่ในระบบแล้ว")
+    }
+    throw new Error("ไม่สามารถแก้ไขสินค้าได้: " + error.message)
+  }
+
+  revalidatePath("/inventory")
+  revalidatePath(`/inventory/products/${id}`)
+  return data
+}
+
+// ─── Toggle Product Active (Soft Delete) ─────────────────────────────
+
+export async function toggleProductActive(id: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error("กรุณาเข้าสู่ระบบก่อนทำรายการ")
+  }
+
+  // Get current status
+  const { data: product, error: fetchError } = await supabase
+    .from("products")
+    .select("is_active")
+    .eq("id", id)
+    .single()
+
+  if (fetchError) {
+    throw new Error("ไม่พบสินค้าที่ต้องการ")
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .update({ is_active: !product.is_active })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error("ไม่สามารถเปลี่ยนสถานะสินค้าได้: " + error.message)
+  }
+
+  revalidatePath("/inventory")
+  return data
+}
+
+// ─── Enhanced Product Detail ─────────────────────────────────────────
+
+export async function getProductDetail(id: string) {
+  const supabase = await createClient()
+
+  // Fetch product with supplier info
+  const { data: product, error: productError } = await supabase
+    .from("products")
+    .select("*, suppliers(name, code)")
+    .eq("id", id)
+    .single()
+
+  if (productError) {
+    throw new Error("ไม่พบข้อมูลสินค้า")
+  }
+
+  // Fetch inventory lots
+  const { data: inventoryLots, error: invError } = await supabase
+    .from("inventory")
+    .select("id, lot_number, quantity, reserved_quantity, expiry_date, received_date")
+    .eq("product_id", id)
+    .order("expiry_date", { ascending: true })
+
+  if (invError) {
+    throw new Error("ไม่สามารถโหลดข้อมูลสต็อกได้: " + invError.message)
+  }
+
+  const lots = (inventoryLots ?? []).map((lot) => ({
+    ...lot,
+    available_quantity: lot.quantity - lot.reserved_quantity,
+  }))
+
+  const total_in_stock = lots.reduce((sum, l) => sum + l.quantity, 0)
+  const total_reserved = lots.reduce((sum, l) => sum + l.reserved_quantity, 0)
+  const total_available = lots.reduce((sum, l) => sum + l.available_quantity, 0)
+
+  // Fetch pending order quantity from purchase_order_items
+  const { data: pendingItems, error: poError } = await supabase
+    .from("purchase_order_items")
+    .select("quantity, purchase_orders!inner(status)")
+    .eq("product_id", id)
+    .in("purchase_orders.status", [
+      "draft",
+      "pending_approval",
+      "approved",
+      "ordered",
+    ])
+
+  if (poError) {
+    throw new Error("ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้: " + poError.message)
+  }
+
+  const pending_order_quantity = (pendingItems ?? []).reduce(
+    (sum, item) => sum + (item.quantity ?? 0),
+    0
+  )
+
+  return {
+    ...product,
+    supplier: product.suppliers as { name: string; code: string } | null,
+    inventory_lots: lots,
+    stock_summary: {
+      total_in_stock,
+      total_reserved,
+      total_available,
+    },
+    pending_order_quantity,
+  }
+}
+
+// ─── Product Order History ───────────────────────────────────────────
+
+export async function getProductOrderHistory(productId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("purchase_order_items")
+    .select(
+      `
+      quantity,
+      unit_price,
+      purchase_orders!inner(
+        po_number,
+        status,
+        expected_delivery_date,
+        created_at,
+        suppliers(name)
+      )
+    `
+    )
+    .eq("product_id", productId)
+    .order("created_at", { referencedTable: "purchase_orders", ascending: false })
+    .limit(20)
+
+  if (error) {
+    throw new Error("ไม่สามารถโหลดประวัติการสั่งซื้อได้: " + error.message)
+  }
+
+  return (data ?? []).map((item) => {
+    const po = item.purchase_orders as unknown as {
+      po_number: string
+      status: string
+      expected_delivery_date: string | null
+      created_at: string
+      suppliers: { name: string } | null
+    }
+    return {
+      po_number: po.po_number,
+      supplier_name: po.suppliers?.name ?? null,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      status: po.status,
+      expected_delivery_date: po.expected_delivery_date,
+      created_at: po.created_at,
+    }
+  })
+}
+
+// ─── Product Usage History ───────────────────────────────────────────
+
+export async function getProductUsageHistory(productId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("case_reservations")
+    .select(
+      `
+      quantity_reserved,
+      quantity_used,
+      status,
+      reserved_at,
+      cases!inner(
+        case_number,
+        scheduled_date,
+        patients(first_name, last_name)
+      )
+    `
+    )
+    .eq("product_id", productId)
+    .order("reserved_at", { ascending: false })
+    .limit(20)
+
+  if (error) {
+    throw new Error("ไม่สามารถโหลดประวัติการใช้งานได้: " + error.message)
+  }
+
+  return (data ?? []).map((item) => {
+    const caseData = item.cases as unknown as {
+      case_number: string
+      scheduled_date: string | null
+      patients: { first_name: string; last_name: string } | null
+    }
+    const patient = caseData.patients
+    return {
+      case_number: caseData.case_number,
+      patient_name: patient
+        ? `${patient.first_name} ${patient.last_name}`.trim()
+        : null,
+      quantity_reserved: item.quantity_reserved,
+      quantity_used: item.quantity_used,
+      status: item.status,
+      reserved_at: item.reserved_at,
+      scheduled_date: caseData.scheduled_date,
+    }
+  })
+}
+
+// ─── Upload Product Image ────────────────────────────────────────────
+
+export async function uploadProductImage(productId: string, imageUrl: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error("กรุณาเข้าสู่ระบบก่อนทำรายการ")
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .update({ image_url: imageUrl })
+    .eq("id", productId)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error("ไม่สามารถบันทึกรูปภาพได้: " + error.message)
+  }
+
+  revalidatePath("/inventory")
+  revalidatePath(`/inventory/products/${productId}`)
+  return data
 }

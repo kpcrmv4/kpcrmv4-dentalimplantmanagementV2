@@ -34,7 +34,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-3xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
             <Package className="h-4 w-4" />
-            DentalStock Management System
+            Dental Implant Management
           </div>
           <h1 className="mb-6 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             ระบบจัดการสต็อกวัสดุ
@@ -72,7 +72,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        <p>DentalStock Management System v2.0</p>
+        <p>Dental Implant Management v2.0</p>
       </footer>
     </div>
   )

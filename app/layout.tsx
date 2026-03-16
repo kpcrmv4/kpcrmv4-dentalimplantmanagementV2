@@ -13,8 +13,8 @@ const notoSansThai = Noto_Sans_Thai({
 })
 
 export const metadata: Metadata = {
-  title: "DentalStock Management System",
-  description: "ระบบจัดการสต็อกวัสดุและรากฟันเทียม",
+  title: "Dental Implant Management",
+  description: "ระบบจัดการวัสดุและรากฟันเทียม",
 }
 
 export default function RootLayout({

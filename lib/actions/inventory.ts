@@ -201,6 +201,15 @@ export async function getProductsBySupplier(supplierId: string, category?: Produ
   return data ?? []
 }
 
+export async function getProductIdsWithActivePOs(): Promise<Set<string>> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("purchase_order_items")
+    .select("product_id, purchase_orders!inner(status)")
+    .in("purchase_orders.status", ["draft", "pending_approval", "approved", "ordered"])
+  return new Set((data ?? []).map((d) => d.product_id))
+}
+
 export async function getDeadStock(days: number = 90) {
   const supabase = await createClient()
   const cutoff = new Date()

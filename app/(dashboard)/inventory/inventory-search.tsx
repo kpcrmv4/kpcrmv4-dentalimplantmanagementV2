@@ -61,6 +61,16 @@ export function InventorySearch({
         >
           ใกล้หมด
         </button>
+        <button
+          onClick={() => navigate(value, "ordering")}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            currentFilter === "ordering"
+              ? "bg-indigo-600 text-white"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          }`}
+        >
+          กำลังสั่ง
+        </button>
       </div>
     </div>
   )

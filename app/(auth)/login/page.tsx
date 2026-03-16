@@ -51,7 +51,7 @@ export default function LoginPage() {
             <Package className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-xl">เข้าสู่ระบบ</CardTitle>
-          <CardDescription>DentalStock Management System</CardDescription>
+          <CardDescription>Dental Implant Management</CardDescription>
         </CardHeader>
         <CardContent>
           {expired && (

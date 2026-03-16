@@ -1,4 +1,4 @@
-# DentalFlow OS — Setup Guide
+# Dental Implant Management — Setup Guide
 
 ## 1. Vercel Environment Variables
 

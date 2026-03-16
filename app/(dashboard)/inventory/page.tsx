@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Plus, Package, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getStockSummary } from "@/lib/actions/inventory"
+import { getStockSummary, getProductIdsWithActivePOs } from "@/lib/actions/inventory"
 import { InventorySearch } from "./inventory-search"
 import { InventoryList } from "./inventory-list"
 
@@ -28,6 +28,10 @@ export default async function InventoryPage({
   if (filter === "low") {
     products = products.filter((p) => p.isLowStock)
   }
+  if (filter === "ordering") {
+    const activePOProductIds = await getProductIdsWithActivePOs()
+    products = products.filter((p) => activePOProductIds.has(p.id))
+  }
 
   const lowStockCount = products.filter((p) => p.isLowStock).length
 
@@ -44,12 +48,20 @@ export default async function InventoryPage({
             </p>
           ) : null}
         </div>
-        <Button size="sm" asChild>
-          <Link href="/inventory/receive">
-            <Plus className="mr-1 h-4 w-4" />
-            รับของเข้า
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/inventory/products/new">
+              <Plus className="mr-1 h-4 w-4" />
+              เพิ่มสินค้า
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/inventory/receive">
+              <Plus className="mr-1 h-4 w-4" />
+              รับของเข้า
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <InventorySearch defaultValue={search} currentFilter={filter} />
