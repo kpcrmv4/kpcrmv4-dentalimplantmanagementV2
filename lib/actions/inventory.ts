@@ -24,7 +24,7 @@ export async function getInventory(filters?: {
     query = query.eq("product_id", filters.product_id)
   }
   if (filters?.category) {
-    query = query.eq("products.category", filters.category)
+    query = query.eq("products.category", filters.category as never)
   }
   if (filters?.search) {
     query = query.or(
@@ -265,7 +265,7 @@ export async function getProductsBySupplier(supplierId: string, category?: Produ
     .order("name")
 
   if (category) {
-    query = query.eq("category", category)
+    query = query.eq("category", category as never)
   }
 
   const { data, error } = await query
@@ -298,7 +298,7 @@ export async function getInventoryByLot(filters?: {
     .order("expiry_date", { ascending: true, nullsFirst: false })
 
   if (filters?.category) {
-    query = query.eq("products.category", filters.category)
+    query = query.eq("products.category", filters.category as never)
   }
   if (filters?.search) {
     query = query.or(

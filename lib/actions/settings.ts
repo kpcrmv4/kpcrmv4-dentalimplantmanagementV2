@@ -3,17 +3,26 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 
+// ─── Types (tables not yet in generated Supabase types) ─────────────
+
+type ProcedureType = { id: string; name: string; sort_order: number; is_active: boolean }
+type ProductCategoryRow = { id: string; slug: string; name: string; sort_order: number; is_active: boolean }
+
+// These tables aren't in generated Supabase types yet (migration pending).
+// Cast to `any` so `.from("procedure_types")` / `.from("product_categories")` compile.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function db() { return (await createClient()) as any }
+
 // ─── Procedure Types ────────────────────────────────────────────────
 
-export async function getProcedureTypes() {
-  const supabase = await createClient()
+export async function getProcedureTypes(): Promise<ProcedureType[]> {
+  const supabase = await db()
   const { data, error } = await supabase
     .from("procedure_types")
     .select("id, name, sort_order, is_active")
     .order("sort_order")
 
   if (error) {
-    // Table might not exist yet — fall back to defaults
     return [
       { id: "default-1", name: "Implant", sort_order: 1, is_active: true },
       { id: "default-2", name: "Crown", sort_order: 2, is_active: true },
@@ -27,11 +36,10 @@ export async function getProcedureTypes() {
 }
 
 export async function addProcedureType(name: string) {
-  const supabase = await createClient()
+  const supabase = await db()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
 
-  // Get max sort_order
   const { data: existing } = await supabase
     .from("procedure_types")
     .select("sort_order")
@@ -52,7 +60,7 @@ export async function addProcedureType(name: string) {
 }
 
 export async function updateProcedureType(id: string, data: { name?: string; sort_order?: number; is_active?: boolean }) {
-  const supabase = await createClient()
+  const supabase = await db()
   const { error } = await supabase
     .from("procedure_types")
     .update(data)
@@ -63,7 +71,7 @@ export async function updateProcedureType(id: string, data: { name?: string; sor
 }
 
 export async function deleteProcedureType(id: string) {
-  const supabase = await createClient()
+  const supabase = await db()
   const { error } = await supabase
     .from("procedure_types")
     .delete()
@@ -75,15 +83,14 @@ export async function deleteProcedureType(id: string) {
 
 // ─── Product Categories ─────────────────────────────────────────────
 
-export async function getProductCategories() {
-  const supabase = await createClient()
+export async function getProductCategories(): Promise<ProductCategoryRow[]> {
+  const supabase = await db()
   const { data, error } = await supabase
     .from("product_categories")
     .select("id, slug, name, sort_order, is_active")
     .order("sort_order")
 
   if (error) {
-    // Table might not exist yet — fall back to defaults
     return [
       { id: "default-1", slug: "implant", name: "Implant", sort_order: 1, is_active: true },
       { id: "default-2", slug: "abutment", name: "Abutment", sort_order: 2, is_active: true },
@@ -97,7 +104,7 @@ export async function getProductCategories() {
 }
 
 export async function addProductCategory(slug: string, name: string) {
-  const supabase = await createClient()
+  const supabase = await db()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
 
@@ -121,7 +128,7 @@ export async function addProductCategory(slug: string, name: string) {
 }
 
 export async function updateProductCategory(id: string, data: { name?: string; slug?: string; sort_order?: number; is_active?: boolean }) {
-  const supabase = await createClient()
+  const supabase = await db()
   const { error } = await supabase
     .from("product_categories")
     .update(data)
@@ -132,7 +139,7 @@ export async function updateProductCategory(id: string, data: { name?: string; s
 }
 
 export async function deleteProductCategory(id: string) {
-  const supabase = await createClient()
+  const supabase = await db()
   const { error } = await supabase
     .from("product_categories")
     .delete()

@@ -19,7 +19,7 @@ export async function getProducts(filters?: {
     .order("name")
 
   if (filters?.category) {
-    query = query.eq("category", filters.category)
+    query = query.eq("category", filters.category as never)
   }
   if (filters?.search) {
     query = query.or(
@@ -58,7 +58,9 @@ export async function getProductById(id: string) {
 }
 
 export async function getCategories() {
-  const supabase = await createClient()
+  // product_categories table not in generated Supabase types yet
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createClient()) as any
   const { data, error } = await supabase
     .from("product_categories")
     .select("slug, name")
@@ -128,9 +130,10 @@ export async function createProduct(formData: FormData) {
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("products")
-    .insert(productData)
+    .insert(productData as any)
     .select()
     .single()
 
@@ -180,9 +183,10 @@ export async function updateProduct(id: string, formData: FormData) {
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("products")
-    .update(productData)
+    .update(productData as any)
     .eq("id", id)
     .select()
     .single()
