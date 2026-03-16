@@ -11,8 +11,8 @@ export async function LowStockPanel() {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
-          <Package className="h-4 w-4 text-red-500" />
-          รายการที่ใกล้หมด
+          <Package className="h-4 w-4 text-orange-500" />
+          สต๊อกใกล้หมด
         </CardTitle>
       </CardHeader>
       <CardContent>

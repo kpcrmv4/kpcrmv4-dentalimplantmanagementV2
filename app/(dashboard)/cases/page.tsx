@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Plus, ClipboardList, Calendar as CalendarIcon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { formatDate } from "@/lib/utils"
+
 import { CaseSearch } from "./case-search"
 import type { CaseStatus } from "@/types/database"
 import {
@@ -156,7 +156,7 @@ export default async function CasesPage({
 }) {
   const params = await searchParams
   const currentPeriod = params.period ?? "today"
-  const currentView = params.view ?? "list"
+  const currentView = params.view ?? "timeline"
   const cases = await getCases(params.q, params.status, currentPeriod, params.date)
 
   // Group cases by scheduled_date for timeline view
@@ -327,82 +327,102 @@ export default async function CasesPage({
         </div>
       ) : (
         /* ========== List View ========== */
-        <div className="space-y-1.5">
-          {cases.map((c: Record<string, unknown>) => {
-            const patient = c.patients as Record<string, string> | null
-            const st =
-              STATUS_CONFIG[c.case_status as string] ??
-              STATUS_CONFIG.pending_appointment
-            const time = c.scheduled_time as string | null
-            const dateStr = c.scheduled_date as string | null
+        <div className="space-y-4">
+          {sortedDateKeys.map((dateKey) => {
+            const dateCases = groupedCases[dateKey]
+            const dateLabel =
+              dateKey === "no_date"
+                ? "ยังไม่กำหนดวัน"
+                : getRelativeDateLabel(dateKey)
 
             return (
-              <Link key={c.id as string} href={`/cases/${c.id}`}>
-                <div className="flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50">
-                  {/* Status dot + Time */}
-                  <div className="flex w-14 shrink-0 flex-col items-center">
-                    {time ? (
-                      <>
-                        <span className="text-sm font-bold tabular-nums leading-tight">
-                          {time.slice(0, 5)}
-                        </span>
-                        <span
-                          className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.color}`}
-                        >
-                          {st.label}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`h-2.5 w-2.5 rounded-full ${st.dot}`} />
-                        <span className="mt-0.5 text-[9px] font-medium text-muted-foreground">
-                          {st.label}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Main content */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold">
-                        {c.case_number as string}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {String(patient?.full_name ?? "ไม่ระบุคนไข้")} ({String(patient?.hn ?? "-")})
-                    </p>
-                    {dateStr && currentPeriod !== "today" && currentPeriod !== "custom" && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        {formatDate(dateStr)}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Right side: tooth positions */}
-                  {(c.tooth_positions as number[])?.length > 0 && (
-                    <div className="flex shrink-0 flex-wrap gap-0.5">
-                      {(c.tooth_positions as number[]).slice(0, 3).map((t) => (
-                        <Badge
-                          key={t}
-                          variant="outline"
-                          className="px-1 py-0 text-[10px]"
-                        >
-                          {t}
-                        </Badge>
-                      ))}
-                      {(c.tooth_positions as number[]).length > 3 && (
-                        <Badge
-                          variant="outline"
-                          className="px-1 py-0 text-[10px]"
-                        >
-                          +{(c.tooth_positions as number[]).length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+              <div key={dateKey}>
+                {/* Date header */}
+                <div className="mb-2 flex items-center gap-2">
+                  <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {dateLabel}
+                  </span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {dateCases.length}
+                  </span>
                 </div>
-              </Link>
+
+                {/* List items */}
+                <div className="space-y-1.5">
+                  {dateCases.map((c: Record<string, unknown>) => {
+                    const patient = c.patients as Record<string, string> | null
+                    const st =
+                      STATUS_CONFIG[c.case_status as string] ??
+                      STATUS_CONFIG.pending_appointment
+                    const time = c.scheduled_time as string | null
+
+                    return (
+                      <Link key={c.id as string} href={`/cases/${c.id}`}>
+                        <div className="flex items-center gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50">
+                          {/* Status dot + Time */}
+                          <div className="flex w-14 shrink-0 flex-col items-center">
+                            {time ? (
+                              <>
+                                <span className="text-sm font-bold tabular-nums leading-tight">
+                                  {time.slice(0, 5)}
+                                </span>
+                                <span
+                                  className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.color}`}
+                                >
+                                  {st.label}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <div className={`h-2.5 w-2.5 rounded-full ${st.dot}`} />
+                                <span className="mt-0.5 text-[9px] font-medium text-muted-foreground">
+                                  {st.label}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Main content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-semibold">
+                                {c.case_number as string}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {String(patient?.full_name ?? "ไม่ระบุคนไข้")} ({String(patient?.hn ?? "-")})
+                            </p>
+                          </div>
+
+                          {/* Right side: tooth positions */}
+                          {(c.tooth_positions as number[])?.length > 0 && (
+                            <div className="flex shrink-0 flex-wrap gap-0.5">
+                              {(c.tooth_positions as number[]).slice(0, 3).map((t) => (
+                                <Badge
+                                  key={t}
+                                  variant="outline"
+                                  className="px-1 py-0 text-[10px]"
+                                >
+                                  {t}
+                                </Badge>
+                              ))}
+                              {(c.tooth_positions as number[]).length > 3 && (
+                                <Badge
+                                  variant="outline"
+                                  className="px-1 py-0 text-[10px]"
+                                >
+                                  +{(c.tooth_positions as number[]).length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
             )
           })}
         </div>

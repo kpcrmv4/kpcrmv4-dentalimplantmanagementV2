@@ -45,7 +45,7 @@ export function CaseSearch({
   const [status, setStatus] = useState(defaultStatus ?? "all")
   const [period, setPeriod] = useState(defaultPeriod ?? "today")
   const [view, setView] = useState<"list" | "timeline">(
-    (defaultView as "list" | "timeline") ?? "list"
+    (defaultView as "list" | "timeline") ?? "timeline"
   )
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     defaultDate ? new Date(defaultDate) : undefined
@@ -59,7 +59,7 @@ export function CaseSearch({
       if (q) params.set("q", q)
       if (s && s !== "all") params.set("status", s)
       if (p && p !== "today") params.set("period", p)
-      if (v && v !== "list") params.set("view", v)
+      if (v && v !== "timeline") params.set("view", v)
       if (date) params.set("date", format(date, "yyyy-MM-dd"))
       router.push(`/cases?${params.toString()}`)
     },
