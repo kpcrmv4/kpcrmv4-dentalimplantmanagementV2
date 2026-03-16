@@ -265,7 +265,7 @@ export async function getProductsBySupplier(supplierId: string, category?: Produ
     .order("name")
 
   if (category) {
-    query = query.eq("category", category)
+    query = query.eq("category", category as never)
   }
 
   const { data, error } = await query
