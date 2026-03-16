@@ -19,17 +19,22 @@ export default async function ProductDetailPage({
   const { id } = await params
 
   let product: Awaited<ReturnType<typeof getProductDetail>>
-  let orderHistory: Awaited<ReturnType<typeof getProductOrderHistory>>
-  let usageHistory: Awaited<ReturnType<typeof getProductUsageHistory>>
+  try {
+    product = await getProductDetail(id)
+  } catch {
+    notFound()
+  }
+
+  let orderHistory: Awaited<ReturnType<typeof getProductOrderHistory>> = []
+  let usageHistory: Awaited<ReturnType<typeof getProductUsageHistory>> = []
 
   try {
-    ;[product, orderHistory, usageHistory] = await Promise.all([
-      getProductDetail(id),
+    ;[orderHistory, usageHistory] = await Promise.all([
       getProductOrderHistory(id),
       getProductUsageHistory(id),
     ])
   } catch {
-    notFound()
+    // history data is optional — page still renders without it
   }
 
   const [categories, suppliers] = await Promise.all([

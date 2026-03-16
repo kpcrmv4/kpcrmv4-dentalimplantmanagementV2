@@ -241,16 +241,12 @@ export async function getProductDetail(id: string) {
     throw new Error("ไม่พบข้อมูลสินค้า")
   }
 
-  // Fetch inventory lots
-  const { data: inventoryLots, error: invError } = await supabase
+  // Fetch inventory lots (non-fatal — show empty if fails)
+  const { data: inventoryLots } = await supabase
     .from("inventory")
     .select("id, lot_number, quantity, reserved_quantity, expiry_date, received_date")
     .eq("product_id", id)
     .order("expiry_date", { ascending: true })
-
-  if (invError) {
-    throw new Error("ไม่สามารถโหลดข้อมูลสต็อกได้: " + invError.message)
-  }
 
   const lots = (inventoryLots ?? []).map((lot) => ({
     ...lot,
@@ -261,8 +257,8 @@ export async function getProductDetail(id: string) {
   const total_reserved = lots.reduce((sum, l) => sum + l.reserved_quantity, 0)
   const total_available = lots.reduce((sum, l) => sum + l.available_quantity, 0)
 
-  // Fetch pending order quantity from purchase_order_items
-  const { data: pendingItems, error: poError } = await supabase
+  // Fetch pending order quantity from purchase_order_items (non-fatal)
+  const { data: pendingItems } = await supabase
     .from("purchase_order_items")
     .select("quantity, purchase_orders!inner(status)")
     .eq("product_id", id)
@@ -272,10 +268,6 @@ export async function getProductDetail(id: string) {
       "approved",
       "ordered",
     ])
-
-  if (poError) {
-    throw new Error("ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้: " + poError.message)
-  }
 
   const pending_order_quantity = (pendingItems ?? []).reduce(
     (sum, item) => sum + (item.quantity ?? 0),
@@ -319,11 +311,11 @@ export async function getProductOrderHistory(productId: string) {
     .order("created_at", { referencedTable: "purchase_orders", ascending: false })
     .limit(20)
 
-  if (error) {
-    throw new Error("ไม่สามารถโหลดประวัติการสั่งซื้อได้: " + error.message)
+  if (error || !data) {
+    return []
   }
 
-  return (data ?? []).map((item) => {
+  return data.map((item) => {
     const po = item.purchase_orders as unknown as {
       po_number: string
       status: string
@@ -367,11 +359,11 @@ export async function getProductUsageHistory(productId: string) {
     .order("reserved_at", { ascending: false })
     .limit(20)
 
-  if (error) {
-    throw new Error("ไม่สามารถโหลดประวัติการใช้งานได้: " + error.message)
+  if (error || !data) {
+    return []
   }
 
-  return (data ?? []).map((item) => {
+  return data.map((item) => {
     const caseData = item.cases as unknown as {
       case_number: string
       scheduled_date: string | null
