@@ -1,7 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import type { CaseStatus } from "@/types/database"
+import type { CaseStatus, AppointmentStatus } from "@/types/database"
 
 export type TrafficLight = "green" | "yellow" | "orange" | "red" | "neutral"
 
@@ -11,6 +11,7 @@ export type DashboardCase = {
   scheduled_date: string | null
   scheduled_time: string | null
   case_status: CaseStatus
+  appointment_status: AppointmentStatus
   procedure_type: string | null
   patient_name: string
   patient_hn: string
@@ -22,7 +23,6 @@ export type DashboardCase = {
 function deriveTrafficLight(status: CaseStatus): TrafficLight {
   if (status === "ready") return "green"
   if (status === "pending_order" || status === "pending_preparation") return "orange"
-  if (status === "pending_appointment") return "red"
   return "neutral" // completed, cancelled
 }
 
@@ -40,7 +40,7 @@ export async function getDashboardCases(
   const { data, error } = await supabase
     .from("cases")
     .select(
-      "id, case_number, scheduled_date, scheduled_time, case_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
+      "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
     )
     .gte("scheduled_date", startDate)
     .lt("scheduled_date", endDate)
@@ -59,6 +59,7 @@ export async function getDashboardCases(
       scheduled_date: c.scheduled_date,
       scheduled_time: c.scheduled_time,
       case_status: c.case_status as CaseStatus,
+      appointment_status: (c.appointment_status ?? "pending") as AppointmentStatus,
       procedure_type: c.procedure_type,
       patient_name: patient?.full_name ?? "ไม่ระบุ",
       patient_hn: patient?.hn ?? "-",
@@ -106,7 +107,7 @@ export async function getUnreadyCases(): Promise<DashboardCase[]> {
   const { data, error } = await supabase
     .from("cases")
     .select(
-      "id, case_number, scheduled_date, scheduled_time, case_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
+      "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
     )
     .gte("scheduled_date", today)
     .not("case_status", "in", '("ready","completed","cancelled")')
@@ -124,6 +125,7 @@ export async function getUnreadyCases(): Promise<DashboardCase[]> {
       scheduled_date: c.scheduled_date,
       scheduled_time: c.scheduled_time,
       case_status: c.case_status as CaseStatus,
+      appointment_status: (c.appointment_status ?? "pending") as AppointmentStatus,
       procedure_type: c.procedure_type,
       patient_name: patient?.full_name ?? "ไม่ระบุ",
       patient_hn: patient?.hn ?? "-",
@@ -186,7 +188,7 @@ export async function getEmergencyAlerts(): Promise<DashboardCase[]> {
   const { data, error } = await supabase
     .from("cases")
     .select(
-      "id, case_number, scheduled_date, scheduled_time, case_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
+      "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
     )
     .gte("scheduled_date", todayStr)
     .lte("scheduled_date", futureStr)
@@ -204,6 +206,7 @@ export async function getEmergencyAlerts(): Promise<DashboardCase[]> {
       scheduled_date: c.scheduled_date,
       scheduled_time: c.scheduled_time,
       case_status: c.case_status as CaseStatus,
+      appointment_status: (c.appointment_status ?? "pending") as AppointmentStatus,
       procedure_type: c.procedure_type,
       patient_name: patient?.full_name ?? "ไม่ระบุ",
       patient_hn: patient?.hn ?? "-",

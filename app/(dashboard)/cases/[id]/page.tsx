@@ -7,9 +7,10 @@ import { Separator } from "@/components/ui/separator"
 import { getCaseById } from "@/lib/actions/cases"
 import { formatDate } from "@/lib/utils"
 import { CaseActions } from "./case-actions"
+import { AppointmentActions } from "./appointment-actions"
+import { AppointmentTimeline } from "./appointment-timeline"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending_appointment: { label: "รอทำนัด", color: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
   pending_order: { label: "รอสั่งของ", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
   pending_preparation: { label: "รอจัดของ", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" },
   ready: { label: "พร้อม", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
@@ -38,12 +39,12 @@ export default async function CaseDetailPage({
     notFound()
   }
 
-  const status = STATUS_CONFIG[caseData.case_status] ?? STATUS_CONFIG.pending_appointment
+  const status = STATUS_CONFIG[caseData.case_status] ?? STATUS_CONFIG.pending_order
   const patient = caseData.patients as Record<string, unknown> | null
   const dentist = caseData.dentist as Record<string, unknown> | null
   const assistant = caseData.assistant as Record<string, unknown> | null
   const reservations = caseData.reservations as Array<Record<string, unknown>>
-  const canOrder = ["pending_appointment", "pending_order"].includes(caseData.case_status)
+  const canOrder = ["pending_order"].includes(caseData.case_status)
   const canCancel = !["completed", "cancelled"].includes(caseData.case_status)
   const isActive = !["completed", "cancelled"].includes(caseData.case_status)
 
@@ -125,6 +126,16 @@ export default async function CaseDetailPage({
           </>
         )}
       </div>
+
+      {/* Appointment Confirmation */}
+      <AppointmentActions
+        caseId={id}
+        appointmentStatus={(caseData as Record<string, unknown>).appointment_status as string ?? "pending"}
+        caseStatus={caseData.case_status}
+      />
+
+      {/* Appointment Timeline */}
+      <AppointmentTimeline caseId={id} />
 
       {/* Materials / Reservations */}
       <div className="rounded-xl border bg-card p-3">

@@ -5,7 +5,6 @@ import { formatNumber } from "@/lib/utils"
 import { ReportsTabs } from "@/components/reports/reports-tabs"
 
 const STATUS_LABELS: Record<string, string> = {
-  pending_appointment: "รอทำนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   ready: "พร้อม",

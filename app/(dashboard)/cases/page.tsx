@@ -23,11 +23,6 @@ import {
 import { th } from "date-fns/locale"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  pending_appointment: {
-    label: "รอทำนัด",
-    color: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400",
-    dot: "bg-gray-400",
-  },
   pending_order: {
     label: "รอสั่งของ",
     color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
@@ -105,7 +100,8 @@ async function getCases(
   search?: string,
   status?: string,
   period?: string,
-  customDate?: string
+  customDate?: string,
+  appt?: string
 ) {
   const supabase = await createClient()
   let query = supabase
@@ -115,6 +111,9 @@ async function getCases(
 
   if (status && status !== "all") {
     query = query.eq("case_status", status as CaseStatus)
+  }
+  if (appt && appt !== "all") {
+    query = query.eq("appointment_status", appt as "pending" | "confirmed" | "postponed" | "cancelled")
   }
   if (search) {
     query = query.or(`case_number.ilike.%${search}%`)
@@ -152,12 +151,13 @@ export default async function CasesPage({
     period?: string
     date?: string
     view?: string
+    appt?: string
   }>
 }) {
   const params = await searchParams
   const currentPeriod = params.period ?? "today"
   const currentView = params.view ?? "timeline"
-  const cases = await getCases(params.q, params.status, currentPeriod, params.date)
+  const cases = await getCases(params.q, params.status, currentPeriod, params.date, params.appt)
 
   // Group cases by scheduled_date for timeline view
   const groupedCases: Record<string, typeof cases> = {}
@@ -203,6 +203,7 @@ export default async function CasesPage({
         defaultPeriod={currentPeriod}
         defaultDate={params.date}
         defaultView={currentView}
+        defaultAppt={params.appt}
       />
 
       {/* Case List */}
@@ -246,7 +247,7 @@ export default async function CasesPage({
                     const patient = c.patients as Record<string, string> | null
                     const st =
                       STATUS_CONFIG[c.case_status as string] ??
-                      STATUS_CONFIG.pending_appointment
+                      STATUS_CONFIG.pending_order
                     const time = c.scheduled_time as string | null
 
                     return (
@@ -354,7 +355,7 @@ export default async function CasesPage({
                     const patient = c.patients as Record<string, string> | null
                     const st =
                       STATUS_CONFIG[c.case_status as string] ??
-                      STATUS_CONFIG.pending_appointment
+                      STATUS_CONFIG.pending_order
                     const time = c.scheduled_time as string | null
 
                     return (

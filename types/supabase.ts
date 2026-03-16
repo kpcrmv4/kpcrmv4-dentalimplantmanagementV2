@@ -163,8 +163,57 @@ export type Database = {
           },
         ]
       }
+      case_appointment_logs: {
+        Row: {
+          id: string
+          case_id: string
+          action: Database["public"]["Enums"]["appointment_status"]
+          note: string | null
+          old_date: string | null
+          new_date: string | null
+          performed_by: string | null
+          performed_at: string
+        }
+        Insert: {
+          id?: string
+          case_id: string
+          action: Database["public"]["Enums"]["appointment_status"]
+          note?: string | null
+          old_date?: string | null
+          new_date?: string | null
+          performed_by?: string | null
+          performed_at?: string
+        }
+        Update: {
+          id?: string
+          case_id?: string
+          action?: Database["public"]["Enums"]["appointment_status"]
+          note?: string | null
+          old_date?: string | null
+          new_date?: string | null
+          performed_by?: string | null
+          performed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_appointment_logs_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_appointment_logs_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cases: {
         Row: {
+          appointment_status: Database["public"]["Enums"]["appointment_status"]
           assistant_id: string | null
           case_number: string
           case_status: Database["public"]["Enums"]["case_status"]
@@ -181,6 +230,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          appointment_status?: Database["public"]["Enums"]["appointment_status"]
           assistant_id?: string | null
           case_number: string
           case_status?: Database["public"]["Enums"]["case_status"]
@@ -197,6 +247,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          appointment_status?: Database["public"]["Enums"]["appointment_status"]
           assistant_id?: string | null
           case_number?: string
           case_status?: Database["public"]["Enums"]["case_status"]
@@ -683,6 +734,11 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
+      appointment_status:
+        | "pending"
+        | "confirmed"
+        | "postponed"
+        | "cancelled"
       case_status:
         | "pending_appointment"
         | "pending_order"
