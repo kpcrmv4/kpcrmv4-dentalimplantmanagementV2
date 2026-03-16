@@ -401,6 +401,7 @@ export type Database = {
           min_stock_level: number
           name: string
           ref: string
+          selling_price: number | null
           supplier_id: string | null
           unit: string
           updated_at: string
@@ -417,6 +418,7 @@ export type Database = {
           min_stock_level?: number
           name: string
           ref: string
+          selling_price?: number | null
           supplier_id?: string | null
           unit: string
           updated_at?: string
@@ -433,6 +435,7 @@ export type Database = {
           min_stock_level?: number
           name?: string
           ref?: string
+          selling_price?: number | null
           supplier_id?: string | null
           unit?: string
           updated_at?: string
