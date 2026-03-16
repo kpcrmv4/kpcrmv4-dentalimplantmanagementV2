@@ -130,10 +130,9 @@ export async function createProduct(formData: FormData) {
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("products")
-    .insert(productData as any)
+    .insert(productData as Record<string, unknown>)
     .select()
     .single()
 
@@ -183,10 +182,9 @@ export async function updateProduct(id: string, formData: FormData) {
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("products")
-    .update(productData as any)
+    .update(productData as Record<string, unknown>)
     .eq("id", id)
     .select()
     .single()
