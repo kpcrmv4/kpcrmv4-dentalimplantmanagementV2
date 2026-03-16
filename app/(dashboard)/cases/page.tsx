@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Plus, ClipboardList, Calendar as CalendarIcon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { formatDate } from "@/lib/utils"
+
 import { CaseSearch } from "./case-search"
 import type { CaseStatus } from "@/types/database"
 import {

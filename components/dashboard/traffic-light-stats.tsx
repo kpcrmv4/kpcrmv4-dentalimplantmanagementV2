@@ -1,12 +1,6 @@
 import {
   ClipboardList,
-  CheckCircle2,
-  Clock,
   Package,
-  AlertTriangle,
-  CalendarCheck,
-  Ban,
-  TrendingUp,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { getDashboardCases } from "@/lib/actions/dashboard"

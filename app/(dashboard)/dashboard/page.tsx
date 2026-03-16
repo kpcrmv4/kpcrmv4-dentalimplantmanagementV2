@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { AlertTriangle, Package } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { TrafficLightStats } from "@/components/dashboard/traffic-light-stats"
 import { CaseCalendar } from "@/components/dashboard/case-calendar"
