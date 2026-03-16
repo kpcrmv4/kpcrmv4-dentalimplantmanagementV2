@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/server"
 
 // ─── Procedure Types ────────────────────────────────────────────────
 
-export async function getProcedureTypes() {
+type ProcedureType = { id: string; name: string; sort_order: number; is_active: boolean }
+type ProductCategoryRow = { id: string; slug: string; name: string; sort_order: number; is_active: boolean }
+
+export async function getProcedureTypes(): Promise<ProcedureType[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("procedure_types")
@@ -23,7 +26,7 @@ export async function getProcedureTypes() {
       { id: "default-6", name: "อื่นๆ", sort_order: 99, is_active: true },
     ]
   }
-  return data ?? []
+  return (data as ProcedureType[]) ?? []
 }
 
 export async function addProcedureType(name: string) {
@@ -75,7 +78,7 @@ export async function deleteProcedureType(id: string) {
 
 // ─── Product Categories ─────────────────────────────────────────────
 
-export async function getProductCategories() {
+export async function getProductCategories(): Promise<ProductCategoryRow[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("product_categories")
@@ -93,7 +96,7 @@ export async function getProductCategories() {
       { id: "default-6", slug: "other", name: "อื่นๆ", sort_order: 99, is_active: true },
     ]
   }
-  return data ?? []
+  return (data as ProductCategoryRow[]) ?? []
 }
 
 export async function addProductCategory(slug: string, name: string) {
