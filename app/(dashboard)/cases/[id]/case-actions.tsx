@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Ban, CheckCircle, Package } from "lucide-react"
+import { AlertCircle, Ban, CheckCircle, Package, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { assignLot, recordUsage, cancelCase } from "@/lib/actions/cases"
+import { assignLot, recordUsage, cancelCase, markCaseReady } from "@/lib/actions/cases"
 import { suggestLotFEFO } from "@/lib/actions/inventory"
 import { PhotoUpload } from "@/components/photo-upload"
 
@@ -36,7 +36,6 @@ interface LotOption {
 
 export function CaseActions({
   caseId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   caseStatus,
   canCancel,
   reservations,
@@ -60,6 +59,10 @@ export function CaseActions({
   const [usageDialog, setUsageDialog] = useState<Reservation | null>(null)
   const [quantityUsed, setQuantityUsed] = useState("")
   const [photoUploaded, setPhotoUploaded] = useState(false)
+
+  // Ready dialog
+  const [readyDialog, setReadyDialog] = useState(false)
+  const [unpreparedItems, setUnpreparedItems] = useState<Array<{ id: string; productName: string }>>([])
 
   // Cancel dialog
   const [cancelDialog, setCancelDialog] = useState(false)
@@ -108,6 +111,24 @@ export function CaseActions({
       try {
         await recordUsage(usageDialog.id, parseInt(quantityUsed, 10))
         setUsageDialog(null)
+        router.refresh()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      }
+    })
+  }
+
+  function handleMarkReady() {
+    setError(null)
+    setUnpreparedItems([])
+    startTransition(async () => {
+      try {
+        const result = await markCaseReady(caseId)
+        if (!result.success) {
+          setUnpreparedItems(result.unprepared)
+          return
+        }
+        setReadyDialog(false)
         router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
@@ -169,6 +190,21 @@ export function CaseActions({
               </Button>
             ))}
           </div>
+        )}
+
+        {/* Mark as Ready */}
+        {caseStatus === "pending_preparation" && reservations.length > 0 && (
+          <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => {
+              setUnpreparedItems([])
+              setReadyDialog(true)
+            }}
+          >
+            <ShieldCheck className="mr-2 h-3.5 w-3.5" />
+            พร้อมแล้ว
+          </Button>
         )}
 
         {/* Cancel Case */}
@@ -252,6 +288,42 @@ export function CaseActions({
             <Button variant="outline" onClick={() => setUsageDialog(null)}>ยกเลิก</Button>
             <Button onClick={handleRecordUsage} disabled={!quantityUsed || !photoUploaded || isPending}>
               {isPending ? "กำลังบันทึก..." : "ยืนยัน"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Ready Dialog */}
+      <Dialog open={readyDialog} onOpenChange={(open) => { if (!open) { setReadyDialog(false); setUnpreparedItems([]) } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันเคสพร้อมแล้ว</DialogTitle>
+            <DialogDescription>
+              ระบบจะตรวจสอบว่าวัสดุทุกรายการได้รับการจัดเตรียม (จัด LOT) เรียบร้อยแล้ว
+            </DialogDescription>
+          </DialogHeader>
+          {unpreparedItems.length > 0 && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                วัสดุยังไม่พร้อม ({unpreparedItems.length} รายการ)
+              </div>
+              <ul className="list-disc list-inside text-sm text-destructive/90 space-y-0.5">
+                {unpreparedItems.map((item) => (
+                  <li key={item.id}>{item.productName}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground">กรุณาจัด LOT ให้ครบทุกรายการก่อนกดพร้อม</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setReadyDialog(false); setUnpreparedItems([]) }}>ยกเลิก</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleMarkReady}
+              disabled={isPending}
+            >
+              {isPending ? "กำลังตรวจสอบ..." : "ยืนยันพร้อม"}
             </Button>
           </DialogFooter>
         </DialogContent>

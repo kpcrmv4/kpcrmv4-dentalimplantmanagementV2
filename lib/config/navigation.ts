@@ -69,7 +69,6 @@ export const sidebarMenus: NavItem[] = [
   { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard" },
   { label: "เคส", icon: ClipboardList, href: "/cases" },
   { label: "คนไข้", icon: Users, href: "/patients", roles: ["admin", "cs", "dentist"] },
-  { label: "Shop", icon: ShoppingCart, href: "/shop", roles: ["admin", "dentist"] },
   { label: "สต็อก", icon: Package, href: "/inventory", roles: ["admin", "stock_staff"] },
   { label: "ใบสั่งซื้อ", icon: ShoppingCart, href: "/orders", roles: ["admin", "stock_staff"] },
   { label: "แจ้งเตือน", icon: Bell, href: "/notifications" },

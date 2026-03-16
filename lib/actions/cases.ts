@@ -131,6 +131,62 @@ export async function updateCaseStatus(id: string, status: CaseStatus) {
   revalidatePath(`/cases/${id}`)
 }
 
+/**
+ * Mark case as "ready" — validates that ALL reservations are "prepared" first.
+ * Returns { success: false, unprepared: [...] } if any items are not ready.
+ */
+export async function markCaseReady(caseId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // Verify case exists and is in the correct status
+  const { data: caseData } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", caseId)
+    .single()
+
+  if (!caseData) throw new Error("ไม่พบเคส")
+  if (caseData.case_status !== "pending_preparation") {
+    throw new Error("เคสไม่อยู่ในสถานะรอจัดของ")
+  }
+
+  // Get all active reservations (exclude returned)
+  const { data: reservations } = await supabase
+    .from("case_reservations")
+    .select("id, status, product_id, products(name)")
+    .eq("case_id", caseId)
+    .neq("status", "returned")
+
+  if (!reservations || reservations.length === 0) {
+    throw new Error("ไม่มีรายการวัสดุในเคสนี้")
+  }
+
+  // Check which items are NOT yet prepared
+  const unprepared = reservations
+    .filter((r) => r.status !== "prepared" && r.status !== "consumed")
+    .map((r) => ({
+      id: r.id,
+      productName: (r.products as Record<string, unknown>)?.name as string ?? "ไม่ทราบชื่อ",
+    }))
+
+  if (unprepared.length > 0) {
+    return { success: false as const, unprepared }
+  }
+
+  // All items prepared — update case status to ready
+  const { error } = await supabase
+    .from("cases")
+    .update({ case_status: "ready" as CaseStatus })
+    .eq("id", caseId)
+
+  if (error) throw error
+  revalidatePath("/cases")
+  revalidatePath(`/cases/${caseId}`)
+  return { success: true as const, unprepared: [] }
+}
+
 // Batch create reservations with stock validation (atomic, uses FOR UPDATE lock)
 export async function createReservationsBatch(
   caseId: string,

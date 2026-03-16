@@ -1,9 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { roleMenus, type NavItem } from "@/lib/config/navigation"
+import { roleMenus, sidebarMenus, type NavItem } from "@/lib/config/navigation"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import type { UserRole } from "@/types/database"
 
 interface BottomNavProps {
@@ -12,20 +15,77 @@ interface BottomNavProps {
 
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname()
-  const items = roleMenus[role]
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  const allItems = roleMenus[role]
+  // Show first 4 items in the bottom bar, 5th becomes "More"
+  const visibleItems = allItems.slice(0, 4)
+
+  // "More" menu: sidebar items for this role, excluding those already visible in bottom nav
+  const visibleHrefs = new Set(visibleItems.map((i) => i.href))
+  const moreItems = sidebarMenus.filter(
+    (item) =>
+      (!item.roles || item.roles.includes(role)) &&
+      !visibleHrefs.has(item.href)
+  )
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background lg:hidden">
-      <div className="flex items-end justify-around px-1 pb-[env(safe-area-inset-bottom)]">
-        {items.map((item) => (
-          <BottomNavItem
-            key={item.href + item.label}
-            item={item}
-            isActive={pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))}
-          />
-        ))}
-      </div>
-    </nav>
+    <>
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background lg:hidden">
+        <div className="flex items-end justify-around px-1 pb-[env(safe-area-inset-bottom)]">
+          {visibleItems.map((item) => (
+            <BottomNavItem
+              key={item.href + item.label}
+              item={item}
+              isActive={pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))}
+            />
+          ))}
+          {/* More button */}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={cn(
+              "flex min-w-[56px] flex-col items-center gap-0.5 py-2",
+              moreOpen ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span className="text-[10px] font-medium">เพิ่มเติม</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* More menu sheet */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-sm">เมนูเพิ่มเติม</SheetTitle>
+          </SheetHeader>
+          <div className="grid grid-cols-4 gap-2">
+            {moreItems.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
+              return (
+                <Link
+                  key={item.href + item.label}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[11px] font-medium text-center leading-tight">{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 
