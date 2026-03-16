@@ -19,22 +19,69 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData()
     const file = formData.get("file") as File | null
+
+    if (!file) {
+      return NextResponse.json(
+        { error: "กรุณาเลือกไฟล์" },
+        { status: 400 }
+      )
+    }
+
+    // Determine upload type: product image or case photo
+    const folder = formData.get("folder") as string | null
     const caseId = formData.get("caseId") as string | null
     const reservationId = formData.get("reservationId") as string | null
 
-    if (!file || !caseId || !reservationId) {
+    const isProductUpload = folder === "products"
+    const isCaseUpload = caseId && reservationId
+
+    if (!isProductUpload && !isCaseUpload) {
       return NextResponse.json(
-        { error: "กรุณาระบุไฟล์ caseId และ reservationId" },
+        { error: "กรุณาระบุ folder หรือ caseId/reservationId" },
         { status: 400 }
       )
     }
 
     const timestamp = Date.now()
     const ext = file.name.split(".").pop() || "jpg"
-    const filePath = `${caseId}/${reservationId}_${timestamp}.${ext}`
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
+
+    // ─── Product Image Upload ─────────────────────────────────────
+    if (isProductUpload) {
+      const bucketName = "product-images"
+      const filePath = `${user.id}/${timestamp}.${ext}`
+
+      // Ensure bucket exists (ignore error if already exists)
+      await supabase.storage.createBucket(bucketName, {
+        public: true,
+        fileSizeLimit: 5242880, // 5MB
+      })
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, buffer, {
+          contentType: file.type,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        return NextResponse.json(
+          { error: `อัปโหลดไม่สำเร็จ: ${uploadError.message}` },
+          { status: 500 }
+        )
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from(bucketName).getPublicUrl(filePath)
+
+      return NextResponse.json({ url: publicUrl })
+    }
+
+    // ─── Case Photo Upload ────────────────────────────────────────
+    const filePath = `${caseId}/${reservationId}_${timestamp}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from("case-photos")
@@ -60,7 +107,7 @@ export async function POST(request: NextRequest) {
         photo_url: publicUrl,
         photo_uploaded_at: new Date().toISOString(),
       })
-      .eq("id", reservationId)
+      .eq("id", reservationId!)
 
     if (updateError) {
       return NextResponse.json(
