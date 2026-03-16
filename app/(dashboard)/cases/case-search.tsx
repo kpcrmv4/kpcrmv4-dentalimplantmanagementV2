@@ -1,9 +1,14 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useRef } from "react"
-import { Search } from "lucide-react"
+import { useState, useRef, useCallback } from "react"
+import { Search, List, Clock, CalendarIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { th } from "date-fns/locale"
 
 const STATUS_CHIPS = [
   { value: "all", label: "ทั้งหมด" },
@@ -14,41 +19,164 @@ const STATUS_CHIPS = [
   { value: "completed", label: "เสร็จสิ้น" },
 ]
 
+const PERIOD_CHIPS = [
+  { value: "today", label: "วันนี้" },
+  { value: "week", label: "สัปดาห์" },
+  { value: "month", label: "เดือนนี้" },
+  { value: "year", label: "ปีนี้" },
+  { value: "all", label: "ทั้งหมด" },
+]
+
 export function CaseSearch({
   defaultSearch,
   defaultStatus,
+  defaultPeriod,
+  defaultDate,
+  defaultView,
 }: {
   defaultSearch?: string
   defaultStatus?: string
+  defaultPeriod?: string
+  defaultDate?: string
+  defaultView?: string
 }) {
   const router = useRouter()
   const [search, setSearch] = useState(defaultSearch ?? "")
   const [status, setStatus] = useState(defaultStatus ?? "all")
+  const [period, setPeriod] = useState(defaultPeriod ?? "today")
+  const [view, setView] = useState<"list" | "timeline">(
+    (defaultView as "list" | "timeline") ?? "list"
+  )
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    defaultDate ? new Date(defaultDate) : undefined
+  )
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function navigate(q: string, s: string) {
-    const params = new URLSearchParams()
-    if (q) params.set("q", q)
-    if (s && s !== "all") params.set("status", s)
-    router.push(`/cases?${params.toString()}`)
-  }
+  const navigate = useCallback(
+    (q: string, s: string, p: string, v: string, date?: Date) => {
+      const params = new URLSearchParams()
+      if (q) params.set("q", q)
+      if (s && s !== "all") params.set("status", s)
+      if (p && p !== "today") params.set("period", p)
+      if (v && v !== "list") params.set("view", v)
+      if (date) params.set("date", format(date, "yyyy-MM-dd"))
+      router.push(`/cases?${params.toString()}`)
+    },
+    [router]
+  )
 
   function handleSearchChange(q: string) {
     setSearch(q)
     if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => navigate(q, status), 300)
+    timerRef.current = setTimeout(
+      () => navigate(q, status, period, view, selectedDate),
+      300
+    )
+  }
+
+  function handlePeriodChange(p: string) {
+    setPeriod(p)
+    setSelectedDate(undefined)
+    navigate(search, status, p, view)
+  }
+
+  function handleStatusChange(s: string) {
+    setStatus(s)
+    navigate(search, s, period, view, selectedDate)
+  }
+
+  function handleViewChange(v: "list" | "timeline") {
+    setView(v)
+    navigate(search, status, period, v, selectedDate)
+  }
+
+  function handleDateSelect(date: Date | undefined) {
+    setSelectedDate(date)
+    setCalendarOpen(false)
+    if (date) {
+      setPeriod("custom")
+      navigate(search, status, "custom", view, date)
+    } else {
+      setPeriod("today")
+      navigate(search, status, "today", view)
+    }
   }
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="ค้นหาเลขเคส..."
-          className="pl-9"
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-        />
+      {/* Search + View Toggle */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="ค้นหาเลขเคส / ชื่อคนไข้..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </div>
+        <div className="flex rounded-lg border bg-muted p-0.5">
+          <Button
+            variant={view === "list" ? "default" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => handleViewChange("list")}
+            title="มุมมองรายการ"
+          >
+            <List className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={view === "timeline" ? "default" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => handleViewChange("timeline")}
+            title="มุมมองไทม์ไลน์"
+          >
+            <Clock className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Period filter + Date picker */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {PERIOD_CHIPS.map((chip) => (
+          <button
+            key={chip.value}
+            onClick={() => handlePeriodChange(chip.value)}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              period === chip.value
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                period === "custom"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              <CalendarIcon className="h-3 w-3" />
+              {selectedDate
+                ? format(selectedDate, "d MMM", { locale: th })
+                : "เลือกวัน"}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              locale={th}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Status chips */}
@@ -56,14 +184,11 @@ export function CaseSearch({
         {STATUS_CHIPS.map((chip) => (
           <button
             key={chip.value}
-            onClick={() => {
-              setStatus(chip.value)
-              navigate(search, chip.value)
-            }}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            onClick={() => handleStatusChange(chip.value)}
+            className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
               status === chip.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
             }`}
           >
             {chip.label}

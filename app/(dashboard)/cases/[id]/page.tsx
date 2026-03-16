@@ -95,7 +95,7 @@ export default async function CaseDetailPage({
               <p className="flex items-center gap-1 text-sm font-medium leading-tight">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
                 {formatDate(String(caseData.scheduled_date))}
-                {caseData.scheduled_time ? ` ${String(caseData.scheduled_time)}` : ""}
+                {caseData.scheduled_time ? ` ${String(caseData.scheduled_time).slice(0, 5)}` : ""}
               </p>
             </div>
           )}
