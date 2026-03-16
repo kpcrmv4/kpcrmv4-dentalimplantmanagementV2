@@ -1,8 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Calendar, User, Stethoscope } from "lucide-react"
+import { ArrowLeft, Calendar, User, Stethoscope, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getCaseById } from "@/lib/actions/cases"
@@ -46,153 +45,165 @@ export default async function CaseDetailPage({
   const reservations = caseData.reservations as Array<Record<string, unknown>>
   const canOrder = ["pending_appointment", "pending_order"].includes(caseData.case_status)
   const canCancel = !["completed", "cancelled"].includes(caseData.case_status)
+  const isActive = !["completed", "cancelled"].includes(caseData.case_status)
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
+    <div className="mx-auto max-w-lg space-y-3 p-4 pb-8">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
+        <Button variant="ghost" size="icon" className="shrink-0" asChild>
           <Link href="/cases"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold">{caseData.case_number}</h1>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${status.color}`}>
+            <h1 className="text-lg font-semibold truncate">{caseData.case_number}</h1>
+            <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
               {status.label}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Patient Info */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4" />
-            ข้อมูลคนไข้
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm">
-          <p><span className="text-muted-foreground">ชื่อ:</span> {String(patient?.full_name ?? "")}</p>
-          <p><span className="text-muted-foreground">HN:</span> {String(patient?.hn ?? "")}</p>
-        </CardContent>
-      </Card>
+      {/* Patient + Treatment combined card */}
+      <div className="rounded-xl border bg-card p-3 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <User className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-sm font-medium">{String(patient?.full_name ?? "")}</span>
+          <span className="text-xs text-muted-foreground">HN: {String(patient?.hn ?? "")}</span>
+        </div>
 
-      {/* Treatment Info */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Stethoscope className="h-4 w-4" />
-            การรักษา
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <p><span className="text-muted-foreground">แพทย์:</span> {String(dentist?.full_name ?? "-")}</p>
-            <p><span className="text-muted-foreground">ผู้ช่วย:</span> {String(assistant?.full_name ?? "-")}</p>
-            {caseData.procedure_type ? (
-              <p><span className="text-muted-foreground">หัตถการ:</span> {String(caseData.procedure_type)}</p>
-            ) : null}
-            {caseData.scheduled_date ? (
-              <p className="flex items-center gap-1">
+        <Separator />
+
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+          <div>
+            <span className="text-xs text-muted-foreground">แพทย์</span>
+            <p className="text-sm font-medium leading-tight">{String(dentist?.full_name ?? "-")}</p>
+          </div>
+          <div>
+            <span className="text-xs text-muted-foreground">ผู้ช่วย</span>
+            <p className="text-sm font-medium leading-tight">{String(assistant?.full_name ?? "-")}</p>
+          </div>
+          {caseData.procedure_type && (
+            <div>
+              <span className="text-xs text-muted-foreground">หัตถการ</span>
+              <p className="text-sm font-medium leading-tight">{String(caseData.procedure_type)}</p>
+            </div>
+          )}
+          {caseData.scheduled_date && (
+            <div>
+              <span className="text-xs text-muted-foreground">วันนัด</span>
+              <p className="flex items-center gap-1 text-sm font-medium leading-tight">
                 <Calendar className="h-3 w-3 text-muted-foreground" />
-                <span className="text-muted-foreground">นัด:</span>{" "}
                 {formatDate(String(caseData.scheduled_date))}
                 {caseData.scheduled_time ? ` ${String(caseData.scheduled_time)}` : ""}
               </p>
-            ) : null}
-          </div>
-
-          {/* Tooth Positions */}
-          {(caseData.tooth_positions as number[])?.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <span className="text-muted-foreground">ตำแหน่งฟัน:</span>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {(caseData.tooth_positions as number[]).map((t: number) => (
-                    <Badge key={t} variant="outline">{t}</Badge>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {caseData.notes ? (
-            <>
-              <Separator />
-              <p><span className="text-muted-foreground">หมายเหตุ:</span> {String(caseData.notes)}</p>
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {/* Materials / Reservations */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">วัสดุที่สั่ง ({reservations.length})</CardTitle>
-            {canOrder && (
-              <Button size="sm" asChild>
-                <Link href={`/shop?case_id=${id}`}>สั่งวัสดุ</Link>
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {reservations.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              ยังไม่มีรายการวัสดุ
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {reservations.map((r) => {
-                const product = r.products as Record<string, unknown> | null
-                const inventory = r.inventory as Record<string, unknown> | null
-                const rStatus = RESERVATION_STATUS[r.status as string] ?? RESERVATION_STATUS.reserved
-
-                return (
-                  <div key={r.id as string} className="flex items-start justify-between rounded-lg border p-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{String(product?.name ?? "")}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {String(product?.brand ?? "")} · REF: {String(product?.ref ?? "")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        จำนวน: {Number(r.quantity_reserved)} {String(product?.unit ?? "")}
-                        {r.quantity_used != null ? ` (ใช้จริง: ${Number(r.quantity_used)})` : ""}
-                      </p>
-                      {inventory ? (
-                        <p className="text-xs text-muted-foreground">
-                          LOT: {String(inventory.lot_number)}
-                          {inventory.expiry_date ? ` · Exp: ${formatDate(String(inventory.expiry_date))}` : ""}
-                        </p>
-                      ) : null}
-                    </div>
-                    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${rStatus.color}`}>
-                      {rStatus.label}
-                    </span>
-                  </div>
-                )
-              })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Action Buttons (client component) */}
-      <CaseActions
-        caseId={id}
-        caseStatus={caseData.case_status}
-        canCancel={canCancel}
-        reservations={reservations.map((r) => ({
-          id: r.id as string,
-          status: r.status as string,
-          productId: r.product_id as string,
-          productName: String((r.products as Record<string, unknown>)?.name ?? ""),
-          quantityReserved: Number(r.quantity_reserved),
-        }))}
-      />
+        {(caseData.tooth_positions as number[])?.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <span className="text-xs text-muted-foreground">ตำแหน่งฟัน</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {(caseData.tooth_positions as number[]).map((t: number) => (
+                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {caseData.notes && (
+          <>
+            <Separator />
+            <div>
+              <span className="text-xs text-muted-foreground">หมายเหตุ</span>
+              <p className="text-sm">{String(caseData.notes)}</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Materials / Reservations */}
+      <div className="rounded-xl border bg-card p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">วัสดุที่สั่ง ({reservations.length})</h2>
+          </div>
+          {canOrder && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+              <Link href={`/shop?case_id=${id}`}>+ สั่งเพิ่ม</Link>
+            </Button>
+          )}
+        </div>
+        {reservations.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            ยังไม่มีรายการวัสดุ
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {reservations.map((r) => {
+              const product = r.products as Record<string, unknown> | null
+              const inventory = r.inventory as Record<string, unknown> | null
+              const rStatus = RESERVATION_STATUS[r.status as string] ?? RESERVATION_STATUS.reserved
+
+              return (
+                <div key={r.id as string} className="flex items-start gap-2 rounded-lg border p-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight">{String(product?.name ?? "")}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {String(product?.brand ?? "")} · REF: {String(product?.ref ?? "")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      จำนวน: {Number(r.quantity_reserved)} {String(product?.unit ?? "")}
+                      {r.quantity_used != null ? ` → ใช้จริง: ${Number(r.quantity_used)}` : ""}
+                    </p>
+                    {inventory && (
+                      <p className="text-[11px] text-muted-foreground">
+                        LOT: {String(inventory.lot_number)}
+                        {inventory.expiry_date ? ` · Exp: ${formatDate(String(inventory.expiry_date))}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${rStatus.color}`}>
+                    {rStatus.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Action Sections (client component) */}
+      {isActive && (
+        <CaseActions
+          caseId={id}
+          caseStatus={caseData.case_status}
+          canCancel={canCancel}
+          reservations={reservations.map((r) => {
+            const product = r.products as Record<string, unknown> | null
+            const inventory = r.inventory as Record<string, unknown> | null
+            return {
+              id: r.id as string,
+              status: r.status as string,
+              productId: r.product_id as string,
+              productName: String(product?.name ?? ""),
+              productBrand: String(product?.brand ?? ""),
+              productRef: String(product?.ref ?? ""),
+              productUnit: String(product?.unit ?? "ชิ้น"),
+              quantityReserved: Number(r.quantity_reserved),
+              quantityUsed: r.quantity_used != null ? Number(r.quantity_used) : null,
+              inventoryId: (r.inventory_id as string) ?? null,
+              lotNumber: inventory ? String(inventory.lot_number) : null,
+              photoUrl: (r.photo_url as string) ?? null,
+            }
+          })}
+        />
+      )}
     </div>
   )
 }

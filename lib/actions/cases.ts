@@ -339,6 +339,84 @@ export async function recordUsage(
   revalidatePath(`/cases/${reservation.case_id}`)
 }
 
+/**
+ * Close case: batch record all usage, deduct stock, return unused items.
+ * Called after the assistant has recorded usage for all prepared items locally.
+ */
+export async function closeCaseWithUsage(
+  caseId: string,
+  usageData: Array<{ reservationId: string; quantityUsed: number }>
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // Validate case exists and is in a closeable state
+  const { data: caseData } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", caseId)
+    .single()
+
+  if (!caseData) throw new Error("ไม่พบเคส")
+  if (["completed", "cancelled"].includes(caseData.case_status)) {
+    throw new Error("เคสนี้ปิดแล้ว")
+  }
+
+  // Process each usage record
+  for (const { reservationId, quantityUsed } of usageData) {
+    // Get the reservation and its inventory lot
+    const { data: reservation } = await supabase
+      .from("case_reservations")
+      .select("id, quantity_reserved, inventory_id, status")
+      .eq("id", reservationId)
+      .eq("case_id", caseId)
+      .single()
+
+    if (!reservation) continue
+    if (reservation.status === "consumed") continue // already done
+
+    // Record usage → consumed
+    const { error: usageErr } = await supabase
+      .from("case_reservations")
+      .update({
+        quantity_used: quantityUsed,
+        status: "consumed" as ReservationStatus,
+      })
+      .eq("id", reservationId)
+
+    if (usageErr) throw new Error(`บันทึกการใช้ไม่สำเร็จ: ${usageErr.message}`)
+  }
+
+  // Return any remaining prepared items that weren't in usageData
+  const recordedIds = usageData.map((u) => u.reservationId)
+  const { data: remaining } = await supabase
+    .from("case_reservations")
+    .select("id")
+    .eq("case_id", caseId)
+    .in("status", ["reserved", "prepared"])
+
+  if (remaining && remaining.length > 0) {
+    const toReturn = remaining.filter((r: { id: string }) => !recordedIds.includes(r.id))
+    if (toReturn.length > 0) {
+      await supabase
+        .from("case_reservations")
+        .update({ status: "returned" as ReservationStatus })
+        .in("id", toReturn.map((r: { id: string }) => r.id))
+    }
+  }
+
+  // Mark case completed
+  const { error } = await supabase
+    .from("cases")
+    .update({ case_status: "completed" as CaseStatus })
+    .eq("id", caseId)
+
+  if (error) throw error
+  revalidatePath("/cases")
+  revalidatePath(`/cases/${caseId}`)
+}
+
 export async function cancelCase(caseId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
