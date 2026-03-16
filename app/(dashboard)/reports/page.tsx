@@ -3,13 +3,110 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getDashboardReport, getCaseStatusDistribution, getTopProducts } from "@/lib/actions/reports"
 import { formatNumber } from "@/lib/utils"
 import { ReportsTabs } from "@/components/reports/reports-tabs"
+import { cn } from "@/lib/utils"
+import {
+  ClipboardList,
+  Settings,
+  CalendarCheck,
+  Package,
+  FileText,
+  Clock,
+  TrendingUp,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
-const STATUS_LABELS: Record<string, string> = {
-  pending_order: "รอสั่งของ",
-  pending_preparation: "รอจัดของ",
-  ready: "พร้อม",
-  completed: "เสร็จสิ้น",
-  cancelled: "ยกเลิก",
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending_order: { label: "รอสั่งของ", color: "bg-yellow-500" },
+  pending_preparation: { label: "รอจัดของ", color: "bg-orange-500" },
+  ready: { label: "พร้อม", color: "bg-green-500" },
+  completed: { label: "เสร็จสิ้น", color: "bg-blue-500" },
+  cancelled: { label: "ยกเลิก", color: "bg-red-500" },
+}
+
+const STAT_STYLES: Record<
+  string,
+  { border: string; bg: string; text: string; label: string; icon: string }
+> = {
+  blue: {
+    border: "border-blue-200 dark:border-blue-500/30",
+    bg: "bg-blue-50/50 dark:bg-blue-500/10",
+    text: "text-blue-700 dark:text-blue-400",
+    label: "text-blue-600/80 dark:text-blue-400/80",
+    icon: "text-blue-200 dark:text-blue-500/20",
+  },
+  indigo: {
+    border: "border-indigo-200 dark:border-indigo-500/30",
+    bg: "bg-indigo-50/50 dark:bg-indigo-500/10",
+    text: "text-indigo-700 dark:text-indigo-400",
+    label: "text-indigo-600/80 dark:text-indigo-400/80",
+    icon: "text-indigo-200 dark:text-indigo-500/20",
+  },
+  emerald: {
+    border: "border-emerald-200 dark:border-emerald-500/30",
+    bg: "bg-emerald-50/50 dark:bg-emerald-500/10",
+    text: "text-emerald-700 dark:text-emerald-400",
+    label: "text-emerald-600/80 dark:text-emerald-400/80",
+    icon: "text-emerald-200 dark:text-emerald-500/20",
+  },
+  amber: {
+    border: "border-amber-200 dark:border-amber-500/30",
+    bg: "bg-amber-50/50 dark:bg-amber-500/10",
+    text: "text-amber-700 dark:text-amber-400",
+    label: "text-amber-600/80 dark:text-amber-400/80",
+    icon: "text-amber-200 dark:text-amber-500/20",
+  },
+  violet: {
+    border: "border-violet-200 dark:border-violet-500/30",
+    bg: "bg-violet-50/50 dark:bg-violet-500/10",
+    text: "text-violet-700 dark:text-violet-400",
+    label: "text-violet-600/80 dark:text-violet-400/80",
+    icon: "text-violet-200 dark:text-violet-500/20",
+  },
+  rose: {
+    border: "border-rose-200 dark:border-rose-500/30",
+    bg: "bg-rose-50/50 dark:bg-rose-500/10",
+    text: "text-rose-700 dark:text-rose-400",
+    label: "text-rose-600/80 dark:text-rose-400/80",
+    icon: "text-rose-200 dark:text-rose-500/20",
+  },
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+}: {
+  label: string
+  value: number
+  icon: LucideIcon
+  color: keyof typeof STAT_STYLES
+}) {
+  const s = STAT_STYLES[color]
+  return (
+    <Card className={cn(s.border, s.bg, "relative overflow-hidden")}>
+      <CardContent className="relative flex flex-col items-center py-3">
+        <Icon
+          className={cn(
+            "absolute right-1 top-1 h-3.5 w-3.5 pointer-events-none",
+            s.icon
+          )}
+          strokeWidth={2}
+        />
+        <span className={cn("relative text-2xl font-bold", s.text)}>
+          {formatNumber(value)}
+        </span>
+        <span
+          className={cn(
+            "relative mt-0.5 text-[10px] font-medium leading-tight text-center",
+            s.label
+          )}
+        >
+          {label}
+        </span>
+      </CardContent>
+    </Card>
+  )
 }
 
 async function ReportContent() {
@@ -19,75 +116,55 @@ async function ReportContent() {
     getTopProducts(),
   ])
 
+  const total = Object.values(statusDist).reduce((a, b) => a + b, 0)
+
   return (
     <div className="space-y-4">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">เคสทั้งหมด</p>
-            <p className="text-2xl font-bold">{formatNumber(stats.casesTotal)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">เคสที่กำลังดำเนินการ</p>
-            <p className="text-2xl font-bold">{formatNumber(stats.casesActive)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">เคสวันนี้</p>
-            <p className="text-2xl font-bold">{formatNumber(stats.casesToday)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">สินค้าทั้งหมด</p>
-            <p className="text-2xl font-bold">{formatNumber(stats.productsTotal)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">PO ทั้งหมด</p>
-            <p className="text-2xl font-bold">{formatNumber(stats.poTotal)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">PO รออนุมัติ</p>
-            <p className="text-2xl font-bold">{formatNumber(stats.poPending)}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">
+        <StatCard label="เคสทั้งหมด" value={stats.casesTotal} icon={ClipboardList} color="blue" />
+        <StatCard label="กำลังดำเนินการ" value={stats.casesActive} icon={Settings} color="indigo" />
+        <StatCard label="เคสวันนี้" value={stats.casesToday} icon={CalendarCheck} color="emerald" />
+        <StatCard label="สินค้าทั้งหมด" value={stats.productsTotal} icon={Package} color="amber" />
+        <StatCard label="PO ทั้งหมด" value={stats.poTotal} icon={FileText} color="violet" />
+        <StatCard label="PO รออนุมัติ" value={stats.poPending} icon={Clock} color="rose" />
       </div>
 
       {/* Case Status Distribution */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">สถานะเคส</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+            การกระจายสถานะเคส
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {Object.keys(statusDist).length === 0 ? (
+          {total === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">ยังไม่มีข้อมูล</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {Object.entries(statusDist).map(([status, count]) => {
-                const total = Object.values(statusDist).reduce((a, b) => a + b, 0)
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0
+                const config = STATUS_LABELS[status]
                 return (
-                  <div key={status} className="flex items-center gap-2">
-                    <span className="w-20 text-xs text-muted-foreground truncate">
-                      {STATUS_LABELS[status] ?? status}
-                    </span>
-                    <div className="flex-1">
-                      <div className="h-2 rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full bg-primary"
-                          style={{ width: `${pct}%` }}
-                        />
+                  <div key={status}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn("h-2 w-2 rounded-full", config?.color ?? "bg-gray-400")} />
+                        <span className="text-xs font-medium">
+                          {config?.label ?? status}
+                        </span>
                       </div>
+                      <span className="text-xs text-muted-foreground">
+                        {formatNumber(count)} ({pct}%)
+                      </span>
                     </div>
-                    <span className="w-12 text-right text-xs font-medium">{count} ({pct}%)</span>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", config?.color ?? "bg-gray-400")}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
                 )
               })}
@@ -99,27 +176,44 @@ async function ReportContent() {
       {/* Top Products */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">วัสดุที่ใช้มากที่สุด</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+            วัสดุที่ใช้มากที่สุด (Top 10)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {topProducts.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">ยังไม่มีข้อมูล</p>
           ) : (
             <div className="space-y-2">
-              {topProducts.map((p, i) => (
-                <div key={p.ref} className="flex items-center justify-between rounded-lg border p-2">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                      {i + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">REF: {p.ref}</p>
+              {topProducts.map((p, i) => {
+                const maxVal = topProducts[0].total
+                const pct = maxVal > 0 ? Math.round((p.total / maxVal) * 100) : 0
+                return (
+                  <div key={p.ref} className="rounded-lg border p-2.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{p.name}</p>
+                          <p className="text-[10px] text-muted-foreground">REF: {p.ref}</p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-sm font-bold tabular-nums ml-2">
+                        {formatNumber(p.total)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary/40 transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                   </div>
-                  <span className="text-sm font-medium">{formatNumber(p.total)}</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
@@ -131,16 +225,25 @@ async function ReportContent() {
 function ReportSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i}>
-            <CardContent className="p-3">
-              <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-              <div className="mt-2 h-7 w-12 animate-pulse rounded bg-muted" />
+            <CardContent className="flex flex-col items-center py-3">
+              <div className="h-7 w-10 animate-pulse rounded bg-muted" />
+              <div className="mt-1 h-3 w-14 animate-pulse rounded bg-muted" />
             </CardContent>
           </Card>
         ))}
       </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-6 animate-pulse rounded bg-muted" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
