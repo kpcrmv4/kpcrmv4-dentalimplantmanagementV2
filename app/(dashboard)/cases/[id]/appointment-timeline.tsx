@@ -84,11 +84,11 @@ export async function AppointmentTimeline({
                   </p>
                 )}
 
-                {performer?.full_name && (
+                {performer?.full_name ? (
                   <p className="text-[10px] text-muted-foreground">
                     — {String(performer.full_name)}
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
           )
