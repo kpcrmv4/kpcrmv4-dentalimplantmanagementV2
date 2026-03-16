@@ -3,6 +3,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { ProductCategory } from "@/types/database"
+import type { Database } from "@/types/supabase"
+
+type ProductCategoryEnum = Database["public"]["Enums"]["product_category"]
 
 // ─── Existing Functions ──────────────────────────────────────────────
 
@@ -120,7 +123,7 @@ export async function createProduct(formData: FormData) {
     ref: ref.trim(),
     name: name.trim(),
     brand: (formData.get("brand") as string | null)?.trim() || null,
-    category: (formData.get("category") as ProductCategory) || "other",
+    category: ((formData.get("category") as string) || "other") as ProductCategoryEnum,
     description: (formData.get("description") as string | null)?.trim() || null,
     unit: (formData.get("unit") as string | null)?.trim() || "ชิ้น",
     min_stock_level: minStockRaw ? parseInt(minStockRaw, 10) : 0,
@@ -173,7 +176,7 @@ export async function updateProduct(id: string, formData: FormData) {
     ref: ref.trim(),
     name: name.trim(),
     brand: (formData.get("brand") as string | null)?.trim() || null,
-    category: (formData.get("category") as ProductCategory) || "other",
+    category: ((formData.get("category") as string) || "other") as ProductCategoryEnum,
     description: (formData.get("description") as string | null)?.trim() || null,
     unit: (formData.get("unit") as string | null)?.trim() || "ชิ้น",
     min_stock_level: minStockRaw ? parseInt(minStockRaw, 10) : 0,
