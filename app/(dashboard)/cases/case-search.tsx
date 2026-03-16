@@ -12,11 +12,16 @@ import { th } from "date-fns/locale"
 
 const STATUS_CHIPS = [
   { value: "all", label: "ทั้งหมด" },
-  { value: "pending_appointment", label: "รอทำนัด" },
   { value: "pending_order", label: "รอสั่งของ" },
   { value: "pending_preparation", label: "รอจัดของ" },
   { value: "ready", label: "พร้อม" },
   { value: "completed", label: "เสร็จสิ้น" },
+]
+
+const APPT_CHIPS = [
+  { value: "all", label: "ทั้งหมด" },
+  { value: "pending", label: "รอยืนยัน" },
+  { value: "confirmed", label: "ยืนยันแล้ว" },
 ]
 
 const PERIOD_CHIPS = [
@@ -33,16 +38,19 @@ export function CaseSearch({
   defaultPeriod,
   defaultDate,
   defaultView,
+  defaultAppt,
 }: {
   defaultSearch?: string
   defaultStatus?: string
   defaultPeriod?: string
   defaultDate?: string
   defaultView?: string
+  defaultAppt?: string
 }) {
   const router = useRouter()
   const [search, setSearch] = useState(defaultSearch ?? "")
   const [status, setStatus] = useState(defaultStatus ?? "all")
+  const [appt, setAppt] = useState(defaultAppt ?? "all")
   const [period, setPeriod] = useState(defaultPeriod ?? "today")
   const [view, setView] = useState<"list" | "timeline">(
     (defaultView as "list" | "timeline") ?? "timeline"
@@ -54,10 +62,11 @@ export function CaseSearch({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const navigate = useCallback(
-    (q: string, s: string, p: string, v: string, date?: Date) => {
+    (q: string, s: string, p: string, v: string, a: string, date?: Date) => {
       const params = new URLSearchParams()
       if (q) params.set("q", q)
       if (s && s !== "all") params.set("status", s)
+      if (a && a !== "all") params.set("appt", a)
       if (p && p !== "today") params.set("period", p)
       if (v && v !== "timeline") params.set("view", v)
       if (date) params.set("date", format(date, "yyyy-MM-dd"))
@@ -70,7 +79,7 @@ export function CaseSearch({
     setSearch(q)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(
-      () => navigate(q, status, period, view, selectedDate),
+      () => navigate(q, status, period, view, appt, selectedDate),
       300
     )
   }
@@ -78,17 +87,22 @@ export function CaseSearch({
   function handlePeriodChange(p: string) {
     setPeriod(p)
     setSelectedDate(undefined)
-    navigate(search, status, p, view)
+    navigate(search, status, p, view, appt)
   }
 
   function handleStatusChange(s: string) {
     setStatus(s)
-    navigate(search, s, period, view, selectedDate)
+    navigate(search, s, period, view, appt, selectedDate)
+  }
+
+  function handleApptChange(a: string) {
+    setAppt(a)
+    navigate(search, status, period, view, a, selectedDate)
   }
 
   function handleViewChange(v: "list" | "timeline") {
     setView(v)
-    navigate(search, status, period, v, selectedDate)
+    navigate(search, status, period, v, appt, selectedDate)
   }
 
   function handleDateSelect(date: Date | undefined) {
@@ -96,10 +110,10 @@ export function CaseSearch({
     setCalendarOpen(false)
     if (date) {
       setPeriod("custom")
-      navigate(search, status, "custom", view, date)
+      navigate(search, status, "custom", view, appt, date)
     } else {
       setPeriod("today")
-      navigate(search, status, "today", view)
+      navigate(search, status, "today", view, appt)
     }
   }
 
@@ -187,6 +201,24 @@ export function CaseSearch({
             onClick={() => handleStatusChange(chip.value)}
             className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
               status === chip.value
+                ? "border-primary/50 bg-primary/10 text-primary"
+                : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Appointment status chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <span className="shrink-0 text-[10px] text-muted-foreground">นัดหมาย:</span>
+        {APPT_CHIPS.map((chip) => (
+          <button
+            key={chip.value}
+            onClick={() => handleApptChange(chip.value)}
+            className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+              appt === chip.value
                 ? "border-primary/50 bg-primary/10 text-primary"
                 : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
             }`}

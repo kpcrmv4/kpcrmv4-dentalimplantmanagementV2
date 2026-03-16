@@ -6,7 +6,6 @@ import { formatDate } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 
 const STATUS_LABELS: Record<string, string> = {
-  pending_appointment: "รอทำนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   case_assigned: "มอบหมายแล้ว",

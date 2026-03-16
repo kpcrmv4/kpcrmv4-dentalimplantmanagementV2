@@ -8,6 +8,7 @@ import type { Database } from "./supabase"
 
 // Enum type aliases
 export type UserRole = Database["public"]["Enums"]["user_role"]
+export type AppointmentStatus = Database["public"]["Enums"]["appointment_status"]
 export type CaseStatus = Database["public"]["Enums"]["case_status"]
 export type ReservationStatus = Database["public"]["Enums"]["reservation_status"]
 export type POStatus = Database["public"]["Enums"]["po_status"]
@@ -28,3 +29,4 @@ export type PurchaseOrder = Database["public"]["Tables"]["purchase_orders"]["Row
 export type PurchaseOrderItem = Database["public"]["Tables"]["purchase_order_items"]["Row"]
 export type Notification = Database["public"]["Tables"]["notifications"]["Row"]
 export type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"]
+export type CaseAppointmentLog = Database["public"]["Tables"]["case_appointment_logs"]["Row"]

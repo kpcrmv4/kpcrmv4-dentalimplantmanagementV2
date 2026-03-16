@@ -9,7 +9,6 @@ import { cn, formatDate } from "@/lib/utils"
 import type { DashboardCase, TrafficLight } from "@/lib/actions/dashboard"
 
 const STATUS_LABELS: Record<string, string> = {
-  pending_appointment: "รอทำนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   ready: "พร้อม",

@@ -12,7 +12,7 @@ export async function getDashboardReport() {
     supabase
       .from("cases")
       .select("id", { count: "exact", head: true })
-      .in("case_status", ["pending_appointment", "pending_order", "pending_preparation", "ready"]),
+      .in("case_status", ["pending_order", "pending_preparation", "ready"]),
     supabase
       .from("cases")
       .select("id", { count: "exact", head: true })

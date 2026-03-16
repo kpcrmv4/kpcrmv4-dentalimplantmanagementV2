@@ -22,7 +22,6 @@ export type DashboardCase = {
 function deriveTrafficLight(status: CaseStatus): TrafficLight {
   if (status === "ready") return "green"
   if (status === "pending_order" || status === "pending_preparation") return "orange"
-  if (status === "pending_appointment") return "red"
   return "neutral" // completed, cancelled
 }
 
