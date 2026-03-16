@@ -58,7 +58,9 @@ export async function getProductById(id: string) {
 }
 
 export async function getCategories() {
-  const supabase = await createClient()
+  // product_categories table not in generated Supabase types yet
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createClient()) as any
   const { data, error } = await supabase
     .from("product_categories")
     .select("slug, name")
