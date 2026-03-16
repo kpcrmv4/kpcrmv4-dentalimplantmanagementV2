@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
-import { Search, CalendarIcon, X } from "lucide-react"
+import { Search, CalendarIcon, X, SlidersHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -15,11 +14,13 @@ export function InventorySearch({
   currentFilter,
   currentView,
   currentExpiryBefore,
+  lowStockCount,
 }: {
   defaultValue: string
   currentFilter: string
   currentView: string
   currentExpiryBefore: string
+  lowStockCount: number
 }) {
   const router = useRouter()
   const [value, setValue] = useState(defaultValue)
@@ -66,120 +67,156 @@ export function InventorySearch({
 
   return (
     <div className="space-y-2">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={
-            isLotView
-              ? "ค้นหาชื่อ, REF, LOT..."
-              : "ค้นหาชื่อ, REF, แบรนด์..."
-          }
-          className="pl-9"
-          value={value}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
-      </div>
-
-      {/* View Toggle */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleFilterChange("")}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              !currentFilter
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            ทั้งหมด
-          </button>
-          <button
-            onClick={() => handleFilterChange("low")}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              currentFilter === "low"
-                ? "bg-orange-600 text-white"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            ใกล้หมด
-          </button>
-          <button
-            onClick={() => handleFilterChange("ordering")}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              currentFilter === "ordering"
-                ? "bg-indigo-600 text-white"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            กำลังสั่ง
-          </button>
+      {/* Search + View toggle row */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={isLotView ? "ค้นหาชื่อ, REF, LOT..." : "ค้นหาชื่อ, REF, แบรนด์..."}
+            className="pl-8 h-9 text-sm"
+            value={value}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+          {value && (
+            <button
+              onClick={() => handleSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-
-        <div className="flex rounded-lg border bg-muted p-0.5">
+        {/* View Toggle */}
+        <div className="flex rounded-lg border bg-muted p-0.5 shrink-0">
           <button
             onClick={() => handleViewToggle("")}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-md px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium transition-colors whitespace-nowrap ${
               !isLotView
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            ตามสินค้า
+            สินค้า
           </button>
           <button
             onClick={() => handleViewToggle("lot")}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-md px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium transition-colors whitespace-nowrap ${
               isLotView
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            ตาม LOT
+            LOT
           </button>
         </div>
       </div>
 
-      {/* Expiry date filter - only show in LOT view */}
-      {isLotView && (
-        <div className="flex items-center gap-2">
-          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`h-8 text-xs ${
-                  expiryDate ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-900/20 dark:text-orange-400" : ""
-                }`}
+      {/* Filter pills + expiry filter */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <FilterPill
+          active={!currentFilter}
+          onClick={() => handleFilterChange("")}
+          color="default"
+        >
+          ทั้งหมด
+        </FilterPill>
+        <FilterPill
+          active={currentFilter === "low"}
+          onClick={() => handleFilterChange("low")}
+          color="orange"
+          count={lowStockCount > 0 ? lowStockCount : undefined}
+        >
+          ใกล้หมด
+        </FilterPill>
+        <FilterPill
+          active={currentFilter === "ordering"}
+          onClick={() => handleFilterChange("ordering")}
+          color="indigo"
+        >
+          กำลังสั่ง
+        </FilterPill>
+
+        {/* Expiry date filter - show in LOT view */}
+        {isLotView && (
+          <>
+            <div className="w-px h-4 bg-border mx-0.5" />
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium transition-colors border ${
+                    expiryDate
+                      ? "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-700 dark:bg-orange-900/20 dark:text-orange-400"
+                      : "border-transparent bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  <CalendarIcon className="h-3 w-3" />
+                  {expiryDate
+                    ? `ก่อน ${format(expiryDate, "d MMM yy", { locale: th })}`
+                    : "หมดอายุก่อน..."}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={expiryDate}
+                  onSelect={handleExpiryChange}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            {expiryDate && (
+              <button
+                onClick={() => handleExpiryChange(undefined)}
+                className="text-muted-foreground hover:text-foreground"
               >
-                <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                {expiryDate
-                  ? `หมดอายุก่อน ${format(expiryDate, "d MMM yyyy", { locale: th })}`
-                  : "แสดงเฉพาะหมดอายุก่อน..."
-                }
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={expiryDate}
-                onSelect={handleExpiryChange}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          {expiryDate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-xs text-muted-foreground"
-              onClick={() => handleExpiryChange(undefined)}
-            >
-              <X className="mr-1 h-3 w-3" />
-              ล้าง
-            </Button>
-          )}
-        </div>
-      )}
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
+  )
+}
+
+function FilterPill({
+  active,
+  onClick,
+  color,
+  count,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  color: "default" | "orange" | "indigo"
+  count?: number
+  children: React.ReactNode
+}) {
+  const activeColors = {
+    default: "bg-primary text-primary-foreground",
+    orange: "bg-orange-600 text-white",
+    indigo: "bg-indigo-600 text-white",
+  }
+  const inactiveClass = "bg-muted text-muted-foreground hover:bg-muted/80"
+
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium transition-colors ${
+        active ? activeColors[color] : inactiveClass
+      }`}
+    >
+      {children}
+      {count !== undefined && count > 0 && (
+        <span
+          className={`inline-flex items-center justify-center rounded-full min-w-[16px] h-4 px-1 text-[10px] font-bold ${
+            active ? "bg-white/20" : "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+          }`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
