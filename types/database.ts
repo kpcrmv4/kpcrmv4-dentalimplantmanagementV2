@@ -11,7 +11,9 @@ export type UserRole = Database["public"]["Enums"]["user_role"]
 export type CaseStatus = Database["public"]["Enums"]["case_status"]
 export type ReservationStatus = Database["public"]["Enums"]["reservation_status"]
 export type POStatus = Database["public"]["Enums"]["po_status"]
-export type ProductCategory = Database["public"]["Enums"]["product_category"]
+// ProductCategory is now a TEXT column (configurable via product_categories table)
+// Keeping as string for forward compatibility after migration 007
+export type ProductCategory = string
 export type NotificationType = Database["public"]["Enums"]["notification_type"]
 
 // Row type aliases

@@ -58,14 +58,26 @@ export async function getProductById(id: string) {
 }
 
 export async function getCategories() {
-  return [
-    { value: "implant", label: "Implant" },
-    { value: "abutment", label: "Abutment" },
-    { value: "crown", label: "Crown" },
-    { value: "instrument", label: "Instrument" },
-    { value: "consumable", label: "Consumable" },
-    { value: "other", label: "อื่นๆ" },
-  ] as const
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("product_categories")
+    .select("slug, name")
+    .eq("is_active", true)
+    .order("sort_order")
+
+  if (error || !data || data.length === 0) {
+    // Fallback if table doesn't exist yet
+    return [
+      { value: "implant", label: "Implant" },
+      { value: "abutment", label: "Abutment" },
+      { value: "crown", label: "Crown" },
+      { value: "instrument", label: "เครื่องมือ" },
+      { value: "consumable", label: "วัสดุสิ้นเปลือง" },
+      { value: "other", label: "อื่นๆ" },
+    ]
+  }
+
+  return data.map((c: { slug: string; name: string }) => ({ value: c.slug, label: c.name }))
 }
 
 export async function searchDuplicates(name: string, ref: string) {

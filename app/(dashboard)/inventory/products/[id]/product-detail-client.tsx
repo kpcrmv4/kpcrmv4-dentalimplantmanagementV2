@@ -135,14 +135,7 @@ const RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
   returned: { label: "คืนแล้ว", color: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  implant: "Implant",
-  abutment: "Abutment",
-  crown: "Crown",
-  instrument: "Instrument",
-  consumable: "Consumable",
-  other: "อื่นๆ",
-}
+// Category labels are derived from the categories prop in the component
 
 // ─── Image Compression Helper ───────────────────────────────────────
 
@@ -394,7 +387,7 @@ export function ProductDetailClient({
               <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
                 <p><span className="text-muted-foreground">REF:</span> {product.ref}</p>
                 <p><span className="text-muted-foreground">ยี่ห้อ:</span> {product.brand ?? "-"}</p>
-                <p><span className="text-muted-foreground">หมวดหมู่:</span> {product.category ? (CATEGORY_LABELS[product.category] ?? product.category) : "-"}</p>
+                <p><span className="text-muted-foreground">หมวดหมู่:</span> {product.category ? (categories.find((c) => c.value === product.category)?.label ?? product.category) : "-"}</p>
                 <p><span className="text-muted-foreground">หน่วย:</span> {product.unit ?? "-"}</p>
                 <p><span className="text-muted-foreground">สต็อกขั้นต่ำ:</span> {product.min_stock_level}</p>
                 <p><span className="text-muted-foreground">ราคาต้นทุน:</span> {product.cost_price != null ? formatCurrency(product.cost_price) : "-"}</p>

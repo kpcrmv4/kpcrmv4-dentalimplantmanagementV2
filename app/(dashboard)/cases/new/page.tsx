@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToothPositionSelector } from "@/components/features/tooth-position-selector"
 import { createCase, getDentists, getAssistants } from "@/lib/actions/cases"
 import { searchPatients } from "@/lib/actions/patients"
+import { getProcedureTypes } from "@/lib/actions/settings"
 
 export default function NewCasePage() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function NewCasePage() {
   // Staff lists
   const [dentists, setDentists] = useState<Array<{ id: string; full_name: string }>>([])
   const [assistants, setAssistants] = useState<Array<{ id: string; full_name: string }>>([])
+  const [procedureTypes, setProcedureTypes] = useState<Array<{ id: string; name: string; is_active: boolean }>>([])
 
   // Form fields (managed state for Radix Select)
   const [procedureType, setProcedureType] = useState("")
@@ -37,9 +39,10 @@ export default function NewCasePage() {
   const [toothPositions, setToothPositions] = useState<number[]>([])
 
   useEffect(() => {
-    Promise.all([getDentists(), getAssistants()]).then(([d, a]) => {
+    Promise.all([getDentists(), getAssistants(), getProcedureTypes()]).then(([d, a, pt]) => {
       setDentists(d)
       setAssistants(a)
+      setProcedureTypes(pt)
     })
   }, [])
 
@@ -178,12 +181,9 @@ export default function NewCasePage() {
                     <SelectValue placeholder="เลือกหัตถการ" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="implant">Implant</SelectItem>
-                    <SelectItem value="crown">Crown</SelectItem>
-                    <SelectItem value="bridge">Bridge</SelectItem>
-                    <SelectItem value="abutment">Abutment</SelectItem>
-                    <SelectItem value="bone_graft">Bone Graft</SelectItem>
-                    <SelectItem value="other">อื่นๆ</SelectItem>
+                    {procedureTypes.filter((pt: { id: string; name: string; is_active: boolean }) => pt.is_active).map((pt: { id: string; name: string }) => (
+                      <SelectItem key={pt.id} value={pt.name}>{pt.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

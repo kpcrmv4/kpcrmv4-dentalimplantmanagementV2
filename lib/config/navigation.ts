@@ -77,5 +77,6 @@ export const sidebarMenus: NavItem[] = [
   { label: "รายงาน", icon: BarChart3, href: "/reports", roles: ["admin", "stock_staff"] },
   { label: "จัดการผู้ใช้", icon: Shield, href: "/admin/users", roles: ["admin"] },
   { label: "Audit Logs", icon: FileText, href: "/admin/audit-logs", roles: ["admin"] },
+  { label: "ตั้งค่าระบบ", icon: Settings, href: "/admin/settings", roles: ["admin"] },
   { label: "ตั้งค่า", icon: Settings, href: "/settings" },
 ]

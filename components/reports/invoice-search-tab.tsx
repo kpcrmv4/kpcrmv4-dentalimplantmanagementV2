@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,21 +15,20 @@ import {
 import { searchByInvoice, type InvoiceSearchResult } from "@/lib/actions/reports"
 import { formatNumber, formatDate } from "@/lib/utils"
 import { Loader2, Search } from "lucide-react"
-
-const CATEGORY_LABELS: Record<string, string> = {
-  implant: "Implant",
-  abutment: "Abutment",
-  crown: "Crown",
-  instrument: "เครื่องมือ",
-  consumable: "วัสดุสิ้นเปลือง",
-  other: "อื่นๆ",
-}
+import { getProductCategories } from "@/lib/actions/settings"
 
 export function InvoiceSearchTab() {
   const [query, setQuery] = useState("")
   const [data, setData] = useState<InvoiceSearchResult[]>([])
   const [isPending, startTransition] = useTransition()
   const [searched, setSearched] = useState(false)
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    getProductCategories().then((cats) => {
+      setCategoryLabels(Object.fromEntries(cats.map((c: { slug: string; name: string }) => [c.slug, c.name])))
+    })
+  }, [])
 
   function handleSearch() {
     if (!query.trim()) return
@@ -99,7 +98,7 @@ export function InvoiceSearchTab() {
                       <TableCell>{row.productName}</TableCell>
                       <TableCell>{row.productRef}</TableCell>
                       <TableCell>
-                        {CATEGORY_LABELS[row.category] ?? row.category}
+                        {categoryLabels[row.category] ?? row.category}
                       </TableCell>
                       <TableCell>{row.lotNumber}</TableCell>
                       <TableCell className="text-right">{formatNumber(row.quantity)}</TableCell>

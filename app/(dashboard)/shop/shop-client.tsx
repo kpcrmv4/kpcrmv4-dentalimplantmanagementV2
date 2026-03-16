@@ -8,17 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useCartStore } from "@/lib/stores/cart-store"
-import type { ProductCategory } from "@/types/database"
-
-const CATEGORIES = [
-  { value: null, label: "ทั้งหมด" },
-  { value: "implant", label: "Implant" },
-  { value: "abutment", label: "Abutment" },
-  { value: "crown", label: "Crown" },
-  { value: "instrument", label: "Instrument" },
-  { value: "consumable", label: "Consumable" },
-  { value: "other", label: "อื่นๆ" },
-] as const
 
 const STOCK_COLOR: Record<string, string> = {
   high: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
@@ -39,7 +28,7 @@ interface ShopProduct {
   ref: string
   name: string
   brand: string | null
-  category: ProductCategory
+  category: string
   unit: string
   totalStock: number
   supplierName: string | null
@@ -50,11 +39,13 @@ export function ShopClient({
   currentCategory,
   currentSearch,
   caseId,
+  categories,
 }: {
   products: ShopProduct[]
-  currentCategory: ProductCategory | null
+  currentCategory: string | null
   currentSearch: string
   caseId: string | null
+  categories: Array<{ value: string; label: string }>
 }) {
   const router = useRouter()
   const [searchValue, setSearchValue] = useState(currentSearch)
@@ -140,12 +131,12 @@ export function ShopClient({
 
       {/* Category Chips */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollSnapType: "x mandatory" }}>
-        {CATEGORIES.map((cat) => (
+        {[{ value: "", label: "ทั้งหมด" }, ...categories].map((cat) => (
           <button
-            key={cat.value ?? "all"}
-            onClick={() => router.push(buildUrl(cat.value, searchValue))}
+            key={cat.value || "all"}
+            onClick={() => router.push(buildUrl(cat.value || null, searchValue))}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-              currentCategory === cat.value
+              (currentCategory ?? "") === cat.value
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
