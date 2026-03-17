@@ -59,9 +59,9 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
   ],
   cs: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
-    { label: "คนไข้", icon: Users, href: "/patients" },
+    { label: "นัดหมาย", icon: Calendar, href: "/calendar" },
     { label: "เคสใหม่", icon: PlusCircle, href: "/cases/new", isCenter: true },
-    { label: "นัดหมาย", icon: Phone, href: "/cases" },
+    { label: "คนไข้", icon: Users, href: "/patients" },
     { label: "โปรไฟล์", icon: User, href: "/settings" },
   ],
 }

@@ -7,15 +7,18 @@ import { CalendarGrid } from "./calendar-grid"
 import { DayCaseList } from "./day-case-list"
 import { getDashboardCases } from "@/lib/actions/dashboard"
 import type { DashboardCase } from "@/lib/actions/dashboard"
+import type { UserRole } from "@/types/database"
 
 export function CaseCalendar({
   initialCases,
   initialYear,
   initialMonth,
+  role,
 }: {
   initialCases: DashboardCase[]
   initialYear: number
   initialMonth: number
+  role?: UserRole
 }) {
   const [cases, setCases] = useState(initialCases)
   const [currentMonth, setCurrentMonth] = useState(
@@ -56,6 +59,7 @@ export function CaseCalendar({
             onDateSelect={setSelectedDate}
             onPrevMonth={() => handleMonthChange(subMonths(currentMonth, 1))}
             onNextMonth={() => handleMonthChange(addMonths(currentMonth, 1))}
+            role={role}
           />
         </CardContent>
       </Card>
@@ -67,7 +71,7 @@ export function CaseCalendar({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <DayCaseList cases={selectedCases} selectedDate={selectedDate} />
+          <DayCaseList cases={selectedCases} selectedDate={selectedDate} role={role} />
         </CardContent>
       </Card>
     </div>
