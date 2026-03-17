@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { User, Bell, Webhook } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { User, Bell, Webhook, Lock, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 import { getAppSettings, updateAppSettings } from "@/lib/actions/webhooks"
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [user, setUser] = useState<{
     full_name: string
     email: string
@@ -20,6 +22,13 @@ export default function SettingsPage() {
   } | null>(null)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState<{ text: string; success: boolean } | null>(null)
 
   // Discord webhook state (admin only)
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState("")
@@ -97,6 +106,62 @@ export default function SettingsPage() {
     } finally {
       setSavingWebhook(false)
     }
+  }
+
+  async function handleChangePassword() {
+    if (!newPassword || !confirmPassword) {
+      setPasswordMessage({ text: "กรุณากรอกรหัสผ่านให้ครบ", success: false })
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordMessage({ text: "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร", success: false })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ text: "รหัสผ่านใหม่ไม่ตรงกัน", success: false })
+      return
+    }
+
+    setSavingPassword(true)
+    setPasswordMessage(null)
+    try {
+      const supabase = createClient()
+
+      // Re-authenticate with current password to verify identity
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser?.email) throw new Error("ไม่พบข้อมูลผู้ใช้")
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: authUser.email,
+        password: currentPassword,
+      })
+      if (signInError) {
+        setPasswordMessage({ text: "รหัสผ่านปัจจุบันไม่ถูกต้อง", success: false })
+        return
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+
+      setPasswordMessage({ text: "เปลี่ยนรหัสผ่านสำเร็จ", success: true })
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (err) {
+      setPasswordMessage({
+        text: err instanceof Error ? err.message : "เกิดข้อผิดพลาด",
+        success: false,
+      })
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
   }
 
   const ROLE_LABELS: Record<string, string> = {
@@ -183,6 +248,63 @@ export default function SettingsPage() {
         {saving ? "กำลังบันทึก..." : "บันทึก"}
       </Button>
 
+      {/* Password Change */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Lock className="h-4 w-4" />
+            เปลี่ยนรหัสผ่าน
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label className="text-xs">รหัสผ่านปัจจุบัน</Label>
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="กรอกรหัสผ่านปัจจุบัน"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">รหัสผ่านใหม่</Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="อย่างน้อย 6 ตัวอักษร"
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-xs">ยืนยันรหัสผ่านใหม่</Label>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+              className="mt-1"
+            />
+          </div>
+
+          {passwordMessage ? (
+            <p className={`text-sm ${passwordMessage.success ? "text-green-600" : "text-destructive"}`}>
+              {passwordMessage.text}
+            </p>
+          ) : null}
+
+          <Button
+            onClick={handleChangePassword}
+            disabled={savingPassword}
+            variant="outline"
+            className="w-full"
+          >
+            {savingPassword ? "กำลังเปลี่ยนรหัสผ่าน..." : "เปลี่ยนรหัสผ่าน"}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Discord Webhook Settings - Admin Only */}
       {user.role === "admin" && (
         <>
@@ -234,6 +356,18 @@ export default function SettingsPage() {
           </Card>
         </>
       )}
+      {/* Logout button - visible on small screens only */}
+      <div className="block lg:hidden pt-2 pb-4">
+        <Separator className="mb-4" />
+        <Button
+          variant="destructive"
+          className="w-full"
+          onClick={handleSignOut}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          ออกจากระบบ
+        </Button>
+      </div>
     </div>
   )
 }
