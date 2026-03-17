@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { generateCaseNumber } from "@/lib/utils"
 import type { CaseStatus, ReservationStatus } from "@/types/database"
 import { createNotification } from "./notifications"
@@ -11,13 +11,7 @@ export async function getCases(filters?: {
   dentist_id?: string
   search?: string
 }) {
-  // Verify user is authenticated
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
-
-  // Use service client to bypass RLS so all roles can read cases
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
   let query = supabase
     .from("cases")
     .select("*, patients!inner(hn, full_name), users!cases_dentist_id_fkey(full_name)")
@@ -41,11 +35,8 @@ export async function getCases(filters?: {
 }
 
 export async function getCaseById(id: string) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
+  const supabase = await createClient()
 
-  const supabase = await createServiceClient()
   const [caseResult, reservationsResult] = await Promise.all([
     supabase
       .from("cases")
@@ -131,11 +122,10 @@ export async function createCase(formData: FormData) {
 }
 
 export async function updateCaseStatus(id: string, status: CaseStatus) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
 
-  const supabase = await createServiceClient()
   const { error } = await supabase
     .from("cases")
     .update({ case_status: status })
@@ -151,11 +141,9 @@ export async function updateCaseStatus(id: string, status: CaseStatus) {
  * Returns { success: false, unprepared: [...] } if any items are not ready.
  */
 export async function markCaseReady(caseId: string) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Verify case exists and is in the correct status
   const { data: caseData } = await supabase
@@ -210,11 +198,9 @@ export async function createReservationsBatch(
   caseId: string,
   items: Array<{ productId: string; quantity: number }>
 ) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   const itemsJson = items.map((i) => ({
     product_id: i.productId,
@@ -252,11 +238,9 @@ export async function assignLot(
   reservationId: string,
   inventoryId: string
 ) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Role check: only assistant and stock_staff can assign LOT
   const { data: userData } = await supabase
@@ -313,11 +297,9 @@ export async function recordUsage(
   reservationId: string,
   quantityUsed: number
 ) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Get reservation's case_id for revalidation & auto-complete check
   const { data: reservation } = await supabase
@@ -368,11 +350,9 @@ export async function closeCaseWithUsage(
   caseId: string,
   usageData: Array<{ reservationId: string; quantityUsed: number }>
 ) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Validate case exists and is in a closeable state
   const { data: caseData } = await supabase
@@ -441,11 +421,9 @@ export async function closeCaseWithUsage(
 }
 
 export async function cancelCase(caseId: string) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Return all active reservations (trigger handles inventory)
   const { error: resError } = await supabase
@@ -470,11 +448,9 @@ export async function requestLockedMaterial(
   productId: string,
   requestingCaseId: string
 ) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Find cases that have this product locked
   const { data: lockedReservations } = await supabase
@@ -524,7 +500,7 @@ export async function requestLockedMaterial(
 }
 
 export async function getDentists() {
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("users")
     .select("id, full_name")
@@ -537,7 +513,7 @@ export async function getDentists() {
 }
 
 export async function getAssistants() {
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("users")
     .select("id, full_name")
