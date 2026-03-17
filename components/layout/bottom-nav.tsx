@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { roleMenus, sidebarMenus, type NavItem } from "@/lib/config/navigation"
@@ -13,45 +13,8 @@ interface BottomNavProps {
   role: UserRole
 }
 
-function isNavItemActive(item: NavItem, pathname: string, searchParams: URLSearchParams, allItems: NavItem[]): boolean {
-  const [itemPath, itemQuery] = item.href.split("?")
-
-  // Pathname must match
-  if (itemPath === "/dashboard") {
-    if (pathname !== "/dashboard") return false
-  } else {
-    if (pathname !== itemPath && !pathname.startsWith(itemPath + "/")) return false
-  }
-
-  // If this item has query params, check they match current URL
-  if (itemQuery) {
-    const itemParams = new URLSearchParams(itemQuery)
-    let allMatch = true
-    itemParams.forEach((value, key) => {
-      if (searchParams.get(key) !== value) allMatch = false
-    })
-    return allMatch
-  }
-
-  // Item has NO query params - only active if no sibling item with query params on the same path is active
-  const hasMoreSpecificMatch = allItems.some((other) => {
-    if (other === item) return false
-    const [otherPath, otherQuery] = other.href.split("?")
-    if (otherPath !== itemPath || !otherQuery) return false
-    const otherParams = new URLSearchParams(otherQuery)
-    let matches = true
-    otherParams.forEach((value, key) => {
-      if (searchParams.get(key) !== value) matches = false
-    })
-    return matches
-  })
-
-  return !hasMoreSpecificMatch
-}
-
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const [moreOpen, setMoreOpen] = useState(false)
 
   const allItems = roleMenus[role]
@@ -59,12 +22,17 @@ export function BottomNav({ role }: BottomNavProps) {
   const visibleItems = allItems.slice(0, 4)
 
   // "More" menu: sidebar items for this role, excluding those already visible in bottom nav
-  const visibleHrefs = new Set(visibleItems.map((i) => i.href.split("?")[0]))
+  const visibleHrefs = new Set(visibleItems.map((i) => i.href))
   const moreItems = sidebarMenus.filter(
     (item) =>
       (!item.roles || item.roles.includes(role)) &&
-      !visibleHrefs.has(item.href.split("?")[0])
+      !visibleHrefs.has(item.href)
   )
+
+  function isActive(href: string): boolean {
+    if (href === "/dashboard") return pathname === "/dashboard"
+    return pathname === href || pathname.startsWith(href + "/")
+  }
 
   return (
     <>
@@ -74,7 +42,7 @@ export function BottomNav({ role }: BottomNavProps) {
             <BottomNavItem
               key={item.href + item.label}
               item={item}
-              isActive={isNavItemActive(item, pathname, searchParams, allItems)}
+              isActive={isActive(item.href)}
             />
           ))}
           {/* More button */}
@@ -101,7 +69,7 @@ export function BottomNav({ role }: BottomNavProps) {
           <div className="grid grid-cols-4 gap-2">
             {moreItems.map((item) => {
               const Icon = item.icon
-              const isActive = isNavItemActive(item, pathname, searchParams, sidebarMenus)
+              const active = isActive(item.href)
               return (
                 <Link
                   key={item.href + item.label}
@@ -109,7 +77,7 @@ export function BottomNav({ role }: BottomNavProps) {
                   onClick={() => setMoreOpen(false)}
                   className={cn(
                     "flex flex-col items-center gap-1.5 rounded-xl p-3 transition-colors",
-                    isActive
+                    active
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
