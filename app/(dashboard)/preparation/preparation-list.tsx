@@ -70,7 +70,7 @@ export function PreparationList({
 
   // Assign LOT dialog state
   const [assignDialog, setAssignDialog] = useState<PreparationReservation | null>(null)
-  const [assignCaseId, setAssignCaseId] = useState<string | null>(null)
+
   const [lots, setLots] = useState<LotOption[]>([])
   const [selectedLot, setSelectedLot] = useState("")
   const [lotsLoading, setLotsLoading] = useState(false)

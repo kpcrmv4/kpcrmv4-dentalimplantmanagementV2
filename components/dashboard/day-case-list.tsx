@@ -9,7 +9,6 @@ import {
   List,
   Clock,
   Loader2,
-  Package,
   Phone,
   User,
 } from "lucide-react"

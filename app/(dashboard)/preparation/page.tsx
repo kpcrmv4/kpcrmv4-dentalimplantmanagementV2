@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Clock, Package } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Package } from "lucide-react"
 import { getPreparationCases } from "@/lib/actions/preparation"
 import { PreparationList } from "./preparation-list"
 
