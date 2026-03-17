@@ -127,13 +127,13 @@ function SummaryCard({
   return (
     <Card className={cn(s.border, s.bg, "relative overflow-hidden")}>
       <CardContent className="relative flex flex-col items-center py-3">
-        {/* Background icon */}
+        {/* Corner icon */}
         <Icon
           className={cn(
-            "absolute -right-1 -bottom-1 h-10 w-10 pointer-events-none",
+            "absolute right-1 top-1 h-3.5 w-3.5 pointer-events-none",
             s.icon
           )}
-          strokeWidth={1.5}
+          strokeWidth={2}
         />
         <span className={cn("relative text-2xl font-bold", s.text)}>
           {value}

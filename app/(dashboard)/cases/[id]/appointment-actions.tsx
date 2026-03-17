@@ -97,8 +97,14 @@ export function AppointmentActions({
     })
   }
 
+  const today = new Date().toISOString().split("T")[0]
+
   function handlePostpone() {
     if (!postponeDate || !postponeNote.trim()) return
+    if (postponeDate <= today) {
+      setError("วันนัดใหม่ต้องมากกว่าวันนี้")
+      return
+    }
     setError(null)
     startTransition(async () => {
       try {
@@ -201,7 +207,7 @@ export function AppointmentActions({
           <DialogHeader>
             <DialogTitle>ยืนยันนัดหมาย</DialogTitle>
             <DialogDescription>
-              บันทึกว่าคนไข้ยืนยันมาตามนัดแล้ว
+              บันทึกว่าคนไข้ยืนยันมาตามนัด
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -273,6 +279,7 @@ export function AppointmentActions({
               <Input
                 id="new_date"
                 type="date"
+                min={(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0] })()}
                 value={postponeDate}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   setPostponeDate(e.target.value)
