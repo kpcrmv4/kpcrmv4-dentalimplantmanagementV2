@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Package, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { sidebarMenus } from "@/lib/config/navigation"
+import { sidebarMenus, sidebarGroupLabels, type SidebarGroup } from "@/lib/config/navigation"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import type { User } from "@/types/database"
@@ -17,11 +17,26 @@ interface SidebarProps {
 export function Sidebar({ user, onSignOut }: SidebarProps) {
   const pathname = usePathname()
 
+  const filteredItems = sidebarMenus.filter(
+    (item) => !item.roles || item.roles.includes(user.role)
+  )
+
+  // Group items: items with a group go into that group, items without group go into "ungrouped"
+  const grouped = new Map<SidebarGroup | "ungrouped", typeof filteredItems>()
+  for (const item of filteredItems) {
+    const key = item.group ?? "ungrouped"
+    if (!grouped.has(key)) grouped.set(key, [])
+    grouped.get(key)!.push(item)
+  }
+
+  // Render order: main, inventory, system, admin, then ungrouped (settings)
+  const groupOrder: (SidebarGroup | "ungrouped")[] = ["main", "inventory", "system", "admin", "ungrouped"]
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-background lg:block">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 border-r bg-background lg:block">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2 px-6">
+        <div className="flex h-16 items-center gap-2 px-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Package className="h-4 w-4 text-primary-foreground" />
           </div>
@@ -31,24 +46,48 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
         <Separator />
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-3">
-          {sidebarMenus.filter((item) => !item.roles || item.roles.includes(user.role)).map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
-            const Icon = item.icon
+        <nav className="flex-1 overflow-y-auto px-3 py-2">
+          {groupOrder.map((groupKey) => {
+            const items = grouped.get(groupKey)
+            if (!items || items.length === 0) return null
+
             return (
-              <Link
-                key={item.href + item.label}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-primary/10 font-medium text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              <div key={groupKey} className="mb-1">
+                {/* Group label */}
+                {groupKey !== "ungrouped" && groupKey !== "main" && (
+                  <div className="mb-1 mt-3 px-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      {sidebarGroupLabels[groupKey]}
+                    </span>
+                  </div>
                 )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
+                {/* Separator before settings */}
+                {groupKey === "ungrouped" && <Separator className="my-2" />}
+
+                <div className="space-y-0.5">
+                  {items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                    const Icon = item.icon
+                    return (
+                      <Link
+                        key={item.href + item.label}
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                          isActive
+                            ? "bg-primary/10 font-medium text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
             )
           })}
         </nav>
@@ -56,7 +95,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
         <Separator />
 
         {/* User info */}
-        <div className="p-4">
+        <div className="p-3">
           <div className="mb-2 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
               {user.full_name.charAt(0)}
