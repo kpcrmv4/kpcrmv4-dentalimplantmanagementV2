@@ -80,9 +80,9 @@ export async function getDashboardCases(
       .select("case_id, product_id")
       .in("case_id", orangeIds)
 
-    const productIds = [
-      ...new Set((reservations ?? []).map((r) => r.product_id)),
-    ]
+    const productIds = Array.from(
+      new Set((reservations ?? []).map((r) => r.product_id))
+    )
 
     const casesWithOrderedPO = new Set<string>()
 
