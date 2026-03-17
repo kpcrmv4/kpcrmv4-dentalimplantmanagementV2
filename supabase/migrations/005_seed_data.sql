@@ -242,9 +242,10 @@ INSERT INTO public.case_appointment_logs (case_id, action, note, performed_by) V
   ('c0000000-0000-0000-0000-000000000009', 'confirmed', 'คนไข้ยืนยันนัดฉุกเฉิน',               '00000000-0000-0000-0000-000000000005');
 
 -- CASE-008: confirmed first, then postponed
+INSERT INTO public.case_appointment_logs (case_id, action, note, performed_by, performed_at) VALUES
+  ('c0000000-0000-0000-0000-000000000008', 'confirmed', 'คนไข้ยืนยันมาตามนัด', '00000000-0000-0000-0000-000000000005', now() - INTERVAL '5 days');
 INSERT INTO public.case_appointment_logs (case_id, action, note, old_date, new_date, performed_by, performed_at) VALUES
-  ('c0000000-0000-0000-0000-000000000008', 'confirmed',  'คนไข้ยืนยันมาตามนัด',                '00000000-0000-0000-0000-000000000005', now() - INTERVAL '5 days'),
-  ('c0000000-0000-0000-0000-000000000008', 'postponed',  'คนไข้ขอเลื่อนนัด ติดธุระ',
+  ('c0000000-0000-0000-0000-000000000008', 'postponed', 'คนไข้ขอเลื่อนนัด ติดธุระ',
     CURRENT_DATE + INTERVAL '7 days', CURRENT_DATE + INTERVAL '21 days',
     '00000000-0000-0000-0000-000000000005', now() - INTERVAL '3 days');
 
