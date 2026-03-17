@@ -12,7 +12,6 @@ import {
   Bell,
   ClipboardCheck,
   Users,
-  Phone,
   BarChart3,
   Shield,
   FileText,
