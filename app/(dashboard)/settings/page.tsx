@@ -1,15 +1,176 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { User, Bell, Webhook, Lock, LogOut } from "lucide-react"
+import { User, Bell, Webhook, Lock, LogOut, Settings, Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { getAppSettings, updateAppSettings } from "@/lib/actions/webhooks"
+import {
+  getProcedureTypes,
+  addProcedureType,
+  updateProcedureType,
+  deleteProcedureType,
+  getProductCategories,
+  addProductCategory,
+  updateProductCategory,
+  deleteProductCategory,
+} from "@/lib/actions/settings"
+
+// ─── Editable List (reused from admin/settings) ─────────────────────
+
+function EditableListSection({
+  title,
+  description,
+  items,
+  onAdd,
+  onToggle,
+  onDelete,
+  isLoading,
+  showSlug,
+}: {
+  title: string
+  description: string
+  items: Array<{ id: string; name: string; slug?: string; is_active: boolean }>
+  onAdd: (name: string, slug?: string) => Promise<void>
+  onToggle: (id: string, isActive: boolean) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+  isLoading: boolean
+  showSlug?: boolean
+}) {
+  const [newName, setNewName] = useState("")
+  const [newSlug, setNewSlug] = useState("")
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  function handleAdd() {
+    if (!newName.trim()) return
+    setError(null)
+    startTransition(async () => {
+      try {
+        await onAdd(newName.trim(), showSlug ? (newSlug.trim() || newName.trim().toLowerCase().replace(/\s+/g, "_")) : undefined)
+        setNewName("")
+        setNewSlug("")
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      }
+    })
+  }
+
+  function handleToggle(id: string, currentActive: boolean) {
+    startTransition(async () => {
+      try {
+        await onToggle(id, !currentActive)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      }
+    })
+  }
+
+  function handleDelete(id: string) {
+    if (!confirm("ต้องการลบรายการนี้?")) return
+    startTransition(async () => {
+      try {
+        await onDelete(id)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "ลบไม่สำเร็จ อาจมีข้อมูลที่อ้างอิงอยู่")
+      }
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+        )}
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
+                  !item.is_active ? "opacity-50" : ""
+                }`}
+              >
+                <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-medium">{item.name}</span>
+                  {showSlug && item.slug && (
+                    <span className="ml-2 text-xs text-muted-foreground">({item.slug})</span>
+                  )}
+                </div>
+                <Badge
+                  variant={item.is_active ? "default" : "secondary"}
+                  className="shrink-0 cursor-pointer text-[10px]"
+                  onClick={() => handleToggle(item.id, item.is_active)}
+                >
+                  {item.is_active ? "ใช้งาน" : "ปิด"}
+                </Badge>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  disabled={isPending}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">ยังไม่มีรายการ</p>
+            )}
+          </div>
+        )}
+
+        {/* Add new */}
+        <div className="flex gap-2 pt-1">
+          {showSlug && (
+            <Input
+              placeholder="slug (ภาษาอังกฤษ)"
+              value={newSlug}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSlug(e.target.value)}
+              className="flex-1 h-9 text-sm"
+            />
+          )}
+          <Input
+            placeholder="ชื่อรายการใหม่..."
+            value={newName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
+            onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && handleAdd()}
+            className="flex-1 h-9 text-sm"
+          />
+          <Button
+            size="sm"
+            className="h-9 shrink-0"
+            onClick={handleAdd}
+            disabled={!newName.trim() || isPending}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Settings Page ──────────────────────────────────────────────────
+
+type ProcedureType = { id: string; name: string; sort_order: number; is_active: boolean }
+type ProductCategory = { id: string; slug: string; name: string; sort_order: number; is_active: boolean }
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -35,6 +196,11 @@ export default function SettingsPage() {
   const [savingWebhook, setSavingWebhook] = useState(false)
   const [webhookMessage, setWebhookMessage] = useState<string | null>(null)
 
+  // System settings state (admin only)
+  const [procedureTypes, setProcedureTypes] = useState<ProcedureType[]>([])
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>([])
+  const [systemLoading, setSystemLoading] = useState(true)
+
   useEffect(() => {
     async function load() {
       const supabase = createClient()
@@ -54,21 +220,35 @@ export default function SettingsPage() {
           line_user_id: (data.line_user_id as string) ?? "",
         })
 
-        // Load app settings for admin
+        // Load admin-only data
         if (data.role === "admin") {
           try {
-            const settings = await getAppSettings()
+            const [settings, pt, pc] = await Promise.all([
+              getAppSettings(),
+              getProcedureTypes(),
+              getProductCategories(),
+            ])
             if (settings?.discord_webhook_url) {
               setDiscordWebhookUrl(settings.discord_webhook_url)
             }
+            setProcedureTypes(pt)
+            setProductCategories(pc)
           } catch {
             // ignore
+          } finally {
+            setSystemLoading(false)
           }
         }
       }
     }
     load()
   }, [])
+
+  async function reloadSystemSettings() {
+    const [pt, pc] = await Promise.all([getProcedureTypes(), getProductCategories()])
+    setProcedureTypes(pt)
+    setProductCategories(pc)
+  }
 
   async function handleSave() {
     if (!user) return
@@ -127,7 +307,6 @@ export default function SettingsPage() {
     try {
       const supabase = createClient()
 
-      // Re-authenticate with current password to verify identity
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser?.email) throw new Error("ไม่พบข้อมูลผู้ใช้")
 
@@ -182,180 +361,243 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <h1 className="text-xl font-semibold">ตั้งค่า</h1>
+    <div className="mx-auto max-w-2xl space-y-6 p-4 lg:p-6">
+      {/* ── Section: ข้อมูลส่วนตัว ── */}
+      <div>
+        <h1 className="text-xl font-semibold">ตั้งค่า</h1>
+        <p className="text-sm text-muted-foreground">จัดการข้อมูลส่วนตัวและการตั้งค่าระบบ</p>
+      </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4" />
-            ข้อมูลส่วนตัว
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs">อีเมล</Label>
-            <Input value={user.email} disabled className="mt-1 bg-muted" />
-          </div>
-          <div>
-            <Label className="text-xs">บทบาท</Label>
-            <Input
-              value={ROLE_LABELS[user.role] ?? user.role}
-              disabled
-              className="mt-1 bg-muted"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">ชื่อ-นามสกุล</Label>
-            <Input
-              value={user.full_name}
-              onChange={(e) => setUser({ ...user, full_name: e.target.value })}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">เบอร์โทร</Label>
-            <Input
-              value={user.phone}
-              onChange={(e) => setUser({ ...user, phone: e.target.value })}
-              placeholder="08x-xxx-xxxx"
-              className="mt-1"
-            />
-          </div>
-          <Separator />
-          <div>
-            <Label className="flex items-center gap-2 text-xs">
-              <Bell className="h-3 w-3" />
-              LINE User ID
-            </Label>
-            <Input
-              value={user.line_user_id}
-              onChange={(e) => setUser({ ...user, line_user_id: e.target.value })}
-              placeholder="สำหรับรับแจ้งเตือนผ่าน LINE"
-              className="mt-1"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <User className="h-4 w-4" />
+          ข้อมูลส่วนตัว
+        </h2>
 
-      {message ? (
-        <p className={`text-sm ${message === "บันทึกสำเร็จ" ? "text-green-600" : "text-destructive"}`}>
-          {message}
-        </p>
-      ) : null}
-
-      <Button onClick={handleSave} disabled={saving} className="w-full">
-        {saving ? "กำลังบันทึก..." : "บันทึก"}
-      </Button>
-
-      {/* Password Change */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Lock className="h-4 w-4" />
-            เปลี่ยนรหัสผ่าน
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs">รหัสผ่านปัจจุบัน</Label>
-            <Input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="กรอกรหัสผ่านปัจจุบัน"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">รหัสผ่านใหม่</Label>
-            <Input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="อย่างน้อย 6 ตัวอักษร"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label className="text-xs">ยืนยันรหัสผ่านใหม่</Label>
-            <Input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
-              className="mt-1"
-            />
-          </div>
-
-          {passwordMessage ? (
-            <p className={`text-sm ${passwordMessage.success ? "text-green-600" : "text-destructive"}`}>
-              {passwordMessage.text}
-            </p>
-          ) : null}
-
-          <Button
-            onClick={handleChangePassword}
-            disabled={savingPassword}
-            variant="outline"
-            className="w-full"
-          >
-            {savingPassword ? "กำลังเปลี่ยนรหัสผ่าน..." : "เปลี่ยนรหัสผ่าน"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Discord Webhook Settings - Admin Only */}
-      {user.role === "admin" && (
-        <>
-          <Separator className="my-2" />
-
+        <div className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
-                <Webhook className="h-4 w-4" />
-                Discord Webhook
+                <User className="h-4 w-4" />
+                โปรไฟล์
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label className="text-xs">Webhook URL</Label>
+                <Label className="text-xs">อีเมล</Label>
+                <Input value={user.email} disabled className="mt-1 bg-muted" />
+              </div>
+              <div>
+                <Label className="text-xs">บทบาท</Label>
                 <Input
-                  value={discordWebhookUrl}
-                  onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-                  placeholder="https://discord.com/api/webhooks/..."
-                  className="mt-1"
-                  type="url"
+                  value={ROLE_LABELS[user.role] ?? user.role}
+                  disabled
+                  className="mt-1 bg-muted"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  ระบบจะส่งแจ้งเตือนไปยัง Discord เมื่อมีการแจ้งเตือนใหม่
-                </p>
+              </div>
+              <div>
+                <Label className="text-xs">ชื่อ-นามสกุล</Label>
+                <Input
+                  value={user.full_name}
+                  onChange={(e) => setUser({ ...user, full_name: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">เบอร์โทร</Label>
+                <Input
+                  value={user.phone}
+                  onChange={(e) => setUser({ ...user, phone: e.target.value })}
+                  placeholder="08x-xxx-xxxx"
+                  className="mt-1"
+                />
+              </div>
+              <Separator />
+              <div>
+                <Label className="flex items-center gap-2 text-xs">
+                  <Bell className="h-3 w-3" />
+                  LINE User ID
+                </Label>
+                <Input
+                  value={user.line_user_id}
+                  onChange={(e) => setUser({ ...user, line_user_id: e.target.value })}
+                  placeholder="สำหรับรับแจ้งเตือนผ่าน LINE"
+                  className="mt-1"
+                />
               </div>
 
-              {webhookMessage ? (
-                <p
-                  className={`text-sm ${
-                    webhookMessage.includes("สำเร็จ")
-                      ? "text-green-600"
-                      : "text-destructive"
-                  }`}
-                >
-                  {webhookMessage}
+              {message ? (
+                <p className={`text-sm ${message === "บันทึกสำเร็จ" ? "text-green-600" : "text-destructive"}`}>
+                  {message}
+                </p>
+              ) : null}
+
+              <Button onClick={handleSave} disabled={saving} className="w-full">
+                {saving ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Password Change */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Lock className="h-4 w-4" />
+                เปลี่ยนรหัสผ่าน
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label className="text-xs">รหัสผ่านปัจจุบัน</Label>
+                <Input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="กรอกรหัสผ่านปัจจุบัน"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">รหัสผ่านใหม่</Label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="อย่างน้อย 6 ตัวอักษร"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">ยืนยันรหัสผ่านใหม่</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="กรอกรหัสผ่านใหม่อีกครั้ง"
+                  className="mt-1"
+                />
+              </div>
+
+              {passwordMessage ? (
+                <p className={`text-sm ${passwordMessage.success ? "text-green-600" : "text-destructive"}`}>
+                  {passwordMessage.text}
                 </p>
               ) : null}
 
               <Button
-                onClick={handleSaveWebhook}
-                disabled={savingWebhook}
+                onClick={handleChangePassword}
+                disabled={savingPassword}
                 variant="outline"
                 className="w-full"
               >
-                {savingWebhook ? "กำลังบันทึก..." : "บันทึก Webhook"}
+                {savingPassword ? "กำลังเปลี่ยนรหัสผ่าน..." : "เปลี่ยนรหัสผ่าน"}
               </Button>
             </CardContent>
           </Card>
-        </>
+        </div>
+      </div>
+
+      {/* ── Section: ตั้งค่าระบบ (Admin Only) ── */}
+      {user.role === "admin" && (
+        <div>
+          <Separator className="mb-6" />
+
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <Settings className="h-4 w-4" />
+            ตั้งค่าระบบ
+          </h2>
+
+          <div className="space-y-4">
+            {/* Discord Webhook */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Webhook className="h-4 w-4" />
+                  Discord Webhook
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label className="text-xs">Webhook URL</Label>
+                  <Input
+                    value={discordWebhookUrl}
+                    onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                    placeholder="https://discord.com/api/webhooks/..."
+                    className="mt-1"
+                    type="url"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    ระบบจะส่งแจ้งเตือนไปยัง Discord เมื่อมีการแจ้งเตือนใหม่
+                  </p>
+                </div>
+
+                {webhookMessage ? (
+                  <p
+                    className={`text-sm ${
+                      webhookMessage.includes("สำเร็จ")
+                        ? "text-green-600"
+                        : "text-destructive"
+                    }`}
+                  >
+                    {webhookMessage}
+                  </p>
+                ) : null}
+
+                <Button
+                  onClick={handleSaveWebhook}
+                  disabled={savingWebhook}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {savingWebhook ? "กำลังบันทึก..." : "บันทึก Webhook"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Procedure Types */}
+            <EditableListSection
+              title="ประเภทหัตถการ"
+              description="รายการหัตถการที่แสดงในหน้าสร้างเคส"
+              items={procedureTypes}
+              isLoading={systemLoading}
+              onAdd={async (name: string) => {
+                await addProcedureType(name)
+                await reloadSystemSettings()
+              }}
+              onToggle={async (id: string, isActive: boolean) => {
+                await updateProcedureType(id, { is_active: isActive })
+                await reloadSystemSettings()
+              }}
+              onDelete={async (id: string) => {
+                await deleteProcedureType(id)
+                await reloadSystemSettings()
+              }}
+            />
+
+            {/* Product Categories */}
+            <EditableListSection
+              title="หมวดหมู่สินค้า"
+              description="รายการหมวดหมู่สินค้าที่ใช้ในระบบสต็อก"
+              items={productCategories}
+              isLoading={systemLoading}
+              showSlug
+              onAdd={async (name: string, slug?: string) => {
+                await addProductCategory(slug ?? name.toLowerCase(), name)
+                await reloadSystemSettings()
+              }}
+              onToggle={async (id: string, isActive: boolean) => {
+                await updateProductCategory(id, { is_active: isActive })
+                await reloadSystemSettings()
+              }}
+              onDelete={async (id: string) => {
+                await deleteProductCategory(id)
+                await reloadSystemSettings()
+              }}
+            />
+          </div>
+        </div>
       )}
+
       {/* Logout button - visible on small screens only */}
       <div className="block lg:hidden pt-2 pb-4">
         <Separator className="mb-4" />

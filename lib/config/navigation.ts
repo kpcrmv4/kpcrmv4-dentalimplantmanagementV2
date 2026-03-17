@@ -19,12 +19,22 @@ import {
 } from "lucide-react"
 import type { UserRole } from "@/types/database"
 
+export type SidebarGroup = "main" | "inventory" | "system" | "admin"
+
 export interface NavItem {
   label: string
   icon: LucideIcon
   href: string
   isCenter?: boolean
   roles?: UserRole[]
+  group?: SidebarGroup
+}
+
+export const sidebarGroupLabels: Record<SidebarGroup, string> = {
+  main: "หลัก",
+  inventory: "คลังสินค้า",
+  system: "ระบบ",
+  admin: "ผู้ดูแลระบบ",
 }
 
 export const roleMenus: Record<UserRole, NavItem[]> = {
@@ -66,18 +76,26 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
 }
 
 export const sidebarMenus: NavItem[] = [
-  { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard" },
-  { label: "ปฏิทิน", icon: Calendar, href: "/calendar", roles: ["dentist", "assistant", "cs"] },
-  { label: "เคส", icon: ClipboardList, href: "/cases" },
-  { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", roles: ["assistant"] },
-  { label: "คนไข้", icon: Users, href: "/patients", roles: ["admin", "cs", "dentist"] },
-  { label: "สต็อก", icon: Package, href: "/inventory", roles: ["admin", "stock_staff"] },
-  { label: "ใบสั่งซื้อ", icon: ShoppingCart, href: "/orders", roles: ["admin", "stock_staff"] },
-  { label: "Supplier", icon: Truck, href: "/suppliers", roles: ["admin", "stock_staff"] },
-  { label: "แจ้งเตือน", icon: Bell, href: "/notifications" },
-  { label: "รายงาน", icon: BarChart3, href: "/reports", roles: ["admin", "stock_staff"] },
-  { label: "จัดการผู้ใช้", icon: Shield, href: "/admin/users", roles: ["admin"] },
-  { label: "Audit Logs", icon: FileText, href: "/admin/audit-logs", roles: ["admin"] },
-  { label: "ตั้งค่าระบบ", icon: Settings, href: "/admin/settings", roles: ["admin"] },
+  // Main group
+  { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard", group: "main" },
+  { label: "ปฏิทิน", icon: Calendar, href: "/calendar", roles: ["dentist", "assistant", "cs"], group: "main" },
+  { label: "เคส", icon: ClipboardList, href: "/cases", group: "main" },
+  { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", roles: ["assistant"], group: "main" },
+  { label: "คนไข้", icon: Users, href: "/patients", roles: ["admin", "cs", "dentist"], group: "main" },
+
+  // Inventory group
+  { label: "สต็อก", icon: Package, href: "/inventory", roles: ["admin", "stock_staff"], group: "inventory" },
+  { label: "ใบสั่งซื้อ", icon: ShoppingCart, href: "/orders", roles: ["admin", "stock_staff"], group: "inventory" },
+  { label: "Supplier", icon: Truck, href: "/suppliers", roles: ["admin", "stock_staff"], group: "inventory" },
+
+  // System group
+  { label: "แจ้งเตือน", icon: Bell, href: "/notifications", group: "system" },
+  { label: "รายงาน", icon: BarChart3, href: "/reports", roles: ["admin", "stock_staff"], group: "system" },
+
+  // Admin group
+  { label: "จัดการผู้ใช้", icon: Shield, href: "/admin/users", roles: ["admin"], group: "admin" },
+  { label: "Audit Logs", icon: FileText, href: "/admin/audit-logs", roles: ["admin"], group: "admin" },
+
+  // Settings (no group - rendered at bottom)
   { label: "ตั้งค่า", icon: Settings, href: "/settings" },
 ]

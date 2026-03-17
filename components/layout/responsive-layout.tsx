@@ -31,7 +31,7 @@ export function ResponsiveLayout({ user, notificationCount = 0, children }: Resp
       <Sidebar user={user} onSignOut={handleSignOut} />
 
       {/* Main content */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-56">
         <Header
           user={user}
           notificationCount={liveCount}

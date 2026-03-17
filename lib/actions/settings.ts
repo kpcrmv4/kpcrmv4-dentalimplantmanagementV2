@@ -56,7 +56,7 @@ export async function addProcedureType(name: string) {
     if (error.code === "23505") throw new Error("ชื่อหัตถการนี้มีอยู่แล้ว")
     throw error
   }
-  revalidatePath("/admin/settings")
+  revalidatePath("/settings")
 }
 
 export async function updateProcedureType(id: string, data: { name?: string; sort_order?: number; is_active?: boolean }) {
@@ -67,7 +67,7 @@ export async function updateProcedureType(id: string, data: { name?: string; sor
     .eq("id", id)
 
   if (error) throw error
-  revalidatePath("/admin/settings")
+  revalidatePath("/settings")
 }
 
 export async function deleteProcedureType(id: string) {
@@ -78,7 +78,7 @@ export async function deleteProcedureType(id: string) {
     .eq("id", id)
 
   if (error) throw error
-  revalidatePath("/admin/settings")
+  revalidatePath("/settings")
 }
 
 // ─── Product Categories ─────────────────────────────────────────────
@@ -124,7 +124,7 @@ export async function addProductCategory(slug: string, name: string) {
     if (error.code === "23505") throw new Error("slug นี้มีอยู่แล้ว")
     throw error
   }
-  revalidatePath("/admin/settings")
+  revalidatePath("/settings")
 }
 
 export async function updateProductCategory(id: string, data: { name?: string; slug?: string; sort_order?: number; is_active?: boolean }) {
@@ -135,7 +135,7 @@ export async function updateProductCategory(id: string, data: { name?: string; s
     .eq("id", id)
 
   if (error) throw error
-  revalidatePath("/admin/settings")
+  revalidatePath("/settings")
 }
 
 export async function deleteProductCategory(id: string) {
@@ -146,7 +146,7 @@ export async function deleteProductCategory(id: string) {
     .eq("id", id)
 
   if (error) throw error
-  revalidatePath("/admin/settings")
+  revalidatePath("/settings")
 }
 
 // ─── Helper: get category label map ─────────────────────────────────
