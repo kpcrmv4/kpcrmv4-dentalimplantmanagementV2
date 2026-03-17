@@ -26,7 +26,10 @@ export default async function DashboardLayout({
       .eq("is_read", false),
   ])
 
-  if (!userResult.data) redirect("/login")
+  if (!userResult.data) {
+    await supabase.auth.signOut()
+    redirect("/login")
+  }
 
   return (
     <DashboardLayoutClient
