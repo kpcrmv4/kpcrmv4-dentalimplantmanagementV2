@@ -40,6 +40,7 @@ export async function confirmAppointment(caseId: string, note?: string) {
 
   revalidatePath("/cases")
   revalidatePath(`/cases/${caseId}`)
+  revalidatePath("/calendar")
 }
 
 export async function postponeAppointment(
@@ -85,6 +86,7 @@ export async function postponeAppointment(
 
   revalidatePath("/cases")
   revalidatePath(`/cases/${caseId}`)
+  revalidatePath("/calendar")
 }
 
 export async function cancelAppointment(caseId: string, note: string) {
@@ -125,6 +127,7 @@ export async function cancelAppointment(caseId: string, note: string) {
 
   revalidatePath("/cases")
   revalidatePath(`/cases/${caseId}`)
+  revalidatePath("/calendar")
 }
 
 export async function getAppointmentLogs(caseId: string) {

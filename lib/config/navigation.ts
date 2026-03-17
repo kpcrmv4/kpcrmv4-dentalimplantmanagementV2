@@ -52,16 +52,16 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
   ],
   assistant: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
-    { label: "ปฏิทิน", icon: Calendar, href: "/cases" },
-    { label: "จัดเตรียม", icon: ClipboardCheck, href: "/cases?status=pending_preparation&period=all", isCenter: true },
-    { label: "เคส", icon: ClipboardList, href: "/cases?period=all" },
+    { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
+    { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", isCenter: true },
+    { label: "เคส", icon: ClipboardList, href: "/cases" },
     { label: "โปรไฟล์", icon: User, href: "/settings" },
   ],
   cs: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
-    { label: "คนไข้", icon: Users, href: "/patients" },
+    { label: "นัดหมาย", icon: Calendar, href: "/calendar" },
     { label: "เคสใหม่", icon: PlusCircle, href: "/cases/new", isCenter: true },
-    { label: "นัดหมาย", icon: Phone, href: "/cases" },
+    { label: "คนไข้", icon: Users, href: "/patients" },
     { label: "โปรไฟล์", icon: User, href: "/settings" },
   ],
 }

@@ -189,6 +189,7 @@ export async function markCaseReady(caseId: string) {
   if (error) throw error
   revalidatePath("/cases")
   revalidatePath(`/cases/${caseId}`)
+  revalidatePath("/preparation")
   return { success: true as const, unprepared: [] }
 }
 
@@ -289,6 +290,7 @@ export async function assignLot(
   if (error) throw error
   revalidatePath("/cases")
   revalidatePath(`/cases/${reservation.case_id}`)
+  revalidatePath("/preparation")
 }
 
 export async function recordUsage(
