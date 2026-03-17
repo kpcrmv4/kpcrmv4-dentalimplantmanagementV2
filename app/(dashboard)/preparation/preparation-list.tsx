@@ -83,9 +83,8 @@ export function PreparationList({
     setExpandedCase((prev) => (prev === caseId ? null : caseId))
   }
 
-  async function openAssignDialog(r: PreparationReservation, caseId: string) {
+  async function openAssignDialog(r: PreparationReservation) {
     setAssignDialog(r)
-    setAssignCaseId(caseId)
     setSelectedLot("")
     setLotsLoading(true)
     try {
@@ -226,7 +225,7 @@ export function PreparationList({
                           <button
                             key={r.id}
                             disabled={isPrepared}
-                            onClick={() => !isPrepared && openAssignDialog(r, c.id)}
+                            onClick={() => !isPrepared && openAssignDialog(r)}
                             className={cn(
                               "flex w-full items-center gap-3 rounded-lg border-2 p-2.5 text-left transition-all",
                               isPrepared
