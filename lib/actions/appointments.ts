@@ -1,16 +1,14 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import type { AppointmentStatus } from "@/types/database"
 import { cancelCase } from "./cases"
 
 export async function confirmAppointment(caseId: string, note?: string) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Verify case exists
   const { data: caseData } = await supabase
@@ -50,11 +48,9 @@ export async function postponeAppointment(
   newDate: string,
   note: string
 ) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Verify case exists and get old date
   const { data: caseData } = await supabase
@@ -94,11 +90,9 @@ export async function postponeAppointment(
 }
 
 export async function cancelAppointment(caseId: string, note: string) {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
 
   // Verify case exists
   const { data: caseData } = await supabase
@@ -137,7 +131,7 @@ export async function cancelAppointment(caseId: string, note: string) {
 }
 
 export async function getAppointmentLogs(caseId: string) {
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from("case_appointment_logs")

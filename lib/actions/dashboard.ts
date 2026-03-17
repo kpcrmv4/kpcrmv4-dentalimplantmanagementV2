@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import type { CaseStatus, AppointmentStatus } from "@/types/database"
 
 export type TrafficLight = "green" | "yellow" | "orange" | "red" | "neutral"
@@ -30,11 +30,7 @@ export async function getDashboardCases(
   year: number,
   month: number
 ): Promise<DashboardCase[]> {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
 
   const startDate = `${year}-${String(month).padStart(2, "0")}-01`
   const nextMonth = month === 12 ? 1 : month + 1
@@ -105,11 +101,7 @@ export async function getDashboardCases(
 }
 
 export async function getUnreadyCases(): Promise<DashboardCase[]> {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
   const today = new Date().toISOString().split("T")[0]
 
   const { data, error } = await supabase
@@ -155,11 +147,7 @@ export type LowStockItem = {
 }
 
 export async function getLowStockItems(): Promise<LowStockItem[]> {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from("products")
@@ -189,11 +177,7 @@ export async function getLowStockItems(): Promise<LowStockItem[]> {
 }
 
 export async function getEmergencyAlerts(): Promise<DashboardCase[]> {
-  const authClient = await createClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) throw new Error("Unauthorized")
-
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
   const today = new Date()
   const twoDaysLater = new Date(today)
   twoDaysLater.setDate(today.getDate() + 2)
