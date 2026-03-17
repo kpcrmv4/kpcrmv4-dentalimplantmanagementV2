@@ -73,19 +73,38 @@ export async function getDashboardCases(
   const orangeCases = mapped.filter((c) => c.trafficLight === "orange")
   if (orangeCases.length > 0) {
     const orangeIds = orangeCases.map((c) => c.id)
-    const { data: poLinks } = await supabase
+
+    // Get product_ids reserved for orange cases
+    const { data: reservations } = await supabase
       .from("case_reservations")
-      .select("case_id, product_id, po_items(purchase_orders(status))")
+      .select("case_id, product_id")
       .in("case_id", orangeIds)
 
+    const productIds = Array.from(
+      new Set((reservations ?? []).map((r) => r.product_id))
+    )
+
     const casesWithOrderedPO = new Set<string>()
-    for (const link of poLinks ?? []) {
-      const poItems = link.po_items as unknown as { purchase_orders: { status: string } | null }[] | null
-      if (poItems) {
-        for (const item of poItems) {
-          if (item.purchase_orders?.status === "ordered") {
-            casesWithOrderedPO.add(link.case_id)
-          }
+
+    if (productIds.length > 0) {
+      // Find which products have an active PO
+      const { data: poItems } = await supabase
+        .from("purchase_order_items")
+        .select("product_id, purchase_orders(status)")
+        .in("product_id", productIds)
+
+      const orderedProductIds = new Set<string>()
+      for (const item of poItems ?? []) {
+        const po = item.purchase_orders as unknown as { status: string } | null
+        if (po?.status === "ordered") {
+          orderedProductIds.add(item.product_id)
+        }
+      }
+
+      // Map back: if a reservation's product has an ordered PO → mark case as yellow
+      for (const r of reservations ?? []) {
+        if (orderedProductIds.has(r.product_id)) {
+          casesWithOrderedPO.add(r.case_id)
         }
       }
     }
