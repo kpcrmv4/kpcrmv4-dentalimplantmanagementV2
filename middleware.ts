@@ -43,8 +43,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Authenticated and on login page → redirect to dashboard
+  // Authenticated user on login page
   if (user && isLoginPage) {
+    // If signout=1 flag is set, the user has no profile in the users table.
+    // Sign them out here (middleware CAN write cookies) and let them see the login page.
+    if (request.nextUrl.searchParams.get("signout") === "1") {
+      await supabase.auth.signOut()
+      const url = request.nextUrl.clone()
+      url.searchParams.delete("signout")
+      url.pathname = "/login"
+      // Return supabaseResponse so the signOut cookies are applied
+      return supabaseResponse
+    }
+    // Normal case: redirect authenticated users to dashboard
     const url = request.nextUrl.clone()
     url.pathname = "/dashboard"
     return NextResponse.redirect(url)

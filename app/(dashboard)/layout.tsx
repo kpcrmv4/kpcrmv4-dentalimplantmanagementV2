@@ -27,8 +27,9 @@ export default async function DashboardLayout({
   ])
 
   if (!userResult.data) {
-    await supabase.auth.signOut()
-    redirect("/login")
+    // Cannot signOut() here — Server Components can't write cookies.
+    // Redirect to /login?signout=1 so middleware handles the signOut.
+    redirect("/login?signout=1")
   }
 
   return (
