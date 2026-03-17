@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 import type { CaseStatus } from "@/types/database"
 
 export type PreparationReservation = {
@@ -37,11 +37,14 @@ export async function getPreparationCases(): Promise<{
   ready: PreparationCase[]
   urgentCount: number
 }> {
-  const supabase = await createClient()
+  const authClient = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await authClient.auth.getUser()
   if (!user) throw new Error("Unauthorized")
+
+  // Use service client to bypass RLS
+  const supabase = await createServiceClient()
 
   const today = new Date()
   const todayStr = today.toISOString().split("T")[0]
