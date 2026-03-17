@@ -3,12 +3,11 @@
 import { useState, useEffect, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { getCostReport, type CostReportItem } from "@/lib/actions/reports"
 import { formatNumber, formatCurrency, formatDate } from "@/lib/utils"
 import { ChevronDown, ChevronRight, Loader2, Calculator, Search } from "lucide-react"
 import { getProductCategories } from "@/lib/actions/settings"
-import { cn } from "@/lib/utils"
 
 export function CostPerCaseTab() {
   const [from, setFrom] = useState("")

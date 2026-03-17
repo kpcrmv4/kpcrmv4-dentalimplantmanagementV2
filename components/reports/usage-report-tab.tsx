@@ -15,7 +15,6 @@ import { getUsageReport, type UsageReportRow } from "@/lib/actions/reports"
 import { formatNumber, formatCurrency, formatDate } from "@/lib/utils"
 import { Loader2, Package, Search, Calendar } from "lucide-react"
 import { getProductCategories } from "@/lib/actions/settings"
-import { cn } from "@/lib/utils"
 
 export function UsageReportTab() {
   const [from, setFrom] = useState("")

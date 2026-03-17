@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { searchByInvoice, type InvoiceSearchResult } from "@/lib/actions/reports"
 import { formatNumber, formatDate } from "@/lib/utils"
-import { Loader2, Search, FileSearch, Package } from "lucide-react"
+import { Loader2, Search, FileSearch } from "lucide-react"
 import { getProductCategories } from "@/lib/actions/settings"
 import { Badge } from "@/components/ui/badge"
 
