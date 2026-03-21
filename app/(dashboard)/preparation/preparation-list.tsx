@@ -26,11 +26,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { assignLot, markCaseReady } from "@/lib/actions/cases"
@@ -348,19 +343,31 @@ export function PreparationList({
           ) : lots.length === 0 ? (
             <p className="py-4 text-center text-sm text-destructive">ไม่มี LOT ที่พร้อมใช้</p>
           ) : (
-            <Select value={selectedLot} onValueChange={setSelectedLot}>
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="เลือก LOT" />
-              </SelectTrigger>
-              <SelectContent>
-                {lots.map((lot) => (
-                  <SelectItem key={lot.id} value={lot.id}>
-                    {lot.lot_number} · เหลือ {lot.available} ชิ้น
-                    {lot.expiry_date ? ` · Exp: ${lot.expiry_date}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+              {lots.map((lot) => (
+                <button
+                  key={lot.id}
+                  type="button"
+                  onClick={() => setSelectedLot(lot.id)}
+                  className={`flex items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors ${
+                    selectedLot === lot.id
+                      ? "border-primary bg-primary/10 ring-1 ring-primary"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <div>
+                    <div className="font-medium">{lot.lot_number}</div>
+                    <div className="text-muted-foreground text-xs">
+                      เหลือ {lot.available} ชิ้น
+                      {lot.expiry_date ? ` · Exp: ${lot.expiry_date}` : ""}
+                    </div>
+                  </div>
+                  {selectedLot === lot.id && (
+                    <Check className="h-4 w-4 text-primary shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
           )}
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button className="w-full h-11" onClick={handleAssignLot} disabled={!selectedLot || isPending}>
