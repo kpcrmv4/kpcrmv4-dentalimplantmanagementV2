@@ -115,6 +115,19 @@ export async function createCase(formData: FormData) {
 
   if (error) throw error
   revalidatePath("/cases")
+
+  // Notify dentist about new case
+  const dentistId = formData.get("dentist_id") as string
+  if (dentistId) {
+    const { smartNotify } = await import("./notifications")
+    smartNotify({
+      type: "case_assigned",
+      title: "เคสใหม่",
+      message: `มีเคสใหม่ ${data.case_number} ถูกมอบหมายให้คุณ`,
+      data: { case_id: data.id, case_number: data.case_number },
+    }).catch(() => {})
+  }
+
   return data
 }
 

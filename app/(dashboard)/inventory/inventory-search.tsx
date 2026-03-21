@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
 import { Search, CalendarIcon, X, SlidersHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -15,12 +16,20 @@ export function InventorySearch({
   currentView,
   currentExpiryBefore,
   lowStockCount,
+  currentCategory,
+  currentBrand,
+  categories,
+  brands,
 }: {
   defaultValue: string
   currentFilter: string
   currentView: string
   currentExpiryBefore: string
   lowStockCount: number
+  currentCategory?: string
+  currentBrand?: string
+  categories?: Array<{ value: string; label: string }>
+  brands?: Array<{ id: string; name: string }>
 }) {
   const router = useRouter()
   const [value, setValue] = useState(defaultValue)
@@ -30,12 +39,14 @@ export function InventorySearch({
   )
   const [calendarOpen, setCalendarOpen] = useState(false)
 
-  function navigate(q: string, filter: string, view?: string, expiryBefore?: string) {
+  function navigate(q: string, filter: string, view?: string, expiryBefore?: string, category?: string, brand?: string) {
     const params = new URLSearchParams()
     if (q) params.set("q", q)
     if (filter) params.set("filter", filter)
     if (view) params.set("view", view)
     if (expiryBefore) params.set("expiry_before", expiryBefore)
+    if (category) params.set("category", category)
+    if (brand) params.set("brand", brand)
     router.push(`/inventory?${params.toString()}`)
   }
 
@@ -43,24 +54,24 @@ export function InventorySearch({
     setValue(q)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(
-      () => navigate(q, currentFilter, currentView, currentExpiryBefore),
+      () => navigate(q, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand),
       300
     )
   }
 
   function handleViewToggle(view: string) {
-    navigate(value, currentFilter, view, currentExpiryBefore)
+    navigate(value, currentFilter, view, currentExpiryBefore, currentCategory, currentBrand)
   }
 
   function handleFilterChange(filter: string) {
-    navigate(value, filter, currentView, currentExpiryBefore)
+    navigate(value, filter, currentView, currentExpiryBefore, currentCategory, currentBrand)
   }
 
   function handleExpiryChange(date: Date | undefined) {
     setExpiryDate(date)
     setCalendarOpen(false)
     const dateStr = date ? format(date, "yyyy-MM-dd") : ""
-    navigate(value, currentFilter, currentView, dateStr)
+    navigate(value, currentFilter, currentView, dateStr, currentCategory, currentBrand)
   }
 
   const isLotView = currentView === "lot"
