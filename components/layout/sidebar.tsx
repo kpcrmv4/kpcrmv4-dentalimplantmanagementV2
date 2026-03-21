@@ -21,6 +21,12 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
     (item) => !item.roles || item.roles.includes(user.role)
   )
 
+  // Find the best matching href (longest prefix match) to avoid highlighting parent routes
+  const allHrefs = filteredItems.map((item) => item.href)
+  const activeHref = allHrefs
+    .filter((href) => pathname === href || pathname.startsWith(href + "/"))
+    .sort((a, b) => b.length - a.length)[0] ?? null
+
   // Group items: items with a group go into that group, items without group go into "ungrouped"
   const grouped = new Map<SidebarGroup | "ungrouped", typeof filteredItems>()
   for (const item of filteredItems) {
@@ -66,9 +72,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
 
                 <div className="space-y-0.5">
                   {items.map((item) => {
-                    const isActive =
-                      pathname === item.href ||
-                      (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))
+                    const isActive = item.href === activeHref
                     const Icon = item.icon
                     return (
                       <Link
