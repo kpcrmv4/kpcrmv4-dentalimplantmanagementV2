@@ -359,18 +359,22 @@ export default function NewProductPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-brand">ยี่ห้อ</Label>
-                  <Select name="brand">
-                    <SelectTrigger id="new-brand">
-                      <SelectValue placeholder="เลือกยี่ห้อ" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {brands.map((b) => (
-                        <SelectItem key={b.id} value={b.name}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {brands.length === 0 ? (
+                    <Input id="new-brand" name="brand" placeholder="ยี่ห้อ (เพิ่มในตั้งค่าสินค้า)" />
+                  ) : (
+                    <Select name="brand">
+                      <SelectTrigger id="new-brand">
+                        <SelectValue placeholder="เลือกยี่ห้อ" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {brands.map((b) => (
+                          <SelectItem key={b.id} value={b.name}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-model">รุ่น (Model)</Label>
