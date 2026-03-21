@@ -148,9 +148,9 @@ export default async function BorrowDetailPage({
                     alt={photo.description as string ?? "หลักฐาน"}
                     className="h-32 w-full rounded-lg border object-cover"
                   />
-                  {photo.description && (
+                  {photo.description ? (
                     <p className="text-[10px] text-muted-foreground">{photo.description as string}</p>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>
