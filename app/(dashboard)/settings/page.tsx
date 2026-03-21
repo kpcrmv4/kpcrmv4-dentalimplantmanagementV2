@@ -17,14 +17,6 @@ import {
   addProcedureType,
   updateProcedureType,
   deleteProcedureType,
-  getProductCategories,
-  addProductCategory,
-  updateProductCategory,
-  deleteProductCategory,
-  getBrands,
-  addBrand,
-  updateBrand,
-  deleteBrand,
   getNotificationSettings,
   updateNotificationSetting,
   updateLineSettings,
@@ -179,7 +171,7 @@ function EditableListSection({
 // ─── Settings Page ──────────────────────────────────────────────────
 
 type ProcedureType = { id: string; name: string; sort_order: number; is_active: boolean }
-type ProductCategory = { id: string; slug: string; name: string; sort_order: number; is_active: boolean }
+
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -207,9 +199,7 @@ export default function SettingsPage() {
 
   // System settings state (admin only)
   const [procedureTypes, setProcedureTypes] = useState<ProcedureType[]>([])
-  const [productCategories, setProductCategories] = useState<ProductCategory[]>([])
   const [systemLoading, setSystemLoading] = useState(true)
-  const [brands, setBrands] = useState<Array<{ id: string; name: string; sort_order: number; is_active: boolean }>>([])
   const [notifSettings, setNotifSettings] = useState<Array<Record<string, unknown>>>([])
 
   // LINE settings
@@ -241,11 +231,9 @@ export default function SettingsPage() {
         // Load admin-only data
         if (data.role === "admin") {
           try {
-            const [settings, pt, pc, br, ns, lineCfg] = await Promise.all([
+            const [settings, pt, ns, lineCfg] = await Promise.all([
               getAppSettings(),
               getProcedureTypes(),
-              getProductCategories(),
-              getBrands(),
               getNotificationSettings(),
               getLineSettings(),
             ])
@@ -253,8 +241,6 @@ export default function SettingsPage() {
               setDiscordWebhookUrl(settings.discord_webhook_url)
             }
             setProcedureTypes(pt)
-            setProductCategories(pc)
-            setBrands(br)
             setNotifSettings(ns)
             if (lineCfg) {
               setLineToken(lineCfg.line_channel_access_token ?? "")
@@ -273,12 +259,10 @@ export default function SettingsPage() {
   }, [])
 
   async function reloadSystemSettings() {
-    const [pt, pc, br, ns] = await Promise.all([
-      getProcedureTypes(), getProductCategories(), getBrands(), getNotificationSettings()
+    const [pt, ns] = await Promise.all([
+      getProcedureTypes(), getNotificationSettings()
     ])
     setProcedureTypes(pt)
-    setProductCategories(pc)
-    setBrands(br)
     setNotifSettings(ns)
   }
 
@@ -623,27 +607,6 @@ export default function SettingsPage() {
               }}
             />
 
-            {/* Product Categories */}
-            <EditableListSection
-              title="หมวดหมู่สินค้า"
-              description="รายการหมวดหมู่สินค้าที่ใช้ในระบบสต็อก"
-              items={productCategories}
-              isLoading={systemLoading}
-              showSlug
-              onAdd={async (name: string, slug?: string) => {
-                await addProductCategory(slug ?? name.toLowerCase(), name)
-                await reloadSystemSettings()
-              }}
-              onToggle={async (id: string, isActive: boolean) => {
-                await updateProductCategory(id, { is_active: isActive })
-                await reloadSystemSettings()
-              }}
-              onDelete={async (id: string) => {
-                await deleteProductCategory(id)
-                await reloadSystemSettings()
-              }}
-            />
-
             {/* LINE Messaging API */}
             <Card>
               <CardHeader className="pb-2">
@@ -754,25 +717,6 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Brands */}
-            <EditableListSection
-              title="ยี่ห้อ (Brands)"
-              description="รายการยี่ห้อสินค้าที่ใช้ในระบบ"
-              items={brands}
-              isLoading={systemLoading}
-              onAdd={async (name: string) => {
-                await addBrand(name)
-                await reloadSystemSettings()
-              }}
-              onToggle={async (id: string, isActive: boolean) => {
-                await updateBrand(id, { is_active: isActive })
-                await reloadSystemSettings()
-              }}
-              onDelete={async (id: string) => {
-                await deleteBrand(id)
-                await reloadSystemSettings()
-              }}
-            />
           </div>
         </div>
       )}

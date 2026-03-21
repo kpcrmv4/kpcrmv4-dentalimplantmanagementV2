@@ -9,6 +9,7 @@ import {
   getCategories,
 } from "@/lib/actions/products"
 import { getSuppliers } from "@/lib/actions/inventory"
+import { getBrands } from "@/lib/actions/settings"
 import { ProductDetailClient } from "./product-detail-client"
 
 export default async function ProductDetailPage({
@@ -37,10 +38,14 @@ export default async function ProductDetailPage({
     // history data is optional — page still renders without it
   }
 
-  const [categories, suppliers] = await Promise.all([
+  const [categories, suppliers, brandsData] = await Promise.all([
     getCategories(),
     getSuppliers(),
+    getBrands(),
   ])
+  const activeBrands = brandsData
+    .filter((b: { is_active: boolean }) => b.is_active)
+    .map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
@@ -63,6 +68,7 @@ export default async function ProductDetailPage({
         orderHistory={orderHistory}
         usageHistory={usageHistory}
         categories={[...categories]}
+        brands={activeBrands}
         suppliers={suppliers}
       />
     </div>

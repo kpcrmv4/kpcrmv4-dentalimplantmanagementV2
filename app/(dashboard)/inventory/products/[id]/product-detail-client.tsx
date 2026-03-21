@@ -181,12 +181,14 @@ export function ProductDetailClient({
   orderHistory,
   usageHistory,
   categories,
+  brands,
   suppliers,
 }: {
   product: ProductData
   orderHistory: OrderHistoryItem[]
   usageHistory: UsageHistoryItem[]
   categories: Category[]
+  brands: { id: string; name: string }[]
   suppliers: Supplier[]
 }) {
   const router = useRouter()
@@ -636,7 +638,18 @@ export function ProductDetailClient({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-brand">ยี่ห้อ</Label>
-                <Input id="edit-brand" name="brand" defaultValue={product.brand ?? ""} />
+                <Select name="brand" defaultValue={product.brand ?? ""}>
+                  <SelectTrigger id="edit-brand">
+                    <SelectValue placeholder="เลือกยี่ห้อ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((b) => (
+                      <SelectItem key={b.id} value={b.name}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-category">หมวดหมู่</Label>

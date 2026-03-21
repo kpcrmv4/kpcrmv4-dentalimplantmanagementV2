@@ -57,6 +57,7 @@ export async function addProcedureType(name: string) {
     throw error
   }
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function updateProcedureType(id: string, data: { name?: string; sort_order?: number; is_active?: boolean }) {
@@ -68,6 +69,7 @@ export async function updateProcedureType(id: string, data: { name?: string; sor
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function deleteProcedureType(id: string) {
@@ -79,6 +81,7 @@ export async function deleteProcedureType(id: string) {
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 // ─── Product Categories ─────────────────────────────────────────────
@@ -125,6 +128,7 @@ export async function addProductCategory(slug: string, name: string) {
     throw error
   }
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function updateProductCategory(id: string, data: { name?: string; slug?: string; sort_order?: number; is_active?: boolean }) {
@@ -136,6 +140,7 @@ export async function updateProductCategory(id: string, data: { name?: string; s
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function deleteProductCategory(id: string) {
@@ -147,6 +152,7 @@ export async function deleteProductCategory(id: string) {
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 // ─── Helper: get category label map ─────────────────────────────────
@@ -191,6 +197,7 @@ export async function addBrand(name: string) {
     throw error
   }
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function updateBrand(id: string, data: { name?: string; sort_order?: number; is_active?: boolean }) {
@@ -202,6 +209,7 @@ export async function updateBrand(id: string, data: { name?: string; sort_order?
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function deleteBrand(id: string) {
@@ -213,6 +221,7 @@ export async function deleteBrand(id: string) {
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 // ─── Product Models ─────────────────────────────────────────────────
@@ -247,6 +256,7 @@ export async function addProductModel(brandId: string, name: string) {
     throw error
   }
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function updateProductModel(id: string, data: { name?: string; is_active?: boolean }) {
@@ -258,6 +268,7 @@ export async function updateProductModel(id: string, data: { name?: string; is_a
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function deleteProductModel(id: string) {
@@ -269,6 +280,7 @@ export async function deleteProductModel(id: string) {
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 // ─── Notification Settings ──────────────────────────────────────────
@@ -302,6 +314,7 @@ export async function updateNotificationSetting(
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 // ─── LINE Settings ──────────────────────────────────────────────────
@@ -325,6 +338,7 @@ export async function updateLineSettings(data: {
 
   if (error) throw error
   revalidatePath("/settings")
+  revalidatePath("/inventory")
 }
 
 export async function getLineSettings() {
