@@ -40,7 +40,8 @@ export async function GET(request: Request) {
     }
 
     // Get notification settings for emergency_case
-    const { data: setting } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: setting } = await (supabase as any)
       .from("notification_settings")
       .select("default_in_app, default_line, default_discord, target_roles, is_active")
       .eq("event_type", "emergency_case")
@@ -75,7 +76,8 @@ export async function GET(request: Request) {
     let notifiedCount = 0
 
     // Get app settings for LINE and Discord
-    const { data: appSettings } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: appSettings } = await (supabase as any)
       .from("app_settings")
       .select("discord_webhook_url, line_channel_access_token, line_notify_enabled")
       .limit(1)
