@@ -42,9 +42,9 @@ export default async function InventoryPage({
   const activeBrands = brandsData.filter((b: { is_active: boolean }) => b.is_active)
 
   // Extract distinct filter values from products
-  const distinctModels = [...new Set(products.map((p) => p.model).filter(Boolean))] as string[]
-  const distinctDiameters = [...new Set(products.map((p) => p.diameter).filter((d) => d != null))].map(String).sort((a, b) => Number(a) - Number(b))
-  const distinctLengths = [...new Set(products.map((p) => p.length).filter((l) => l != null))].map(String).sort((a, b) => Number(a) - Number(b))
+  const distinctModels = Array.from(new Set(products.map((p) => p.model).filter(Boolean))) as string[]
+  const distinctDiameters = Array.from(new Set(products.map((p) => p.diameter).filter((d) => d != null))).map(String).sort((a, b) => Number(a) - Number(b))
+  const distinctLengths = Array.from(new Set(products.map((p) => p.length).filter((l) => l != null))).map(String).sort((a, b) => Number(a) - Number(b))
 
   // Compute summary from unfiltered product data
   const totalProducts = products.length
