@@ -44,7 +44,7 @@ export async function getStockSummary() {
   const { data, error } = await supabase
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)

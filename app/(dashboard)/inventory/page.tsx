@@ -10,7 +10,7 @@ import { InventoryList } from "./inventory-list"
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; view?: string; expiry_before?: string; category?: string; brand?: string }>
+  searchParams: Promise<{ q?: string; filter?: string; view?: string; expiry_before?: string; category?: string; brand?: string; model?: string; diameter?: string; length?: string }>
 }) {
   const params = await searchParams
   const search = params.q || ""
@@ -19,6 +19,9 @@ export default async function InventoryPage({
   const expiryBefore = params.expiry_before || ""
   const category = params.category || ""
   const brand = params.brand || ""
+  const model = params.model || ""
+  const diameter = params.diameter || ""
+  const length = params.length || ""
 
   const isLotView = view === "lot"
 
@@ -37,6 +40,11 @@ export default async function InventoryPage({
 
   const [categories, brandsData] = await Promise.all([getCategories(), getBrands()])
   const activeBrands = brandsData.filter((b: { is_active: boolean }) => b.is_active)
+
+  // Extract distinct filter values from products
+  const distinctModels = [...new Set(products.map((p) => p.model).filter(Boolean))] as string[]
+  const distinctDiameters = [...new Set(products.map((p) => p.diameter).filter((d) => d != null))].map(String).sort((a, b) => Number(a) - Number(b))
+  const distinctLengths = [...new Set(products.map((p) => p.length).filter((l) => l != null))].map(String).sort((a, b) => Number(a) - Number(b))
 
   // Compute summary from unfiltered product data
   const totalProducts = products.length
@@ -81,6 +89,15 @@ export default async function InventoryPage({
     }
     if (brand) {
       filteredProducts = filteredProducts.filter((p) => p.brand?.toLowerCase() === brand.toLowerCase())
+    }
+    if (model) {
+      filteredProducts = filteredProducts.filter((p) => p.model?.toLowerCase() === model.toLowerCase())
+    }
+    if (diameter) {
+      filteredProducts = filteredProducts.filter((p) => p.diameter != null && String(p.diameter) === diameter)
+    }
+    if (length) {
+      filteredProducts = filteredProducts.filter((p) => p.length != null && String(p.length) === length)
     }
   }
 
@@ -188,8 +205,14 @@ export default async function InventoryPage({
         lowStockCount={lowStockCount}
         currentCategory={category}
         currentBrand={brand}
+        currentModel={model}
+        currentDiameter={diameter}
+        currentLength={length}
         categories={categories}
         brands={activeBrands}
+        models={distinctModels}
+        diameters={distinctDiameters}
+        lengths={distinctLengths}
       />
 
       {/* List */}
