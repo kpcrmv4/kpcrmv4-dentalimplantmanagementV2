@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { settleBorrowItem, uploadBorrowPhoto } from "@/lib/actions/borrows"
 
-export function SettleButton({ itemId, borrowId: _borrowId }: { itemId: string; borrowId: string }) {
+export function SettleButton({ itemId }: { itemId: string }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showModal, setShowModal] = useState(false)

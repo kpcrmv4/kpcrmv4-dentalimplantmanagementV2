@@ -119,7 +119,7 @@ export default async function BorrowDetailPage({
                       </div>
                     </div>
                     {(item.status as string) === "borrowed" && (
-                      <SettleButton itemId={item.id as string} borrowId={id} />
+                      <SettleButton itemId={item.id as string} />
                     )}
                   </div>
                 )
