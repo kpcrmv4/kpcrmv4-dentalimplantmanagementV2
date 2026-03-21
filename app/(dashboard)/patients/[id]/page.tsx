@@ -44,8 +44,10 @@ export default async function PatientDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const patient = await getPatient(id)
-  if (!patient) notFound()
+  const patientData = await getPatient(id)
+  if (!patientData) notFound()
+  // Cast to permissive type since schema may not include all columns
+  const patient = patientData as Record<string, unknown>
 
   const cases = await getPatientCases(id)
 
@@ -58,8 +60,8 @@ export default async function PatientDetailPage({
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-xl font-semibold">{patient.full_name}</h1>
-          <p className="text-sm text-muted-foreground">HN: {patient.hn}</p>
+          <h1 className="text-xl font-semibold">{patient.full_name as string}</h1>
+          <p className="text-sm text-muted-foreground">HN: {patient.hn as string}</p>
         </div>
         <Button asChild size="sm">
           <Link href={`/cases/new?patient_id=${id}`}>
@@ -80,48 +82,48 @@ export default async function PatientDetailPage({
           <div className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <span className="text-muted-foreground">ชื่อ-นามสกุล:</span>
-              <span className="ml-2 font-medium">{patient.full_name}</span>
+              <span className="ml-2 font-medium">{patient.full_name as string}</span>
             </div>
             <div>
               <span className="text-muted-foreground">HN:</span>
-              <span className="ml-2 font-medium">{patient.hn}</span>
+              <span className="ml-2 font-medium">{patient.hn as string}</span>
             </div>
-            {patient.phone && (
+            {patient.phone ? (
               <div>
                 <span className="text-muted-foreground">เบอร์โทร:</span>
-                <span className="ml-2">{patient.phone}</span>
+                <span className="ml-2">{patient.phone as string}</span>
               </div>
-            )}
-            {patient.email && (
+            ) : null}
+            {patient.email ? (
               <div>
                 <span className="text-muted-foreground">อีเมล:</span>
-                <span className="ml-2">{patient.email}</span>
+                <span className="ml-2">{patient.email as string}</span>
               </div>
-            )}
-            {patient.date_of_birth && (
+            ) : null}
+            {patient.date_of_birth ? (
               <div>
                 <span className="text-muted-foreground">วันเกิด:</span>
-                <span className="ml-2">{new Date(patient.date_of_birth).toLocaleDateString("th-TH")}</span>
+                <span className="ml-2">{new Date(patient.date_of_birth as string).toLocaleDateString("th-TH")}</span>
               </div>
-            )}
-            {patient.gender && (
+            ) : null}
+            {patient.gender ? (
               <div>
                 <span className="text-muted-foreground">เพศ:</span>
-                <span className="ml-2">{patient.gender}</span>
+                <span className="ml-2">{patient.gender as string}</span>
               </div>
-            )}
-            {patient.allergies && (
+            ) : null}
+            {patient.allergies ? (
               <div className="sm:col-span-2">
                 <span className="text-muted-foreground">แพ้ยา:</span>
-                <span className="ml-2 text-destructive">{patient.allergies}</span>
+                <span className="ml-2 text-destructive">{patient.allergies as string}</span>
               </div>
-            )}
-            {patient.medical_history && (
+            ) : null}
+            {patient.medical_history ? (
               <div className="sm:col-span-2">
                 <span className="text-muted-foreground">ประวัติการแพทย์:</span>
-                <span className="ml-2">{patient.medical_history}</span>
+                <span className="ml-2">{patient.medical_history as string}</span>
               </div>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -151,16 +153,16 @@ export default async function PatientDetailPage({
                           </Badge>
                         </div>
                         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                          {c.procedure_type && <span>{c.procedure_type as string}</span>}
-                          {dentist?.full_name && <span>ทพ. {dentist.full_name}</span>}
+                          {c.procedure_type ? <span>{c.procedure_type as string}</span> : null}
+                          {dentist?.full_name ? <span>ทพ. {dentist.full_name}</span> : null}
                         </div>
                       </div>
-                      {c.scheduled_date && (
+                      {c.scheduled_date ? (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
                           {new Date(c.scheduled_date as string).toLocaleDateString("th-TH")}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </Link>
                 )

@@ -30,7 +30,7 @@ export default async function BorrowsPage({
     search: params.q,
   })
 
-  const activeBorrows = borrows.filter((b) => b.status === "borrowed").length
+  const activeBorrows = borrows.filter((b: { status: string }) => b.status === "borrowed").length
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
@@ -72,7 +72,7 @@ export default async function BorrowsPage({
         </div>
       ) : (
         <div className="space-y-2">
-          {borrows.map((b) => {
+          {borrows.map((b: { id: string; borrow_number: string; source_type: string; source_name: string; status: string; borrow_date: string; item_count: number }) => {
             const st = STATUS_LABELS[b.status] ?? { label: b.status, variant: "outline" as const }
             return (
               <Link key={b.id} href={`/inventory/borrows/${b.id}`}>

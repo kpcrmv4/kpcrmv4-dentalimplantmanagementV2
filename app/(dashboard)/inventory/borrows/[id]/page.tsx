@@ -113,7 +113,7 @@ export default async function BorrowDetailPage({
                         {(item.settlement_type as string) && (
                           <span className="ml-2">
                             ชำระ: {(item.settlement_type as string) === "return" ? "คืนของ" : (item.settlement_type as string) === "exchange" ? "แลกสินค้า" : "ชำระเงิน"}
-                            {item.settlement_amount && ` ฿${Number(item.settlement_amount).toLocaleString()}`}
+                            {item.settlement_amount ? ` ฿${Number(item.settlement_amount).toLocaleString()}` : null}
                           </span>
                         )}
                       </div>
@@ -148,9 +148,9 @@ export default async function BorrowDetailPage({
                     alt={photo.description as string ?? "หลักฐาน"}
                     className="h-32 w-full rounded-lg border object-cover"
                   />
-                  {photo.description && (
+                  {photo.description ? (
                     <p className="text-[10px] text-muted-foreground">{photo.description as string}</p>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

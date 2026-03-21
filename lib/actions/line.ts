@@ -69,7 +69,7 @@ export async function sendLineToRoles(roles: string[], title: string, message: s
   const { data: users } = await supabase
     .from("users")
     .select("line_user_id")
-    .in("role", roles)
+    .in("role", roles as ("admin" | "dentist" | "stock_staff" | "assistant" | "cs")[])
     .eq("is_active", true)
     .not("line_user_id", "is", null)
 
