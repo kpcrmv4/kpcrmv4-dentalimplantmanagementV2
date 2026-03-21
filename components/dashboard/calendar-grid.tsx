@@ -19,7 +19,8 @@ import type { DashboardCase, TrafficLight } from "@/lib/actions/dashboard"
 import type { UserRole } from "@/types/database"
 
 // Start week on Monday
-const WEEKDAYS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"]
+const WEEKDAYS_SHORT = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"]
+const WEEKDAYS_FULL = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
 
 const DOT_COLORS: Record<TrafficLight, string> = {
   green: "bg-green-500",
@@ -91,18 +92,19 @@ export function CalendarGrid({
 
       <div className="p-3">
         {/* Weekday headers */}
-        <div className="mb-1 grid grid-cols-7">
-          {WEEKDAYS.map((d, i) => (
+        <div className="mb-1 grid grid-cols-7 rounded-lg bg-muted/60 dark:bg-muted/30">
+          {WEEKDAYS_SHORT.map((d, i) => (
             <div
               key={d}
               className={cn(
-                "py-2 text-center text-[11px] font-bold uppercase tracking-wider",
+                "py-2 text-center text-[11px] font-bold uppercase tracking-wider lg:text-xs",
                 i >= 5
                   ? "text-red-400 dark:text-red-400/80"
                   : "text-muted-foreground"
               )}
             >
-              {d}
+              <span className="lg:hidden">{d}</span>
+              <span className="hidden lg:inline">{WEEKDAYS_FULL[i]}</span>
             </div>
           ))}
         </div>
