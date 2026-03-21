@@ -41,9 +41,9 @@ export const sidebarGroupLabels: Record<SidebarGroup, string> = {
 export const roleMenus: Record<UserRole, NavItem[]> = {
   admin: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
-    { label: "เคส", icon: ClipboardList, href: "/cases" },
+    { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
     { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard", isCenter: true },
-    { label: "สต็อก", icon: Package, href: "/inventory" },
+    { label: "เคส", icon: ClipboardList, href: "/cases" },
     { label: "เพิ่มเติม", icon: Settings, href: "/settings" },
   ],
   dentist: [
@@ -55,7 +55,7 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
   ],
   stock_staff: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
-    { label: "สั่งซื้อ", icon: ShoppingCart, href: "/orders" },
+    { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
     { label: "สต็อก", icon: Package, href: "/inventory", isCenter: true },
     { label: "เคส", icon: ClipboardList, href: "/cases" },
     { label: "เพิ่มเติม", icon: Bell, href: "/notifications" },
@@ -79,7 +79,7 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
 export const sidebarMenus: NavItem[] = [
   // Main group
   { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard", group: "main" },
-  { label: "ปฏิทิน", icon: Calendar, href: "/calendar", roles: ["dentist", "assistant", "cs"], group: "main" },
+  { label: "ปฏิทิน", icon: Calendar, href: "/calendar", group: "main" },
   { label: "เคส", icon: ClipboardList, href: "/cases", group: "main" },
   { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", roles: ["assistant"], group: "main" },
   { label: "คนไข้", icon: Users, href: "/patients", roles: ["admin", "cs", "dentist"], group: "main" },

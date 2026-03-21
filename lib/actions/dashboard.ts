@@ -195,14 +195,17 @@ export async function getLowStockItems(): Promise<LowStockItem[]> {
   return items
 }
 
-export async function getEmergencyAlerts(): Promise<DashboardCase[]> {
-  const supabase = await createClient()
-  const today = new Date()
-  const twoDaysLater = new Date(today)
-  twoDaysLater.setDate(today.getDate() + 2)
+export type EmergencyAlert = DashboardCase & {
+  materialSummary: string
+}
 
-  const todayStr = today.toISOString().split("T")[0]
-  const futureStr = twoDaysLater.toISOString().split("T")[0]
+export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
+  const supabase = await createClient()
+  const now = new Date()
+  const fortyEightHoursLater = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+
+  const todayStr = now.toISOString().split("T")[0]
+  const futureStr = fortyEightHoursLater.toISOString().split("T")[0]
 
   const { data, error } = await supabase
     .from("cases")
@@ -216,7 +219,7 @@ export async function getEmergencyAlerts(): Promise<DashboardCase[]> {
 
   if (error) throw error
 
-  return (data ?? []).map((c) => {
+  const cases = (data ?? []).map((c) => {
     const patient = c.patients as unknown as { hn: string; full_name: string } | null
     const dentist = c.users as unknown as { full_name: string } | null
     return {
@@ -233,5 +236,45 @@ export async function getEmergencyAlerts(): Promise<DashboardCase[]> {
       tooth_positions: c.tooth_positions,
       trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
     }
+  })
+
+  if (cases.length === 0) return []
+
+  // Fetch material reservation details for these cases
+  const caseIds = cases.map((c) => c.id)
+  const { data: reservations } = await supabase
+    .from("case_reservations")
+    .select("case_id, status, products(name)")
+    .in("case_id", caseIds)
+
+  // Build material summary per case
+  const materialMap = new Map<string, { reserved: string[]; prepared: string[] }>()
+  for (const r of reservations ?? []) {
+    if (!materialMap.has(r.case_id)) {
+      materialMap.set(r.case_id, { reserved: [], prepared: [] })
+    }
+    const entry = materialMap.get(r.case_id)!
+    const productName = (r.products as unknown as { name: string } | null)?.name ?? "ไม่ระบุ"
+    if (r.status === "reserved") {
+      entry.reserved.push(productName)
+    } else if (r.status === "prepared") {
+      entry.prepared.push(productName)
+    }
+  }
+
+  return cases.map((c) => {
+    const mat = materialMap.get(c.id)
+    let materialSummary = ""
+    if (c.case_status === "pending_order") {
+      materialSummary = "รอสั่งของ"
+    } else if (c.case_status === "pending_preparation") {
+      const reserved = mat?.reserved ?? []
+      materialSummary = reserved.length > 0
+        ? `รอจัดของ: ${reserved.join(", ")}`
+        : "รอจัดเตรียมวัสดุ"
+    } else {
+      materialSummary = "วัสดุยังไม่พร้อม"
+    }
+    return { ...c, materialSummary }
   })
 }

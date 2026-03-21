@@ -228,7 +228,6 @@ function NewCaseForm() {
               <div className="space-y-2">
                 <Label htmlFor="scheduled_date">วันนัด</Label>
                 <Input id="scheduled_date" name="scheduled_date" type="date" />
-                <p className="text-[10px] text-muted-foreground">ต้องล่วงหน้าอย่างน้อย 3 วัน</p>
               </div>
 
               <div className="space-y-2">
