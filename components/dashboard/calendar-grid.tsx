@@ -63,26 +63,29 @@ export function CalendarGrid({
   }
 
   return (
-    <div>
+    <div className="p-3">
       {/* Month navigation */}
-      <div className="mb-3 flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={onPrevMonth} className="h-8 w-8">
+      <div className="mb-4 flex items-center justify-between">
+        <Button variant="ghost" size="icon" onClick={onPrevMonth} className="h-8 w-8 rounded-lg">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h2 className="text-sm font-semibold">
+        <h2 className="text-sm font-semibold tracking-wide">
           {format(currentMonth, "MMMM yyyy", { locale: th })}
         </h2>
-        <Button variant="ghost" size="icon" onClick={onNextMonth} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={onNextMonth} className="h-8 w-8 rounded-lg">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {WEEKDAYS.map((d) => (
+      <div className="mb-1 grid grid-cols-7">
+        {WEEKDAYS.map((d, i) => (
           <div
             key={d}
-            className="py-1 text-center text-[11px] font-medium text-muted-foreground"
+            className={cn(
+              "py-1.5 text-center text-[11px] font-semibold",
+              i === 0 ? "text-red-400" : "text-muted-foreground"
+            )}
           >
             {d}
           </div>
@@ -90,13 +93,14 @@ export function CalendarGrid({
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-0.5">
         {days.map((day) => {
           const dateStr = format(day, "yyyy-MM-dd")
           const dayCases = casesByDate.get(dateStr) ?? []
           const inMonth = isSameMonth(day, currentMonth)
           const selected = selectedDate && isSameDay(day, selectedDate)
           const today = isToday(day)
+          const hasCases = dayCases.length > 0
 
           // Unique traffic light colors present
           const lights = Array.from(new Set(dayCases.map((c) => c.trafficLight))).filter(
@@ -117,36 +121,50 @@ export function CalendarGrid({
               key={dateStr}
               onClick={() => onDateSelect(day)}
               className={cn(
-                "relative flex flex-col items-center gap-0.5 rounded-md py-1.5 text-sm transition-colors",
-                !inMonth && "text-muted-foreground/40",
-                inMonth && "hover:bg-muted",
-                selected && "bg-primary/10 font-semibold text-primary",
-                today && !selected && "font-semibold text-primary"
+                "relative flex flex-col items-center justify-center rounded-lg py-2 text-sm transition-all",
+                "min-h-[2.5rem]",
+                !inMonth && "text-muted-foreground/30",
+                inMonth && !selected && "hover:bg-accent",
+                selected && "bg-primary text-primary-foreground shadow-sm",
+                today && !selected && "font-bold text-primary",
+                hasCases && inMonth && !selected && "bg-accent/50"
               )}
             >
-              <span className="text-xs leading-none">{format(day, "d")}</span>
-              {/* Dots */}
-              <div className="flex gap-0.5">
-                {isCs && dayCases.length > 0 ? (
-                  /* CS view: show case count + pending indicator */
+              <span className={cn(
+                "text-xs leading-none",
+                today && !selected && "flex h-5 w-5 items-center justify-center rounded-full bg-primary/10"
+              )}>
+                {format(day, "d")}
+              </span>
+
+              {/* Case indicators */}
+              <div className="mt-0.5 flex h-2 items-center gap-px">
+                {isCs && hasCases ? (
                   <>
-                    <span className="text-[8px] leading-none text-muted-foreground">
+                    <span className={cn(
+                      "text-[7px] leading-none font-bold",
+                      selected ? "text-primary-foreground/70" : "text-muted-foreground"
+                    )}>
                       {dayCases.length}
                     </span>
                     {pendingAppts > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      <span className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        selected ? "bg-primary-foreground/60" : "bg-amber-500"
+                      )} />
                     )}
                   </>
                 ) : lights.length > 0 ? (
-                  lights.map((l) => (
+                  lights.slice(0, 3).map((l) => (
                     <span
                       key={l}
-                      className={cn("h-1.5 w-1.5 rounded-full", DOT_COLORS[l])}
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        selected ? "bg-primary-foreground/60" : DOT_COLORS[l]
+                      )}
                     />
                   ))
-                ) : (
-                  <span className="h-1.5" /> /* spacer to keep alignment */
-                )}
+                ) : null}
               </div>
             </button>
           )
@@ -154,31 +172,29 @@ export function CalendarGrid({
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 border-t pt-2.5">
         {isCs ? (
-          /* CS legend: appointment-focused */
           <>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-amber-500" /> รอยืนยัน
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> รอยืนยัน
             </span>
-            <span className="flex items-center gap-1">
-              <span className="text-[9px] font-medium text-muted-foreground">3</span> จำนวนเคส
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="font-semibold">3</span> จำนวนเคส
             </span>
           </>
         ) : (
-          /* Default legend: material-focused */
           <>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-500" /> พร้อม
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> พร้อม
             </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-yellow-500" /> สั่งแล้ว/รอรับ
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" /> สั่งแล้ว
             </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-orange-500" /> รอของ
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> รอของ
             </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-500" /> ขาด
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> ขาด
             </span>
           </>
         )}
