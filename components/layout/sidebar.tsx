@@ -68,7 +68,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
                   {items.map((item) => {
                     const isActive =
                       pathname === item.href ||
-                      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))
                     const Icon = item.icon
                     return (
                       <Link
