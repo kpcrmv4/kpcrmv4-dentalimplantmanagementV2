@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Plus, Package, PackageCheck, Clock, TrendingDown } from "lucide-react"
+import { Plus, Package, PackageCheck, Clock, TrendingDown, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getStockSummary, getProductIdsWithActivePOs, getInventoryByLot } from "@/lib/actions/inventory"
 import { getCategories } from "@/lib/actions/products"
@@ -92,6 +92,12 @@ export default async function InventoryPage({
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg sm:text-xl font-semibold">สต็อกวัสดุ</h1>
         <div className="flex gap-1.5 sm:gap-2">
+          <Button size="sm" variant="ghost" asChild className="h-8 text-xs sm:text-sm">
+            <Link href="/inventory/settings">
+              <Settings className="mr-1 h-3.5 w-3.5" />
+              <span className="hidden sm:inline">ตั้งค่า</span>
+            </Link>
+          </Button>
           <Button size="sm" variant="outline" asChild className="h-8 text-xs sm:text-sm">
             <Link href="/inventory/products/new">
               <Plus className="mr-1 h-3.5 w-3.5" />

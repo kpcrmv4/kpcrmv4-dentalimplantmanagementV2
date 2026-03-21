@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select"
 import { createProduct, getCategories } from "@/lib/actions/products"
 import { getSuppliers, receiveGoods } from "@/lib/actions/inventory"
+import { getBrands } from "@/lib/actions/settings"
 
 // ─── Image Compression Helper ───────────────────────────────────────
 
@@ -73,6 +74,11 @@ interface Category {
   label: string
 }
 
+interface BrandOption {
+  id: string
+  name: string
+}
+
 interface Supplier {
   id: string
   code: string
@@ -104,6 +110,7 @@ export default function NewProductPage() {
 
   // Data loaded on mount
   const [categories, setCategories] = useState<Category[]>([])
+  const [brands, setBrands] = useState<BrandOption[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
@@ -117,11 +124,12 @@ export default function NewProductPage() {
   const [showInitialStock, setShowInitialStock] = useState(false)
   const [lotEntries, setLotEntries] = useState<LotEntry[]>([createEmptyLot()])
 
-  // Load categories and suppliers on mount
+  // Load categories, brands, and suppliers on mount
   useEffect(() => {
-    Promise.all([getCategories(), getSuppliers()]).then(([cats, sups]) => {
+    Promise.all([getCategories(), getSuppliers(), getBrands()]).then(([cats, sups, brs]) => {
       setCategories([...cats])
       setSuppliers(sups)
+      setBrands(brs.filter((b: { is_active: boolean }) => b.is_active).map((b: { id: string; name: string }) => ({ id: b.id, name: b.name })))
       setDataLoaded(true)
     })
   }, [])
@@ -351,7 +359,18 @@ export default function NewProductPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-brand">ยี่ห้อ</Label>
-                  <Input id="new-brand" name="brand" placeholder="ยี่ห้อ" />
+                  <Select name="brand">
+                    <SelectTrigger id="new-brand">
+                      <SelectValue placeholder="เลือกยี่ห้อ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brands.map((b) => (
+                        <SelectItem key={b.id} value={b.name}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-model">รุ่น (Model)</Label>
