@@ -158,7 +158,6 @@ function DayCaseCard({
   variant: "timeline" | "list"
 }) {
   const isCs = role === "cs"
-  const isAssistant = role === "assistant"
   const apptConfig = APPT_STATUS[c.appointment_status] ?? APPT_STATUS.pending
 
   if (variant === "timeline") {
@@ -188,12 +187,6 @@ function DayCaseCard({
                 </span>
               ) : (
                 /* Others: show case status */
-                <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                  {STATUS_LABELS[c.case_status] ?? c.case_status}
-                </span>
-              )}
-              {/* Assistant: also show case status as secondary badge */}
-              {isAssistant && (
                 <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
                   {STATUS_LABELS[c.case_status] ?? c.case_status}
                 </span>
@@ -283,12 +276,6 @@ function DayCaseCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-medium">{c.case_number}</span>
-              {/* Assistant: show material status badge */}
-              {isAssistant && (
-                <span className={cn("inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                  {STATUS_LABELS[c.case_status] ?? c.case_status}
-                </span>
-              )}
             </div>
             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
               {c.patient_name} ({c.patient_hn})
