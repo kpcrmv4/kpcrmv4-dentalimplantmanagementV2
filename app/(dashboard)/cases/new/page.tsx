@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToothPositionSelector } from "@/components/features/tooth-position-selector"
-import { createCase, getDentists, getAssistants } from "@/lib/actions/cases"
+import { createCase, getDentists } from "@/lib/actions/cases"
 import { searchPatients } from "@/lib/actions/patients"
 import { getProcedureTypes } from "@/lib/actions/settings"
 
@@ -27,21 +27,19 @@ export default function NewCasePage() {
 
   // Staff lists
   const [dentists, setDentists] = useState<Array<{ id: string; full_name: string }>>([])
-  const [assistants, setAssistants] = useState<Array<{ id: string; full_name: string }>>([])
+
   const [procedureTypes, setProcedureTypes] = useState<Array<{ id: string; name: string; is_active: boolean }>>([])
 
   // Form fields (managed state for Radix Select)
   const [procedureType, setProcedureType] = useState("")
   const [dentistId, setDentistId] = useState("")
-  const [assistantId, setAssistantId] = useState("")
 
   // Tooth positions
   const [toothPositions, setToothPositions] = useState<number[]>([])
 
   useEffect(() => {
-    Promise.all([getDentists(), getAssistants(), getProcedureTypes()]).then(([d, a, pt]) => {
+    Promise.all([getDentists(), getProcedureTypes()]).then(([d, pt]) => {
       setDentists(d)
-      setAssistants(a)
       setProcedureTypes(pt)
     })
   }, [])
@@ -75,7 +73,7 @@ export default function NewCasePage() {
       formData.set("patient_id", selectedPatient.id)
       formData.set("dentist_id", dentistId)
       formData.set("procedure_type", procedureType)
-      if (assistantId) formData.set("assistant_id", assistantId)
+
       formData.set("tooth_positions", JSON.stringify(toothPositions))
       const result = await createCase(formData)
       router.push(`/cases/${result.id}`)
@@ -203,20 +201,6 @@ export default function NewCasePage() {
               </div>
 
               <div className="space-y-2">
-                <Label>ผู้ช่วย</Label>
-                <Select value={assistantId} onValueChange={setAssistantId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกผู้ช่วย (ถ้ามี)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assistants.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="scheduled_date">วันนัด</Label>
                 <Input id="scheduled_date" name="scheduled_date" type="date" />
                 <p className="text-[10px] text-muted-foreground">ต้องล่วงหน้าอย่างน้อย 3 วัน</p>
@@ -227,17 +211,6 @@ export default function NewCasePage() {
                 <Input id="scheduled_time" name="scheduled_time" type="time" />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="price_to_patient">ราคาเคส (บาท)</Label>
-                <Input
-                  id="price_to_patient"
-                  name="price_to_patient"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                />
-              </div>
             </div>
 
             <div className="space-y-2">

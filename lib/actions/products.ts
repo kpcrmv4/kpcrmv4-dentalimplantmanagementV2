@@ -428,3 +428,18 @@ export async function uploadProductImage(productId: string, imageUrl: string) {
   revalidatePath(`/inventory/products/${productId}`)
   return data
 }
+
+// ─── Product List (lightweight, for dropdowns) ──────────────────────
+
+export async function getProductList() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, ref")
+    .eq("is_active", true)
+    .order("name")
+    .limit(500)
+
+  if (error) return []
+  return data ?? []
+}

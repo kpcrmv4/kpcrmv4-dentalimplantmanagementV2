@@ -93,16 +93,13 @@ export async function createCase(formData: FormData) {
     }
   }
 
-  const priceToPatientRaw = formData.get("price_to_patient") as string
-  const priceToPatient = priceToPatientRaw ? parseFloat(priceToPatientRaw) : null
-
   const { data, error } = await supabase
     .from("cases")
     .insert({
       case_number: generateCaseNumber(),
       patient_id: formData.get("patient_id") as string,
       dentist_id: formData.get("dentist_id") as string,
-      assistant_id: (formData.get("assistant_id") as string) || null,
+
       scheduled_date: scheduledDate || null,
       scheduled_time: (formData.get("scheduled_time") as string) || null,
       case_status: "pending_order",
@@ -110,7 +107,7 @@ export async function createCase(formData: FormData) {
       procedure_type: (formData.get("procedure_type") as string) || null,
       tooth_positions: toothPositions,
       notes: (formData.get("notes") as string) || null,
-      price_to_patient: priceToPatient,
+
       created_by: user.id,
     })
     .select()
