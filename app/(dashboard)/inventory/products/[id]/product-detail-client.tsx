@@ -642,7 +642,7 @@ export function ProductDetailClient({
                   <SelectTrigger id="edit-brand">
                     <SelectValue placeholder="เลือกยี่ห้อ" />
                   </SelectTrigger>
-                  <SelectContent portal={false}>
+                  <SelectContent>
                     {product.brand && !brands.some((b) => b.name === product.brand) && (
                       <SelectItem value={product.brand}>{product.brand}</SelectItem>
                     )}
@@ -660,7 +660,7 @@ export function ProductDetailClient({
                   <SelectTrigger id="edit-category">
                     <SelectValue placeholder="เลือกหมวดหมู่" />
                   </SelectTrigger>
-                  <SelectContent portal={false}>
+                  <SelectContent>
                     {categories.map((cat) => (
                       <SelectItem key={cat.value} value={cat.value}>
                         {cat.label}
@@ -700,7 +700,7 @@ export function ProductDetailClient({
                   <SelectTrigger id="edit-supplier">
                     <SelectValue placeholder="เลือก Supplier" />
                   </SelectTrigger>
-                  <SelectContent portal={false}>
+                  <SelectContent>
                     {suppliers.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
