@@ -45,7 +45,7 @@ export function CaseCalendar({
     : []
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[1fr_300px]">
+    <div className="space-y-3">
       {/* Calendar */}
       <div className="rounded-xl border bg-card">
         <div className={isPending ? "opacity-60 transition-opacity" : ""}>
@@ -61,13 +61,15 @@ export function CaseCalendar({
         </div>
       </div>
 
-      {/* Day detail panel */}
-      <div className="rounded-xl border bg-card p-3">
-        <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
-          เคสวัน{selectedDate ? format(selectedDate, "ที่ d") : "..."}
-        </h3>
-        <DayCaseList cases={selectedCases} selectedDate={selectedDate} role={role} />
-      </div>
+      {/* Day detail panel - always below calendar */}
+      {selectedDate && (
+        <div className="rounded-xl border bg-card p-4">
+          <h3 className="mb-3 text-sm font-semibold">
+            เคสวัน{format(selectedDate, "ที่ d")}
+          </h3>
+          <DayCaseList cases={selectedCases} selectedDate={selectedDate} role={role} />
+        </div>
+      )}
     </div>
   )
 }
