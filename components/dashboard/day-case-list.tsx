@@ -158,7 +158,6 @@ function DayCaseCard({
   variant: "timeline" | "list"
 }) {
   const isCs = role === "cs"
-  const isAssistant = role === "assistant"
   const apptConfig = APPT_STATUS[c.appointment_status] ?? APPT_STATUS.pending
 
   if (variant === "timeline") {
