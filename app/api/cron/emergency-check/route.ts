@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     const { data: users } = await supabase
       .from("users")
       .select("id, line_user_id")
-      .in("role", targetRoles)
+      .in("role", targetRoles as ("admin" | "dentist" | "stock_staff" | "assistant" | "cs")[])
       .eq("is_active", true)
 
     let notifiedCount = 0
