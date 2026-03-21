@@ -20,6 +20,7 @@ import type { DashboardCase, TrafficLight } from "@/lib/actions/dashboard"
 import type { UserRole } from "@/types/database"
 
 const STATUS_LABELS: Record<string, string> = {
+  pending_appointment: "รอนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   ready: "พร้อม",
