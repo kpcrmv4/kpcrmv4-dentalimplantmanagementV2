@@ -9,6 +9,7 @@ import {
   User,
   ShoppingCart,
   Truck,
+  ArrowLeftRight,
   Bell,
   ClipboardCheck,
   Users,
@@ -87,6 +88,7 @@ export const sidebarMenus: NavItem[] = [
   { label: "สต็อก", icon: Package, href: "/inventory", roles: ["admin", "stock_staff"], group: "inventory" },
   { label: "ใบสั่งซื้อ", icon: ShoppingCart, href: "/orders", roles: ["admin", "stock_staff"], group: "inventory" },
   { label: "Supplier", icon: Truck, href: "/suppliers", roles: ["admin", "stock_staff"], group: "inventory" },
+  { label: "ยืม/แลกของ", icon: ArrowLeftRight, href: "/inventory/borrows", roles: ["admin", "stock_staff"], group: "inventory" },
 
   // System group
   { label: "แจ้งเตือน", icon: Bell, href: "/notifications", group: "system" },
