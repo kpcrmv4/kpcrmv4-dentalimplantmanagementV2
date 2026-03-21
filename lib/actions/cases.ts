@@ -200,6 +200,16 @@ export async function markCaseReady(caseId: string) {
   revalidatePath("/cases")
   revalidatePath(`/cases/${caseId}`)
   revalidatePath("/preparation")
+
+  // Notify about material ready
+  const { smartNotify } = await import("./notifications")
+  smartNotify({
+    type: "material_prepared",
+    title: "วัสดุพร้อมแล้ว",
+    message: `เคส ${caseId} วัสดุถูกจัดเตรียมเรียบร้อยแล้ว`,
+    data: { case_id: caseId },
+  }).catch(() => {})
+
   return { success: true as const, unprepared: [] }
 }
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { getBorrowById } from "@/lib/actions/borrows"
+import { SettleButton, PhotoUploadButton } from "./settle-button"
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   borrowed: { label: "ยืมอยู่", variant: "destructive" },
@@ -117,6 +118,9 @@ export default async function BorrowDetailPage({
                         )}
                       </div>
                     </div>
+                    {(item.status as string) === "borrowed" && (
+                      <SettleButton itemId={item.id as string} borrowId={id} />
+                    )}
                   </div>
                 )
               })}
@@ -152,6 +156,10 @@ export default async function BorrowDetailPage({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {(borrow.status as string) === "borrowed" && (
+        <PhotoUploadButton borrowId={id} />
       )}
     </div>
   )

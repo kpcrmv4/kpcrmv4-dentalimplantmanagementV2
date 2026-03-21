@@ -2,19 +2,23 @@ import Link from "next/link"
 import { Plus, Package, PackageCheck, Clock, TrendingDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getStockSummary, getProductIdsWithActivePOs, getInventoryByLot } from "@/lib/actions/inventory"
+import { getCategories } from "@/lib/actions/products"
+import { getBrands } from "@/lib/actions/settings"
 import { InventorySearch } from "./inventory-search"
 import { InventoryList } from "./inventory-list"
 
 export default async function InventoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; view?: string; expiry_before?: string }>
+  searchParams: Promise<{ q?: string; filter?: string; view?: string; expiry_before?: string; category?: string; brand?: string }>
 }) {
   const params = await searchParams
   const search = params.q || ""
   const filter = params.filter || ""
   const view = params.view || ""
   const expiryBefore = params.expiry_before || ""
+  const category = params.category || ""
+  const brand = params.brand || ""
 
   const isLotView = view === "lot"
 
@@ -30,6 +34,9 @@ export default async function InventoryPage({
   } else {
     products = await getStockSummary()
   }
+
+  const [categories, brandsData] = await Promise.all([getCategories(), getBrands()])
+  const activeBrands = brandsData.filter((b: { is_active: boolean }) => b.is_active)
 
   // Compute summary from unfiltered product data
   const totalProducts = products.length
@@ -68,6 +75,12 @@ export default async function InventoryPage({
     if (filter === "ordering") {
       const activePOProductIds = await getProductIdsWithActivePOs()
       filteredProducts = filteredProducts.filter((p) => activePOProductIds.has(p.id))
+    }
+    if (category) {
+      filteredProducts = filteredProducts.filter((p) => p.category === category)
+    }
+    if (brand) {
+      filteredProducts = filteredProducts.filter((p) => p.brand?.toLowerCase() === brand.toLowerCase())
     }
   }
 
@@ -167,6 +180,10 @@ export default async function InventoryPage({
         currentView={view}
         currentExpiryBefore={expiryBefore}
         lowStockCount={lowStockCount}
+        currentCategory={category}
+        currentBrand={brand}
+        categories={categories}
+        brands={activeBrands}
       />
 
       {/* List */}

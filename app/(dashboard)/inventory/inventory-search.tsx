@@ -187,6 +187,44 @@ export function InventorySearch({
           </>
         )}
       </div>
+
+      {/* Category & Brand filters */}
+      {!isLotView && (categories?.length || brands?.length) ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          {categories && categories.length > 0 && (
+            <Select
+              value={currentCategory ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, val === "all" ? "" : val, currentBrand)}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="ประเภท" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกประเภท</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {brands && brands.length > 0 && (
+            <Select
+              value={currentBrand ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, val === "all" ? "" : val)}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="ยี่ห้อ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกยี่ห้อ</SelectItem>
+                {brands.map((b) => (
+                  <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }

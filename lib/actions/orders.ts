@@ -109,6 +109,16 @@ export async function createPurchaseOrder(
   if (itemsError) throw itemsError
 
   revalidatePath("/orders")
+
+  // Notify about new PO
+  const { smartNotify } = await import("./notifications")
+  smartNotify({
+    type: "po_created",
+    title: "ใบสั่งซื้อใหม่",
+    message: `สร้าง PO ${po.po_number} สำเร็จ`,
+    data: { po_id: po.id, po_number: po.po_number },
+  }).catch(() => {})
+
   return po
 }
 
@@ -150,6 +160,17 @@ export async function updatePOStatus(id: string, status: POStatus) {
     .eq("id", id)
 
   if (error) throw error
+
+  if (status === "approved") {
+    const { smartNotify } = await import("./notifications")
+    smartNotify({
+      type: "po_approved",
+      title: "PO อนุมัติแล้ว",
+      message: `ใบสั่งซื้อ ${id} ได้รับการอนุมัติ`,
+      data: { po_id: id },
+    }).catch(() => {})
+  }
+
   revalidatePath("/orders")
   revalidatePath(`/orders/${id}`)
 }
