@@ -110,9 +110,9 @@ export default async function BorrowDetailPage({
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         จำนวน: {item.quantity as number} {product?.unit ?? "ชิ้น"}
                         {caseData?.case_number && <span className="ml-2">เคส: {caseData.case_number}</span>}
-                        {item.settlement_type && (
+                        {(item.settlement_type as string) && (
                           <span className="ml-2">
-                            ชำระ: {item.settlement_type === "return" ? "คืนของ" : item.settlement_type === "exchange" ? "แลกสินค้า" : "ชำระเงิน"}
+                            ชำระ: {(item.settlement_type as string) === "return" ? "คืนของ" : (item.settlement_type as string) === "exchange" ? "แลกสินค้า" : "ชำระเงิน"}
                             {item.settlement_amount && ` ฿${Number(item.settlement_amount).toLocaleString()}`}
                           </span>
                         )}
