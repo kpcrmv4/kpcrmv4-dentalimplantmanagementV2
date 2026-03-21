@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -12,11 +12,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToothPositionSelector } from "@/components/features/tooth-position-selector"
 import { createCase, getDentists } from "@/lib/actions/cases"
-import { searchPatients } from "@/lib/actions/patients"
+import { searchPatients, getPatientById } from "@/lib/actions/patients"
 import { getProcedureTypes } from "@/lib/actions/settings"
 
 export default function NewCasePage() {
+  return (
+    <Suspense fallback={<div className="p-6">กำลังโหลด...</div>}>
+      <NewCaseForm />
+    </Suspense>
+  )
+}
+
+function NewCaseForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +51,23 @@ export default function NewCasePage() {
       setDentists(d)
       setProcedureTypes(pt)
     })
-  }, [])
+
+    // Auto-select patient if patient_id is provided in URL
+    const patientId = searchParams.get("patient_id")
+    if (patientId) {
+      getPatientById(patientId).then((patient) => {
+        if (patient) {
+          setSelectedPatient({
+            id: patient.id,
+            hn: patient.hn,
+            full_name: patient.full_name,
+          })
+        }
+      }).catch(() => {
+        // Patient not found, user can search manually
+      })
+    }
+  }, [searchParams])
 
   async function handlePatientSearch(query: string) {
     setPatientQuery(query)
@@ -203,7 +228,6 @@ export default function NewCasePage() {
               <div className="space-y-2">
                 <Label htmlFor="scheduled_date">วันนัด</Label>
                 <Input id="scheduled_date" name="scheduled_date" type="date" />
-                <p className="text-[10px] text-muted-foreground">ต้องล่วงหน้าอย่างน้อย 3 วัน</p>
               </div>
 
               <div className="space-y-2">

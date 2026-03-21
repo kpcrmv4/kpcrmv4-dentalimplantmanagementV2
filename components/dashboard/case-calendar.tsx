@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react"
 import { addMonths, subMonths, format, isSameDay } from "date-fns"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarGrid } from "./calendar-grid"
 import { DayCaseList } from "./day-case-list"
 import { getDashboardCases } from "@/lib/actions/dashboard"
@@ -46,12 +45,10 @@ export function CaseCalendar({
     : []
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">ปฏิทินเคส</CardTitle>
-        </CardHeader>
-        <CardContent className={isPending ? "opacity-60 transition-opacity" : ""}>
+    <div className="grid gap-3 lg:grid-cols-[1fr_300px]">
+      {/* Calendar */}
+      <div className="rounded-xl border bg-card">
+        <div className={isPending ? "opacity-60 transition-opacity" : ""}>
           <CalendarGrid
             cases={cases}
             currentMonth={currentMonth}
@@ -61,19 +58,16 @@ export function CaseCalendar({
             onNextMonth={() => handleMonthChange(addMonths(currentMonth, 1))}
             role={role}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">
-            เคสวัน{selectedDate ? format(selectedDate, "ที่ d") : "..."}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DayCaseList cases={selectedCases} selectedDate={selectedDate} role={role} />
-        </CardContent>
-      </Card>
+      {/* Day detail panel */}
+      <div className="rounded-xl border bg-card p-3">
+        <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
+          เคสวัน{selectedDate ? format(selectedDate, "ที่ d") : "..."}
+        </h3>
+        <DayCaseList cases={selectedCases} selectedDate={selectedDate} role={role} />
+      </div>
     </div>
   )
 }

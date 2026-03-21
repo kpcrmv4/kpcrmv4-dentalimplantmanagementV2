@@ -83,16 +83,6 @@ export async function createCase(formData: FormData) {
     }
   }
 
-  // Validate 3-day advance rule
-  if (scheduledDate) {
-    const scheduled = new Date(scheduledDate)
-    const today = new Date()
-    const diffDays = Math.ceil((scheduled.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays < 3) {
-      throw new Error("ต้องนัดล่วงหน้าอย่างน้อย 3 วัน")
-    }
-  }
-
   const { data, error } = await supabase
     .from("cases")
     .insert({

@@ -756,6 +756,7 @@ export type Database = {
         | "material_prepared"
         | "system"
         | "material_lock_request"
+        | "emergency_case"
       po_status:
         | "draft"
         | "pending_approval"

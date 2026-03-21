@@ -18,8 +18,14 @@ export function InventorySearch({
   lowStockCount,
   currentCategory,
   currentBrand,
+  currentModel,
+  currentDiameter,
+  currentLength,
   categories,
   brands,
+  models,
+  diameters,
+  lengths,
 }: {
   defaultValue: string
   currentFilter: string
@@ -28,8 +34,14 @@ export function InventorySearch({
   lowStockCount: number
   currentCategory?: string
   currentBrand?: string
+  currentModel?: string
+  currentDiameter?: string
+  currentLength?: string
   categories?: Array<{ value: string; label: string }>
   brands?: Array<{ id: string; name: string }>
+  models?: string[]
+  diameters?: string[]
+  lengths?: string[]
 }) {
   const router = useRouter()
   const [value, setValue] = useState(defaultValue)
@@ -39,7 +51,7 @@ export function InventorySearch({
   )
   const [calendarOpen, setCalendarOpen] = useState(false)
 
-  function navigate(q: string, filter: string, view?: string, expiryBefore?: string, category?: string, brand?: string) {
+  function navigate(q: string, filter: string, view?: string, expiryBefore?: string, category?: string, brand?: string, mdl?: string, dia?: string, len?: string) {
     const params = new URLSearchParams()
     if (q) params.set("q", q)
     if (filter) params.set("filter", filter)
@@ -47,6 +59,9 @@ export function InventorySearch({
     if (expiryBefore) params.set("expiry_before", expiryBefore)
     if (category) params.set("category", category)
     if (brand) params.set("brand", brand)
+    if (mdl) params.set("model", mdl)
+    if (dia) params.set("diameter", dia)
+    if (len) params.set("length", len)
     router.push(`/inventory?${params.toString()}`)
   }
 
@@ -54,24 +69,24 @@ export function InventorySearch({
     setValue(q)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(
-      () => navigate(q, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand),
+      () => navigate(q, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, currentDiameter, currentLength),
       300
     )
   }
 
   function handleViewToggle(view: string) {
-    navigate(value, currentFilter, view, currentExpiryBefore, currentCategory, currentBrand)
+    navigate(value, currentFilter, view, currentExpiryBefore, currentCategory, currentBrand, currentModel, currentDiameter, currentLength)
   }
 
   function handleFilterChange(filter: string) {
-    navigate(value, filter, currentView, currentExpiryBefore, currentCategory, currentBrand)
+    navigate(value, filter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, currentDiameter, currentLength)
   }
 
   function handleExpiryChange(date: Date | undefined) {
     setExpiryDate(date)
     setCalendarOpen(false)
     const dateStr = date ? format(date, "yyyy-MM-dd") : ""
-    navigate(value, currentFilter, currentView, dateStr, currentCategory, currentBrand)
+    navigate(value, currentFilter, currentView, dateStr, currentCategory, currentBrand, currentModel, currentDiameter, currentLength)
   }
 
   const isLotView = currentView === "lot"
@@ -188,15 +203,15 @@ export function InventorySearch({
         )}
       </div>
 
-      {/* Category & Brand filters */}
-      {!isLotView && (categories?.length || brands?.length) ? (
+      {/* Category, Brand, Model, Diameter, Length filters */}
+      {!isLotView && (categories?.length || brands?.length || models?.length || diameters?.length || lengths?.length) ? (
         <div className="flex items-center gap-2 flex-wrap">
           {categories && categories.length > 0 && (
             <Select
               value={currentCategory ?? "all"}
-              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, val === "all" ? "" : val, currentBrand)}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, val === "all" ? "" : val, currentBrand, currentModel, currentDiameter, currentLength)}
             >
-              <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectTrigger className="h-8 w-[120px] text-xs">
                 <SelectValue placeholder="ประเภท" />
               </SelectTrigger>
               <SelectContent>
@@ -210,15 +225,63 @@ export function InventorySearch({
           {brands && brands.length > 0 && (
             <Select
               value={currentBrand ?? "all"}
-              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, val === "all" ? "" : val)}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, val === "all" ? "" : val, currentModel, currentDiameter, currentLength)}
             >
-              <SelectTrigger className="h-8 w-[140px] text-xs">
+              <SelectTrigger className="h-8 w-[120px] text-xs">
                 <SelectValue placeholder="ยี่ห้อ" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">ทุกยี่ห้อ</SelectItem>
                 {brands.map((b) => (
                   <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {models && models.length > 0 && (
+            <Select
+              value={currentModel ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, val === "all" ? "" : val, currentDiameter, currentLength)}
+            >
+              <SelectTrigger className="h-8 w-[120px] text-xs">
+                <SelectValue placeholder="รุ่น" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกรุ่น</SelectItem>
+                {models.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {diameters && diameters.length > 0 && (
+            <Select
+              value={currentDiameter ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, val === "all" ? "" : val, currentLength)}
+            >
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="Diameter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุก Diameter</SelectItem>
+                {diameters.map((d) => (
+                  <SelectItem key={d} value={d}>{d} mm</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {lengths && lengths.length > 0 && (
+            <Select
+              value={currentLength ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, currentDiameter, val === "all" ? "" : val)}
+            >
+              <SelectTrigger className="h-8 w-[130px] text-xs">
+                <SelectValue placeholder="ความยาว" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกความยาว</SelectItem>
+                {lengths.map((l) => (
+                  <SelectItem key={l} value={l}>{l} mm</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -1,16 +1,12 @@
+import Link from "next/link"
 import {
   ClipboardList,
-  Layers,
   Phone,
-  Settings,
   CheckCircle2,
-  Package,
+  TrendingUp,
 } from "lucide-react"
-import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
 import { getDashboardCases } from "@/lib/actions/dashboard"
 import { cn } from "@/lib/utils"
-import type { LucideIcon } from "lucide-react"
 
 export async function TrafficLightStats() {
   const now = new Date()
@@ -18,186 +14,176 @@ export async function TrafficLightStats() {
 
   const total = cases.length
   const completed = cases.filter((c) => c.case_status === "completed").length
-  const active = total - completed
-  const pendingAppt = cases.filter((c) => c.appointment_status === "pending" && c.case_status !== "completed").length
-
-  // Material readiness (traffic light) — only for non-completed cases
   const activeCases = cases.filter((c) => c.case_status !== "completed")
+  const active = activeCases.length
+  const pendingAppt = cases.filter(
+    (c) => c.appointment_status === "pending" && c.case_status !== "completed"
+  ).length
+
+  // Material readiness
   const ready = activeCases.filter((c) => c.trafficLight === "green").length
   const ordered = activeCases.filter((c) => c.trafficLight === "yellow").length
-  const waiting = activeCases.filter((c) => c.trafficLight === "orange").length
-  const missing = activeCases.filter((c) => c.trafficLight === "red").length
-
-  // Case status breakdown
   const pendingOrder = activeCases.filter((c) => c.case_status === "pending_order").length
   const pendingPrep = activeCases.filter((c) => c.case_status === "pending_preparation").length
 
   return (
-    <div className="space-y-4">
-      {/* ── Section 1: Case Summary ── */}
-      <div>
-        <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <ClipboardList className="h-3.5 w-3.5" />
-          สรุปเคสเดือนนี้
-        </h2>
-        <div className="grid grid-cols-4 gap-2">
-          <SummaryCard
-            label="ทั้งหมด"
-            value={total}
-            icon={Layers}
-            color="blue"
-            href="/cases?period=month"
-          />
-          <SummaryCard
-            label="รอยืนยันนัด"
-            value={pendingAppt}
-            icon={Phone}
-            color="amber"
-            href="/cases?period=month&appt=pending"
-          />
-          <SummaryCard
-            label="ดำเนินการ"
-            value={active}
-            icon={Settings}
-            color="indigo"
-            href="/cases?period=month&status=pending_order"
-          />
-          <SummaryCard
-            label="เสร็จสิ้น"
-            value={completed}
-            icon={CheckCircle2}
-            color="emerald"
-            href="/cases?period=month&status=completed"
-          />
-        </div>
+    <div className="space-y-3">
+      {/* Row 1: Key metrics in a single compact row */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Link href="/cases?period=month">
+          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-500/20">
+              <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-blue-700 dark:text-blue-400">{total}</p>
+              <p className="text-[10px] text-muted-foreground">เคสทั้งหมด</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/cases?period=month&status=pending_order">
+          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
+              <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-indigo-700 dark:text-indigo-400">{active}</p>
+              <p className="text-[10px] text-muted-foreground">ดำเนินการ</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/cases?period=month&appt=pending">
+          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20">
+              <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-amber-700 dark:text-amber-400">{pendingAppt}</p>
+              <p className="text-[10px] text-muted-foreground">รอยืนยันนัด</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/cases?period=month&status=completed">
+          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-emerald-700 dark:text-emerald-400">{completed}</p>
+              <p className="text-[10px] text-muted-foreground">เสร็จสิ้น</p>
+            </div>
+          </div>
+        </Link>
       </div>
 
-      {/* ── Section 2: Material Readiness ── */}
-      <div>
-        <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Package className="h-3.5 w-3.5" />
-          สถานะวัสดุเคส
-        </h2>
-        <div className="grid grid-cols-4 gap-2">
-          <MaterialCard label="พร้อม" value={ready} color="green" href="/cases?period=month&status=ready" />
-          <MaterialCard label="สั่งแล้ว" value={ordered} color="yellow" href="/cases?period=month&material=ordered" />
-          <MaterialCard label="รอสั่ง" value={waiting} color="orange" href="/cases?period=month&material=waiting" />
-          <MaterialCard label="ยังไม่สั่ง" value={missing} color="red" href="/cases?period=month&material=missing" />
-        </div>
-        {/* Case status breakdown */}
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <MaterialCard label="รอสั่งของ" value={pendingOrder} color="orange" href="/cases?period=month&status=pending_order" />
-          <MaterialCard label="รอจัดของ" value={pendingPrep} color="yellow" href="/cases?period=month&status=pending_preparation" />
-          <MaterialCard label="พร้อม" value={ready} color="green" href="/cases?period=month&status=ready" />
+      {/* Row 2: Material status - single compact bar */}
+      <div className="rounded-xl border bg-card p-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          สถานะวัสดุ
+        </p>
+
+        {/* Progress bar */}
+        {active > 0 && (
+          <div className="mb-2.5 flex h-2 overflow-hidden rounded-full bg-muted">
+            {ready > 0 && (
+              <div
+                className="bg-green-500 transition-all"
+                style={{ width: `${(ready / active) * 100}%` }}
+              />
+            )}
+            {ordered > 0 && (
+              <div
+                className="bg-yellow-500 transition-all"
+                style={{ width: `${(ordered / active) * 100}%` }}
+              />
+            )}
+            {pendingPrep > 0 && (
+              <div
+                className="bg-orange-400 transition-all"
+                style={{ width: `${(pendingPrep / active) * 100}%` }}
+              />
+            )}
+            {pendingOrder > 0 && (
+              <div
+                className="bg-red-400 transition-all"
+                style={{ width: `${(pendingOrder / active) * 100}%` }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Inline legend */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <StatusChip
+            color="green"
+            label="พร้อม"
+            value={ready}
+            href="/cases?period=month&status=ready"
+          />
+          <StatusChip
+            color="yellow"
+            label="สั่งแล้ว"
+            value={ordered}
+            href="/cases?period=month&material=ordered"
+          />
+          <StatusChip
+            color="orange"
+            label="รอจัดของ"
+            value={pendingPrep}
+            href="/cases?period=month&status=pending_preparation"
+          />
+          <StatusChip
+            color="red"
+            label="รอสั่งของ"
+            value={pendingOrder}
+            href="/cases?period=month&status=pending_order"
+          />
         </div>
       </div>
     </div>
   )
 }
 
-const SUMMARY_STYLES = {
-  blue: {
-    border: "border-blue-200 dark:border-blue-500/30",
-    bg: "bg-blue-50/50 dark:bg-blue-500/10",
-    text: "text-blue-700 dark:text-blue-400",
-    label: "text-blue-600/80 dark:text-blue-400/80",
-    icon: "text-blue-200 dark:text-blue-500/20",
-  },
-  amber: {
-    border: "border-amber-200 dark:border-amber-500/30",
-    bg: "bg-amber-50/50 dark:bg-amber-500/10",
-    text: "text-amber-700 dark:text-amber-400",
-    label: "text-amber-600/80 dark:text-amber-400/80",
-    icon: "text-amber-200 dark:text-amber-500/20",
-  },
-  indigo: {
-    border: "border-indigo-200 dark:border-indigo-500/30",
-    bg: "bg-indigo-50/50 dark:bg-indigo-500/10",
-    text: "text-indigo-700 dark:text-indigo-400",
-    label: "text-indigo-600/80 dark:text-indigo-400/80",
-    icon: "text-indigo-200 dark:text-indigo-500/20",
-  },
-  emerald: {
-    border: "border-emerald-200 dark:border-emerald-500/30",
-    bg: "bg-emerald-50/50 dark:bg-emerald-500/10",
-    text: "text-emerald-700 dark:text-emerald-400",
-    label: "text-emerald-600/80 dark:text-emerald-400/80",
-    icon: "text-emerald-200 dark:text-emerald-500/20",
-  },
-} as const
-
-function SummaryCard({
+function StatusChip({
+  color,
   label,
   value,
-  icon: Icon,
-  color,
   href,
 }: {
-  label: string
-  value: number
-  icon: LucideIcon
-  color: keyof typeof SUMMARY_STYLES
-  href?: string
-}) {
-  const s = SUMMARY_STYLES[color]
-  const content = (
-    <Card className={cn(s.border, s.bg, "relative overflow-hidden", href && "cursor-pointer transition-shadow hover:shadow-md")}>
-      <CardContent className="relative flex flex-col items-center py-3">
-        <Icon className={cn("absolute right-1 top-1 h-3.5 w-3.5 pointer-events-none", s.icon)} strokeWidth={2} />
-        <span className={cn("relative text-2xl font-bold", s.text)}>{value}</span>
-        <span className={cn("relative mt-0.5 text-[10px] font-medium leading-tight text-center", s.label)}>{label}</span>
-      </CardContent>
-    </Card>
-  )
-  if (href) return <Link href={href}>{content}</Link>
-  return content
-}
-
-function MaterialCard({
-  label,
-  value,
-  color,
-  href,
-}: {
-  label: string
-  value: number
   color: "green" | "yellow" | "orange" | "red"
-  href?: string
+  label: string
+  value: number
+  href: string
 }) {
-  const styles = {
-    green: {
-      dot: "bg-green-500",
-      text: "text-green-700 dark:text-green-400",
-    },
-    yellow: {
-      dot: "bg-yellow-500",
-      text: "text-yellow-700 dark:text-yellow-400",
-    },
-    orange: {
-      dot: "bg-orange-500",
-      text: "text-orange-700 dark:text-orange-400",
-    },
-    red: {
-      dot: "bg-red-500",
-      text: "text-red-700 dark:text-red-400",
-    },
-  }
+  const dotColor = {
+    green: "bg-green-500",
+    yellow: "bg-yellow-500",
+    orange: "bg-orange-400",
+    red: "bg-red-400",
+  }[color]
 
-  const s = styles[color]
+  const textColor = {
+    green: "text-green-700 dark:text-green-400",
+    yellow: "text-yellow-700 dark:text-yellow-400",
+    orange: "text-orange-700 dark:text-orange-400",
+    red: "text-red-700 dark:text-red-400",
+  }[color]
 
-  const content = (
-    <Card className={cn("bg-card", href && "cursor-pointer transition-shadow hover:shadow-md")}>
-      <CardContent className="flex flex-col items-center py-2.5">
-        <div className="flex items-center gap-1.5">
-          <span className={cn("h-2 w-2 rounded-full", s.dot)} />
-          <span className={cn("text-xl font-bold", s.text)}>{value}</span>
-        </div>
-        <span className="mt-0.5 text-[10px] font-medium text-muted-foreground">
-          {label}
-        </span>
-      </CardContent>
-    </Card>
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-muted",
+      )}
+    >
+      <span className={cn("h-2 w-2 rounded-full", dotColor)} />
+      <span className={cn("text-sm font-bold tabular-nums", textColor)}>
+        {value}
+      </span>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+    </Link>
   )
-  if (href) return <Link href={href}>{content}</Link>
-  return content
 }
