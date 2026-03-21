@@ -94,10 +94,16 @@ CREATE POLICY "Authenticated can read borrow_photos" ON public.inventory_borrow_
 CREATE POLICY "Authenticated can insert borrow_photos" ON public.inventory_borrow_photos
   FOR INSERT TO authenticated WITH CHECK (true);
 
--- 7. Audit trigger
-CREATE TRIGGER audit_inventory_borrows
-  AFTER INSERT OR UPDATE OR DELETE ON public.inventory_borrows
-  FOR EACH ROW EXECUTE FUNCTION audit_log_trigger();
+-- 7. Audit trigger (only if audit_log_trigger function exists from migration 002)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'audit_log_trigger') THEN
+    CREATE TRIGGER audit_inventory_borrows
+      AFTER INSERT OR UPDATE OR DELETE ON public.inventory_borrows
+      FOR EACH ROW EXECUTE FUNCTION audit_log_trigger();
+  END IF;
+END;
+$$;
 
 -- 8. Helper: generate borrow number
 CREATE OR REPLACE FUNCTION generate_borrow_number()
