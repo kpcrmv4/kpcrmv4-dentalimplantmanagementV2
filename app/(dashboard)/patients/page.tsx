@@ -65,26 +65,28 @@ export default async function PatientsPage({
       ) : (
         <div className="space-y-2">
           {patients.map((patient: Record<string, unknown>) => (
-            <Card key={patient.id as string}>
-              <CardContent className="flex items-center gap-3 p-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-                  {(patient.full_name as string).charAt(0)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium">
-                      {patient.full_name as string}
-                    </p>
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {patient.hn as string}
-                    </Badge>
+            <Link key={patient.id as string} href={`/patients/${patient.id}`} className="block cursor-pointer">
+              <Card className="transition-colors hover:bg-muted/50">
+                <CardContent className="flex items-center gap-3 p-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+                    {(patient.full_name as string).charAt(0)}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">
-                    HN: {patient.hn as string}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium">
+                        {patient.full_name as string}
+                      </p>
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        {patient.hn as string}
+                      </Badge>
+                    </div>
+                    <p className="truncate text-xs text-muted-foreground">
+                      HN: {patient.hn as string}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

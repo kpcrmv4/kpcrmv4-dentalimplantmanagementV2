@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { User, Bell, Webhook, Lock, LogOut, Settings, Plus, Trash2, GripVertical, Loader2 } from "lucide-react"
+import { User, Bell, Webhook, Lock, LogOut, Settings, Plus, Trash2, GripVertical, Loader2, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { getAppSettings, updateAppSettings } from "@/lib/actions/webhooks"
 import {
@@ -20,6 +21,14 @@ import {
   addProductCategory,
   updateProductCategory,
   deleteProductCategory,
+  getBrands,
+  addBrand,
+  updateBrand,
+  deleteBrand,
+  getNotificationSettings,
+  updateNotificationSetting,
+  updateLineSettings,
+  getLineSettings,
 } from "@/lib/actions/settings"
 
 // ─── Editable List (reused from admin/settings) ─────────────────────
@@ -200,6 +209,15 @@ export default function SettingsPage() {
   const [procedureTypes, setProcedureTypes] = useState<ProcedureType[]>([])
   const [productCategories, setProductCategories] = useState<ProductCategory[]>([])
   const [systemLoading, setSystemLoading] = useState(true)
+  const [brands, setBrands] = useState<Array<{ id: string; name: string; sort_order: number; is_active: boolean }>>([])
+  const [notifSettings, setNotifSettings] = useState<Array<Record<string, unknown>>>([])
+
+  // LINE settings
+  const [lineToken, setLineToken] = useState("")
+  const [lineSecret, setLineSecret] = useState("")
+  const [lineEnabled, setLineEnabled] = useState(false)
+  const [savingLine, setSavingLine] = useState(false)
+  const [lineMessage, setLineMessage] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -223,16 +241,26 @@ export default function SettingsPage() {
         // Load admin-only data
         if (data.role === "admin") {
           try {
-            const [settings, pt, pc] = await Promise.all([
+            const [settings, pt, pc, br, ns, lineCfg] = await Promise.all([
               getAppSettings(),
               getProcedureTypes(),
               getProductCategories(),
+              getBrands(),
+              getNotificationSettings(),
+              getLineSettings(),
             ])
             if (settings?.discord_webhook_url) {
               setDiscordWebhookUrl(settings.discord_webhook_url)
             }
             setProcedureTypes(pt)
             setProductCategories(pc)
+            setBrands(br)
+            setNotifSettings(ns)
+            if (lineCfg) {
+              setLineToken(lineCfg.line_channel_access_token ?? "")
+              setLineSecret(lineCfg.line_channel_secret ?? "")
+              setLineEnabled(lineCfg.line_notify_enabled ?? false)
+            }
           } catch {
             // ignore
           } finally {
@@ -245,9 +273,30 @@ export default function SettingsPage() {
   }, [])
 
   async function reloadSystemSettings() {
-    const [pt, pc] = await Promise.all([getProcedureTypes(), getProductCategories()])
+    const [pt, pc, br, ns] = await Promise.all([
+      getProcedureTypes(), getProductCategories(), getBrands(), getNotificationSettings()
+    ])
     setProcedureTypes(pt)
     setProductCategories(pc)
+    setBrands(br)
+    setNotifSettings(ns)
+  }
+
+  async function handleSaveLine() {
+    setSavingLine(true)
+    setLineMessage(null)
+    try {
+      await updateLineSettings({
+        line_channel_access_token: lineToken || undefined,
+        line_channel_secret: lineSecret || undefined,
+        line_notify_enabled: lineEnabled,
+      })
+      setLineMessage("บันทึกสำเร็จ")
+    } catch (err) {
+      setLineMessage(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setSavingLine(false)
+    }
   }
 
   async function handleSave() {
@@ -591,6 +640,136 @@ export default function SettingsPage() {
               }}
               onDelete={async (id: string) => {
                 await deleteProductCategory(id)
+                await reloadSystemSettings()
+              }}
+            />
+
+            {/* LINE Messaging API */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <MessageCircle className="h-4 w-4" />
+                  LINE Messaging API
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">เปิดใช้งาน LINE Notification</Label>
+                  <Switch checked={lineEnabled} onCheckedChange={setLineEnabled} />
+                </div>
+                <div>
+                  <Label className="text-xs">Channel Access Token</Label>
+                  <Input
+                    value={lineToken}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLineToken(e.target.value)}
+                    placeholder="Channel Access Token จาก LINE Developers"
+                    className="mt-1"
+                    type="password"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Channel Secret</Label>
+                  <Input
+                    value={lineSecret}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLineSecret(e.target.value)}
+                    placeholder="Channel Secret จาก LINE Developers"
+                    className="mt-1"
+                    type="password"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  สร้าง LINE Official Account แล้วเปิด Messaging API ที่ LINE Developers Console
+                </p>
+                {lineMessage && (
+                  <p className={`text-sm ${lineMessage.includes("สำเร็จ") ? "text-green-600" : "text-destructive"}`}>
+                    {lineMessage}
+                  </p>
+                )}
+                <Button onClick={handleSaveLine} disabled={savingLine} variant="outline" className="w-full">
+                  {savingLine ? "กำลังบันทึก..." : "บันทึก LINE Settings"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Notification Preferences */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Bell className="h-4 w-4" />
+                  ตั้งค่าการแจ้งเตือน
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">กำหนดค่าเริ่มต้นว่าจะแจ้งเตือนผ่านช่องทางไหนบ้าง</p>
+              </CardHeader>
+              <CardContent>
+                {systemLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Header */}
+                    <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 text-[10px] font-medium text-muted-foreground uppercase">
+                      <span>เหตุการณ์</span>
+                      <span className="text-center">In-App</span>
+                      <span className="text-center">LINE</span>
+                      <span className="text-center">Discord</span>
+                    </div>
+                    {notifSettings.map((ns) => (
+                      <div key={ns.id as string} className="grid grid-cols-[1fr_60px_60px_60px] gap-2 items-center rounded-lg border px-3 py-2">
+                        <div>
+                          <p className="text-xs font-medium">{ns.event_label as string}</p>
+                          <p className="text-[10px] text-muted-foreground">{ns.description as string}</p>
+                        </div>
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={ns.default_in_app as boolean}
+                            onCheckedChange={async (val: boolean) => {
+                              await updateNotificationSetting(ns.id as string, { default_in_app: val })
+                              await reloadSystemSettings()
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={ns.default_line as boolean}
+                            onCheckedChange={async (val: boolean) => {
+                              await updateNotificationSetting(ns.id as string, { default_line: val })
+                              await reloadSystemSettings()
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={ns.default_discord as boolean}
+                            onCheckedChange={async (val: boolean) => {
+                              await updateNotificationSetting(ns.id as string, { default_discord: val })
+                              await reloadSystemSettings()
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Brands */}
+            <EditableListSection
+              title="ยี่ห้อ (Brands)"
+              description="รายการยี่ห้อสินค้าที่ใช้ในระบบ"
+              items={brands}
+              isLoading={systemLoading}
+              onAdd={async (name: string) => {
+                await addBrand(name)
+                await reloadSystemSettings()
+              }}
+              onToggle={async (id: string, isActive: boolean) => {
+                await updateBrand(id, { is_active: isActive })
+                await reloadSystemSettings()
+              }}
+              onDelete={async (id: string) => {
+                await deleteBrand(id)
                 await reloadSystemSettings()
               }}
             />

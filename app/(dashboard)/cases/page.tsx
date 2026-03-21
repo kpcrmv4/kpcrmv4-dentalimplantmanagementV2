@@ -106,7 +106,7 @@ async function getCases(
   const supabase = await createClient()
   let query = supabase
     .from("cases")
-    .select("*, patients(hn, full_name)")
+    .select("*, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)")
     .limit(100)
 
   if (status && status !== "all") {
@@ -245,6 +245,7 @@ export default async function CasesPage({
                 <div className="relative ml-4 border-l-2 border-muted pl-4">
                   {dateCases.map((c: Record<string, unknown>) => {
                     const patient = c.patients as Record<string, string> | null
+                    const dentist = c.users as Record<string, string> | null
                     const st =
                       STATUS_CONFIG[c.case_status as string] ??
                       STATUS_CONFIG.pending_order
@@ -286,6 +287,11 @@ export default async function CasesPage({
                                   </span>
                                   <span>({String(patient?.hn ?? "-")})</span>
                                 </div>
+                                {dentist?.full_name && (
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                    ทพ. {dentist.full_name}
+                                  </p>
+                                )}
                                 {c.procedure_type ? (
                                   <p className="mt-0.5 text-[11px] text-muted-foreground">
                                     {String(c.procedure_type)}
@@ -353,6 +359,7 @@ export default async function CasesPage({
                 <div className="space-y-1.5">
                   {dateCases.map((c: Record<string, unknown>) => {
                     const patient = c.patients as Record<string, string> | null
+                    const dentist = c.users as Record<string, string> | null
                     const st =
                       STATUS_CONFIG[c.case_status as string] ??
                       STATUS_CONFIG.pending_order
@@ -394,6 +401,11 @@ export default async function CasesPage({
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {String(patient?.full_name ?? "ไม่ระบุคนไข้")} ({String(patient?.hn ?? "-")})
                             </p>
+                            {dentist?.full_name && (
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                ทพ. {dentist.full_name}
+                              </p>
+                            )}
                           </div>
 
                           {/* Right side: tooth positions */}

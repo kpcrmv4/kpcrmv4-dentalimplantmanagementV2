@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { Shield } from "lucide-react"
+import { Shield, Plus, Pencil, Key, Trash2, Loader2, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { getUsers, updateUserRole, toggleUserActive } from "@/lib/actions/users"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { getUsers, updateUserRole, toggleUserActive, createUser, updateUserProfile, resetUserPassword, deleteUser } from "@/lib/actions/users"
 import type { UserRole } from "@/types/database"
 
 const ROLE_LABELS: Record<string, string> = {
@@ -43,11 +45,33 @@ type UserRow = {
   created_at: string
 }
 
+type ModalState =
+  | { type: "none" }
+  | { type: "create" }
+  | { type: "edit"; user: UserRow }
+  | { type: "reset_password"; user: UserRow }
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [modal, setModal] = useState<ModalState>({ type: "none" })
+  const [formError, setFormError] = useState<string | null>(null)
+  const [formLoading, setFormLoading] = useState(false)
+
+  // Create form
+  const [newEmail, setNewEmail] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [newName, setNewName] = useState("")
+  const [newRole, setNewRole] = useState<string>("assistant")
+
+  // Edit form
+  const [editName, setEditName] = useState("")
+  const [editPhone, setEditPhone] = useState("")
+
+  // Reset password form
+  const [resetPw, setResetPw] = useState("")
 
   useEffect(() => {
     loadUsers()
@@ -93,6 +117,95 @@ export default function AdminUsersPage() {
     })
   }
 
+  function openCreate() {
+    setNewEmail("")
+    setNewPassword("")
+    setNewName("")
+    setNewRole("assistant")
+    setFormError(null)
+    setModal({ type: "create" })
+  }
+
+  function openEdit(user: UserRow) {
+    setEditName(user.full_name)
+    setEditPhone(user.phone ?? "")
+    setFormError(null)
+    setModal({ type: "edit", user })
+  }
+
+  function openResetPassword(user: UserRow) {
+    setResetPw("")
+    setFormError(null)
+    setModal({ type: "reset_password", user })
+  }
+
+  async function handleCreate() {
+    if (!newEmail || !newPassword || !newName) {
+      setFormError("กรุณากรอกข้อมูลให้ครบ")
+      return
+    }
+    if (newPassword.length < 6) {
+      setFormError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร")
+      return
+    }
+    setFormLoading(true)
+    setFormError(null)
+    try {
+      await createUser(newEmail, newPassword, newName, newRole as UserRole)
+      setModal({ type: "none" })
+      await loadUsers()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "สร้างผู้ใช้ไม่สำเร็จ")
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  async function handleEdit() {
+    if (modal.type !== "edit") return
+    setFormLoading(true)
+    setFormError(null)
+    try {
+      await updateUserProfile(modal.user.id, { full_name: editName, phone: editPhone })
+      setModal({ type: "none" })
+      await loadUsers()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "แก้ไขไม่สำเร็จ")
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  async function handleResetPassword() {
+    if (modal.type !== "reset_password") return
+    if (!resetPw || resetPw.length < 6) {
+      setFormError("รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร")
+      return
+    }
+    setFormLoading(true)
+    setFormError(null)
+    try {
+      await resetUserPassword(modal.user.id, resetPw)
+      setModal({ type: "none" })
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "รีเซ็ตรหัสผ่านไม่สำเร็จ")
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  async function handleDelete(userId: string) {
+    if (!confirm("ต้องการลบผู้ใช้นี้?")) return
+    startTransition(async () => {
+      try {
+        await deleteUser(userId)
+        await loadUsers()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "ลบไม่สำเร็จ")
+      }
+    })
+  }
+
   if (loading) {
     return (
       <div className="space-y-4 p-4 lg:p-6">
@@ -112,9 +225,15 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
-      <div className="flex items-center gap-2">
-        <Shield className="h-5 w-5" />
-        <h1 className="text-xl font-semibold">จัดการผู้ใช้</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          <h1 className="text-xl font-semibold">จัดการผู้ใช้</h1>
+        </div>
+        <Button size="sm" onClick={openCreate}>
+          <Plus className="mr-1 h-4 w-4" />
+          เพิ่มผู้ใช้
+        </Button>
       </div>
 
       <Card>
@@ -132,7 +251,7 @@ export default function AdminUsersPage() {
                   <TableHead>อีเมล</TableHead>
                   <TableHead>บทบาท</TableHead>
                   <TableHead>สถานะ</TableHead>
-                  <TableHead>วันที่สร้าง</TableHead>
+                  <TableHead>จัดการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -176,8 +295,18 @@ export default function AdminUsersPage() {
                         </Badge>
                       </Button>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(u.created_at).toLocaleDateString("th-TH")}
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)} title="แก้ไข">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openResetPassword(u)} title="รีเซ็ตรหัสผ่าน">
+                          <Key className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(u.id)} title="ลบ">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -186,6 +315,92 @@ export default function AdminUsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal Overlay */}
+      {modal.type !== "none" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-md rounded-lg bg-background p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">
+                {modal.type === "create" && "เพิ่มผู้ใช้ใหม่"}
+                {modal.type === "edit" && `แก้ไข: ${modal.user.full_name}`}
+                {modal.type === "reset_password" && `รีเซ็ตรหัสผ่าน: ${modal.user.full_name}`}
+              </h2>
+              <Button variant="ghost" size="icon" onClick={() => setModal({ type: "none" })}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {formError && (
+              <p className="mb-3 rounded-md bg-destructive/10 p-2 text-sm text-destructive">{formError}</p>
+            )}
+
+            {modal.type === "create" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">อีเมล *</Label>
+                  <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} type="email" placeholder="email@example.com" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">รหัสผ่าน *</Label>
+                  <Input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" placeholder="อย่างน้อย 6 ตัว" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">ชื่อ-นามสกุล *</Label>
+                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="ชื่อ นามสกุล" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">บทบาท</Label>
+                  <Select value={newRole} onValueChange={setNewRole}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((r) => (
+                        <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="w-full" onClick={handleCreate} disabled={formLoading}>
+                  {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  สร้างผู้ใช้
+                </Button>
+              </div>
+            )}
+
+            {modal.type === "edit" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">ชื่อ-นามสกุล</Label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">เบอร์โทร</Label>
+                  <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="08x-xxx-xxxx" className="mt-1" />
+                </div>
+                <Button className="w-full" onClick={handleEdit} disabled={formLoading}>
+                  {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  บันทึก
+                </Button>
+              </div>
+            )}
+
+            {modal.type === "reset_password" && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs">รหัสผ่านใหม่</Label>
+                  <Input value={resetPw} onChange={(e) => setResetPw(e.target.value)} type="password" placeholder="อย่างน้อย 6 ตัว" className="mt-1" />
+                </div>
+                <Button className="w-full" onClick={handleResetPassword} disabled={formLoading}>
+                  {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  รีเซ็ตรหัสผ่าน
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useState, useRef } from "react"
 import { Search, CalendarIcon, X, SlidersHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
@@ -15,12 +16,20 @@ export function InventorySearch({
   currentView,
   currentExpiryBefore,
   lowStockCount,
+  currentCategory,
+  currentBrand,
+  categories,
+  brands,
 }: {
   defaultValue: string
   currentFilter: string
   currentView: string
   currentExpiryBefore: string
   lowStockCount: number
+  currentCategory?: string
+  currentBrand?: string
+  categories?: Array<{ value: string; label: string }>
+  brands?: Array<{ id: string; name: string }>
 }) {
   const router = useRouter()
   const [value, setValue] = useState(defaultValue)
@@ -30,12 +39,14 @@ export function InventorySearch({
   )
   const [calendarOpen, setCalendarOpen] = useState(false)
 
-  function navigate(q: string, filter: string, view?: string, expiryBefore?: string) {
+  function navigate(q: string, filter: string, view?: string, expiryBefore?: string, category?: string, brand?: string) {
     const params = new URLSearchParams()
     if (q) params.set("q", q)
     if (filter) params.set("filter", filter)
     if (view) params.set("view", view)
     if (expiryBefore) params.set("expiry_before", expiryBefore)
+    if (category) params.set("category", category)
+    if (brand) params.set("brand", brand)
     router.push(`/inventory?${params.toString()}`)
   }
 
@@ -43,24 +54,24 @@ export function InventorySearch({
     setValue(q)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(
-      () => navigate(q, currentFilter, currentView, currentExpiryBefore),
+      () => navigate(q, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand),
       300
     )
   }
 
   function handleViewToggle(view: string) {
-    navigate(value, currentFilter, view, currentExpiryBefore)
+    navigate(value, currentFilter, view, currentExpiryBefore, currentCategory, currentBrand)
   }
 
   function handleFilterChange(filter: string) {
-    navigate(value, filter, currentView, currentExpiryBefore)
+    navigate(value, filter, currentView, currentExpiryBefore, currentCategory, currentBrand)
   }
 
   function handleExpiryChange(date: Date | undefined) {
     setExpiryDate(date)
     setCalendarOpen(false)
     const dateStr = date ? format(date, "yyyy-MM-dd") : ""
-    navigate(value, currentFilter, currentView, dateStr)
+    navigate(value, currentFilter, currentView, dateStr, currentCategory, currentBrand)
   }
 
   const isLotView = currentView === "lot"
@@ -176,6 +187,44 @@ export function InventorySearch({
           </>
         )}
       </div>
+
+      {/* Category & Brand filters */}
+      {!isLotView && (categories?.length || brands?.length) ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          {categories && categories.length > 0 && (
+            <Select
+              value={currentCategory ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, val === "all" ? "" : val, currentBrand)}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="ประเภท" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกประเภท</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {brands && brands.length > 0 && (
+            <Select
+              value={currentBrand ?? "all"}
+              onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, val === "all" ? "" : val)}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="ยี่ห้อ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกยี่ห้อ</SelectItem>
+                {brands.map((b) => (
+                  <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      ) : null}
     </div>
   )
 }

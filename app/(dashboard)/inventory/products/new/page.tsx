@@ -354,6 +354,18 @@ export default function NewProductPage() {
                   <Input id="new-brand" name="brand" placeholder="ยี่ห้อ" />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="new-model">รุ่น (Model)</Label>
+                  <Input id="new-model" name="model" placeholder="รุ่นสินค้า" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-diameter">Diameter (mm)</Label>
+                  <Input id="new-diameter" name="diameter" type="number" step="0.01" min={0} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-length">Length (mm)</Label>
+                  <Input id="new-length" name="length" type="number" step="0.01" min={0} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="new-category">หมวดหมู่</Label>
                   <Select name="category">
                     <SelectTrigger id="new-category">

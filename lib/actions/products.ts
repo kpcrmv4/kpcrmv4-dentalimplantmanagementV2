@@ -131,6 +131,9 @@ export async function createProduct(formData: FormData) {
     selling_price: sellingPriceRaw ? parseFloat(sellingPriceRaw) : null,
     supplier_id: (formData.get("supplier_id") as string | null) || null,
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
+    model: (formData.get("model") as string | null)?.trim() || null,
+    diameter: formData.get("diameter") ? parseFloat(formData.get("diameter") as string) : null,
+    length: formData.get("length") ? parseFloat(formData.get("length") as string) : null,
   }
 
   const { data, error } = await supabase
@@ -183,6 +186,9 @@ export async function updateProduct(id: string, formData: FormData) {
     cost_price: costPriceRaw ? parseFloat(costPriceRaw) : null,
     supplier_id: (formData.get("supplier_id") as string | null) || null,
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
+    model: (formData.get("model") as string | null)?.trim() || null,
+    diameter: formData.get("diameter") ? parseFloat(formData.get("diameter") as string) : null,
+    length: formData.get("length") ? parseFloat(formData.get("length") as string) : null,
   }
 
   const { data, error } = await supabase
@@ -427,4 +433,19 @@ export async function uploadProductImage(productId: string, imageUrl: string) {
   revalidatePath("/inventory")
   revalidatePath(`/inventory/products/${productId}`)
   return data
+}
+
+// ─── Product List (lightweight, for dropdowns) ──────────────────────
+
+export async function getProductList() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, ref")
+    .eq("is_active", true)
+    .order("name")
+    .limit(500)
+
+  if (error) return []
+  return data ?? []
 }

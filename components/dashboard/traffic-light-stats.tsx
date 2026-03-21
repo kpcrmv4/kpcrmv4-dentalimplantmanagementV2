@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Package,
 } from "lucide-react"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { getDashboardCases } from "@/lib/actions/dashboard"
 import { cn } from "@/lib/utils"
@@ -27,6 +28,10 @@ export async function TrafficLightStats() {
   const waiting = activeCases.filter((c) => c.trafficLight === "orange").length
   const missing = activeCases.filter((c) => c.trafficLight === "red").length
 
+  // Case status breakdown
+  const pendingOrder = activeCases.filter((c) => c.case_status === "pending_order").length
+  const pendingPrep = activeCases.filter((c) => c.case_status === "pending_preparation").length
+
   return (
     <div className="space-y-4">
       {/* ── Section 1: Case Summary ── */}
@@ -41,24 +46,28 @@ export async function TrafficLightStats() {
             value={total}
             icon={Layers}
             color="blue"
+            href="/cases?period=month"
           />
           <SummaryCard
             label="รอยืนยันนัด"
             value={pendingAppt}
             icon={Phone}
             color="amber"
+            href="/cases?period=month&appt=pending"
           />
           <SummaryCard
             label="ดำเนินการ"
             value={active}
             icon={Settings}
             color="indigo"
+            href="/cases?period=month&status=pending_order"
           />
           <SummaryCard
             label="เสร็จสิ้น"
             value={completed}
             icon={CheckCircle2}
             color="emerald"
+            href="/cases?period=month&status=completed"
           />
         </div>
       </div>
@@ -70,10 +79,16 @@ export async function TrafficLightStats() {
           สถานะวัสดุเคส
         </h2>
         <div className="grid grid-cols-4 gap-2">
-          <MaterialCard label="พร้อม" value={ready} color="green" />
-          <MaterialCard label="สั่งแล้ว" value={ordered} color="yellow" />
-          <MaterialCard label="รอสั่ง" value={waiting} color="orange" />
-          <MaterialCard label="ยังไม่สั่ง" value={missing} color="red" />
+          <MaterialCard label="พร้อม" value={ready} color="green" href="/cases?period=month&status=ready" />
+          <MaterialCard label="สั่งแล้ว" value={ordered} color="yellow" href="/cases?period=month&material=ordered" />
+          <MaterialCard label="รอสั่ง" value={waiting} color="orange" href="/cases?period=month&material=waiting" />
+          <MaterialCard label="ยังไม่สั่ง" value={missing} color="red" href="/cases?period=month&material=missing" />
+        </div>
+        {/* Case status breakdown */}
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <MaterialCard label="รอสั่งของ" value={pendingOrder} color="orange" href="/cases?period=month&status=pending_order" />
+          <MaterialCard label="รอจัดของ" value={pendingPrep} color="yellow" href="/cases?period=month&status=pending_preparation" />
+          <MaterialCard label="พร้อม" value={ready} color="green" href="/cases?period=month&status=ready" />
         </div>
       </div>
     </div>
@@ -116,49 +131,38 @@ function SummaryCard({
   value,
   icon: Icon,
   color,
+  href,
 }: {
   label: string
   value: number
   icon: LucideIcon
   color: keyof typeof SUMMARY_STYLES
+  href?: string
 }) {
   const s = SUMMARY_STYLES[color]
-
-  return (
-    <Card className={cn(s.border, s.bg, "relative overflow-hidden")}>
+  const content = (
+    <Card className={cn(s.border, s.bg, "relative overflow-hidden", href && "cursor-pointer transition-shadow hover:shadow-md")}>
       <CardContent className="relative flex flex-col items-center py-3">
-        {/* Corner icon */}
-        <Icon
-          className={cn(
-            "absolute right-1 top-1 h-3.5 w-3.5 pointer-events-none",
-            s.icon
-          )}
-          strokeWidth={2}
-        />
-        <span className={cn("relative text-2xl font-bold", s.text)}>
-          {value}
-        </span>
-        <span
-          className={cn(
-            "relative mt-0.5 text-[10px] font-medium leading-tight text-center",
-            s.label
-          )}
-        >
-          {label}
-        </span>
+        <Icon className={cn("absolute right-1 top-1 h-3.5 w-3.5 pointer-events-none", s.icon)} strokeWidth={2} />
+        <span className={cn("relative text-2xl font-bold", s.text)}>{value}</span>
+        <span className={cn("relative mt-0.5 text-[10px] font-medium leading-tight text-center", s.label)}>{label}</span>
       </CardContent>
     </Card>
   )
+  if (href) return <Link href={href}>{content}</Link>
+  return content
 }
 
 function MaterialCard({
   label,
   value,
   color,
+  href,
 }: {
   label: string
   value: number
   color: "green" | "yellow" | "orange" | "red"
+  href?: string
 }) {
   const styles = {
     green: {
@@ -181,8 +185,8 @@ function MaterialCard({
 
   const s = styles[color]
 
-  return (
-    <Card className="bg-card">
+  const content = (
+    <Card className={cn("bg-card", href && "cursor-pointer transition-shadow hover:shadow-md")}>
       <CardContent className="flex flex-col items-center py-2.5">
         <div className="flex items-center gap-1.5">
           <span className={cn("h-2 w-2 rounded-full", s.dot)} />
@@ -194,4 +198,6 @@ function MaterialCard({
       </CardContent>
     </Card>
   )
+  if (href) return <Link href={href}>{content}</Link>
+  return content
 }
