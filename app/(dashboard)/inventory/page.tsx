@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Plus, Package, PackageCheck, Clock, TrendingDown, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getStockSummary, getProductIdsWithActivePOs, getInventoryByLot } from "@/lib/actions/inventory"
+import { getStockSummary, getInactiveProducts, getProductIdsWithActivePOs, getInventoryByLot } from "@/lib/actions/inventory"
 import { getCategories } from "@/lib/actions/products"
 import { getBrands } from "@/lib/actions/settings"
 import { InventorySearch } from "./inventory-search"
@@ -37,6 +37,10 @@ export default async function InventoryPage({
   } else {
     products = await getStockSummary()
   }
+
+  // Fetch inactive products count (and data if filter is active)
+  const inactiveProducts = await getInactiveProducts()
+  const inactiveCount = inactiveProducts.length
 
   const [categories, brandsData] = await Promise.all([getCategories(), getBrands()])
   const activeBrands = brandsData.filter((b: { is_active: boolean }) => b.is_active)
@@ -83,6 +87,18 @@ export default async function InventoryPage({
     if (filter === "ordering") {
       const activePOProductIds = await getProductIdsWithActivePOs()
       filteredProducts = filteredProducts.filter((p) => activePOProductIds.has(p.id))
+    }
+    if (filter === "inactive") {
+      filteredProducts = inactiveProducts
+      if (search) {
+        const q = search.toLowerCase()
+        filteredProducts = filteredProducts.filter(
+          (p) =>
+            p.name.toLowerCase().includes(q) ||
+            p.ref.toLowerCase().includes(q) ||
+            (p.brand?.toLowerCase().includes(q) ?? false)
+        )
+      }
     }
     if (category) {
       filteredProducts = filteredProducts.filter((p) => p.category === category)
@@ -203,6 +219,7 @@ export default async function InventoryPage({
         currentView={view}
         currentExpiryBefore={expiryBefore}
         lowStockCount={lowStockCount}
+        inactiveCount={inactiveCount}
         currentCategory={category}
         currentBrand={brand}
         currentModel={model}
