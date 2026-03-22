@@ -6,7 +6,6 @@ import {
   Settings,
   Calendar,
   PlusCircle,
-  User,
   ShoppingCart,
   Truck,
   ArrowLeftRight,
@@ -44,35 +43,30 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
     { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
     { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard", isCenter: true },
     { label: "เคส", icon: ClipboardList, href: "/cases" },
-    { label: "เพิ่มเติม", icon: Settings, href: "/settings" },
   ],
   dentist: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
     { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
     { label: "เคสใหม่", icon: PlusCircle, href: "/cases/new", isCenter: true },
     { label: "เคส", icon: ClipboardList, href: "/cases" },
-    { label: "เพิ่มเติม", icon: User, href: "/settings" },
   ],
   stock_staff: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
     { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
     { label: "สต็อก", icon: Package, href: "/inventory", isCenter: true },
     { label: "เคส", icon: ClipboardList, href: "/cases" },
-    { label: "เพิ่มเติม", icon: Bell, href: "/notifications" },
   ],
   assistant: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
     { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
     { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", isCenter: true },
     { label: "เคส", icon: ClipboardList, href: "/cases" },
-    { label: "เพิ่มเติม", icon: User, href: "/settings" },
   ],
   cs: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
     { label: "นัดหมาย", icon: Calendar, href: "/calendar" },
     { label: "เคสใหม่", icon: PlusCircle, href: "/cases/new", isCenter: true },
     { label: "คนไข้", icon: Users, href: "/patients" },
-    { label: "เพิ่มเติม", icon: User, href: "/settings" },
   ],
 }
 
@@ -98,6 +92,6 @@ export const sidebarMenus: NavItem[] = [
   { label: "จัดการผู้ใช้", icon: Shield, href: "/admin/users", roles: ["admin"], group: "admin" },
   { label: "Audit Logs", icon: FileText, href: "/admin/audit-logs", roles: ["admin"], group: "admin" },
 
-  // Settings (no group - rendered at bottom)
-  { label: "ตั้งค่า", icon: Settings, href: "/settings" },
+  // Settings (no group - rendered at bottom, admin only)
+  { label: "ตั้งค่าระบบ", icon: Settings, href: "/settings", roles: ["admin"] },
 ]

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bell, LogOut, Package } from "lucide-react"
+import { Bell, LogOut, Package, User as UserIcon, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -70,7 +70,16 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/settings">ตั้งค่า</Link>
+              <Link href="/profile">
+                <UserIcon className="mr-2 h-4 w-4" />
+                โปรไฟล์
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/profile?tab=security">
+                <Shield className="mr-2 h-4 w-4" />
+                ความปลอดภัย
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onSignOut} className="text-destructive">
