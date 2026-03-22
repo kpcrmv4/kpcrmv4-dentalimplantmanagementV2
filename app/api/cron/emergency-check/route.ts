@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const futureStr = fortyEightHoursLater.toISOString().split("T")[0]
 
     // Get cases within 48 hours that are NOT ready/completed/cancelled
-    const { data: cases, error } = await supabase
+    const { data: rawCases, error } = await supabase
       .from("cases")
       .select(
         "id, case_number, scheduled_date, scheduled_time, case_status, patients(full_name), users!cases_dentist_id_fkey(full_name)"
@@ -35,7 +35,16 @@ export async function GET(request: Request) {
       .order("scheduled_date")
 
     if (error) throw error
-    if (!cases || cases.length === 0) {
+
+    // Filter precisely using datetime (not just date)
+    const cases = (rawCases ?? []).filter((c) => {
+      const dateStr = c.scheduled_date ?? ""
+      const timeStr = c.scheduled_time ?? "23:59"
+      const scheduledDt = new Date(`${dateStr}T${timeStr.slice(0, 5)}:00`)
+      return scheduledDt >= now && scheduledDt <= fortyEightHoursLater
+    })
+
+    if (cases.length === 0) {
       return NextResponse.json({ message: "No emergency cases", count: 0 })
     }
 

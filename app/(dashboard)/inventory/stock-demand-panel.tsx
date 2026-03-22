@@ -1,7 +1,14 @@
 import Link from "next/link"
-import { AlertTriangle, Clock, ExternalLink, Package } from "lucide-react"
+import { AlertTriangle, Clock, ExternalLink, Package, Truck } from "lucide-react"
 import { getStockDemands } from "@/lib/actions/inventory"
 import { formatDate } from "@/lib/utils"
+
+const PO_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  draft: { label: "แบบร่าง", color: "bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-400" },
+  pending_approval: { label: "รออนุมัติ", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
+  approved: { label: "อนุมัติแล้ว", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
+  ordered: { label: "สั่งแล้ว", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" },
+}
 
 export async function StockDemandPanel() {
   const demands = await getStockDemands()
@@ -10,6 +17,8 @@ export async function StockDemandPanel() {
 
   const urgentCount = demands.filter((d) => d.cases.some((c) => c.isUrgent)).length
   const totalProducts = demands.length
+  const orderedCount = demands.filter((d) => d.activePO).length
+  const notOrderedCount = totalProducts - orderedCount
 
   return (
     <div className="space-y-2">
@@ -41,6 +50,19 @@ export async function StockDemandPanel() {
               สินค้าที่ต้องสั่ง ({totalProducts})
             </h2>
           </div>
+          <div className="flex items-center gap-2 text-[11px]">
+            {orderedCount > 0 && (
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <Truck className="h-3 w-3" />
+                สั่งแล้ว {orderedCount}
+              </span>
+            )}
+            {notOrderedCount > 0 && (
+              <span className="text-red-500 font-medium">
+                ยังไม่สั่ง {notOrderedCount}
+              </span>
+            )}
+          </div>
         </div>
         <p className="text-[11px] text-muted-foreground mb-3">
           สินค้าที่มีเคสต้องการใช้แต่สต๊อกไม่พอ
@@ -67,6 +89,8 @@ function DemandCard({
     : demand.cases
   const hasUrgent = demand.cases.some((c) => c.isUrgent)
   const shortage = Math.max(0, demand.totalNeeded - Math.max(0, demand.totalAvailable))
+  const po = demand.activePO
+  const poStyle = po ? PO_STATUS_LABELS[po.status] : null
 
   return (
     <div
@@ -101,6 +125,33 @@ function DemandCard({
           </p>
         </div>
       </div>
+
+      {/* PO status badge */}
+      {po && poStyle && (
+        <Link
+          href={`/orders/${po.poId}`}
+          className="mt-1.5 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] hover:opacity-80 transition-opacity border"
+        >
+          <Truck className="h-3 w-3" />
+          <span className={`rounded px-1 py-0.5 text-[10px] font-medium ${poStyle.color}`}>
+            {poStyle.label}
+          </span>
+          <span className="font-medium">{po.poNumber}</span>
+          <span className="text-muted-foreground">
+            จำนวน {po.quantityOrdered} {demand.productUnit}
+          </span>
+          {po.expectedDeliveryDate && (
+            <span className="text-muted-foreground">
+              · คาดรับ {formatDate(po.expectedDeliveryDate)}
+            </span>
+          )}
+        </Link>
+      )}
+      {!po && (
+        <p className="mt-1.5 text-[11px] text-red-500 font-medium">
+          ยังไม่มีใบสั่งซื้อ
+        </p>
+      )}
 
       {/* Case list */}
       <div className="mt-2 space-y-1">

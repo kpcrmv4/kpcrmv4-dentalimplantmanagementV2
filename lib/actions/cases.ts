@@ -665,68 +665,96 @@ async function revalidateCaseReadyStatus(caseId: string) {
 
   const { data: caseData } = await supabase
     .from("cases")
-    .select("case_status")
+    .select("case_status, appointment_status, case_number, scheduled_date, scheduled_time, patients(full_name)")
     .eq("id", caseId)
     .single()
 
   if (!caseData || ["completed", "cancelled"].includes(caseData.case_status)) return
 
+  let newStatus: CaseStatus | null = null
+
   if (!activeReservations || activeReservations.length === 0) {
     // No active reservations left
     if (caseData.case_status === "ready" || caseData.case_status === "pending_preparation") {
-      await supabase
-        .from("cases")
-        .update({ case_status: "pending_order" as CaseStatus })
-        .eq("id", caseId)
-    }
-    return
-  }
-
-  const allPrepared = activeReservations.every((r) => r.status === "prepared")
-
-  if (allPrepared) {
-    if (caseData.case_status !== "ready") {
-      await supabase
-        .from("cases")
-        .update({ case_status: "ready" as CaseStatus })
-        .eq("id", caseId)
-    }
-    return
-  }
-
-  // Some items are still "reserved" (not prepared) — check if stock is available
-  const reservedItems = activeReservations.filter((r) => r.status === "reserved")
-
-  if (reservedItems.length > 0) {
-    // Check stock for reserved products
-    const productIds = Array.from(new Set(reservedItems.map((r) => r.product_id)))
-    const { data: inventoryRows } = await supabase
-      .from("inventory")
-      .select("product_id, quantity, reserved_quantity")
-      .in("product_id", productIds)
-      .gt("quantity", 0)
-
-    // For each reserved item, check if any lot has enough available stock
-    const hasOutOfStock = reservedItems.some((r) => {
-      const lots = (inventoryRows ?? []).filter((inv) => inv.product_id === r.product_id)
-      const totalAvailable = lots.reduce((sum, inv) => sum + inv.quantity - inv.reserved_quantity, 0)
-      return totalAvailable < r.quantity_reserved
-    })
-
-    const newStatus = hasOutOfStock ? "pending_order" : "pending_preparation"
-    if (caseData.case_status !== newStatus) {
-      await supabase
-        .from("cases")
-        .update({ case_status: newStatus as CaseStatus })
-        .eq("id", caseId)
+      newStatus = "pending_order" as CaseStatus
     }
   } else {
-    // All items are "prepared" or other non-reserved status but not all prepared
-    if (caseData.case_status !== "pending_preparation") {
-      await supabase
-        .from("cases")
-        .update({ case_status: "pending_preparation" as CaseStatus })
-        .eq("id", caseId)
+    const allPrepared = activeReservations.every((r) => r.status === "prepared")
+
+    if (allPrepared) {
+      if (caseData.case_status !== "ready") {
+        newStatus = "ready" as CaseStatus
+      }
+    } else {
+      // Some items are still "reserved" (not prepared) — check if stock is available
+      const reservedItems = activeReservations.filter((r) => r.status === "reserved")
+
+      if (reservedItems.length > 0) {
+        const productIds = Array.from(new Set(reservedItems.map((r) => r.product_id)))
+        const { data: inventoryRows } = await supabase
+          .from("inventory")
+          .select("product_id, quantity, reserved_quantity")
+          .in("product_id", productIds)
+          .gt("quantity", 0)
+
+        const hasOutOfStock = reservedItems.some((r) => {
+          const lots = (inventoryRows ?? []).filter((inv) => inv.product_id === r.product_id)
+          const totalAvailable = lots.reduce((sum, inv) => sum + inv.quantity - inv.reserved_quantity, 0)
+          return totalAvailable < r.quantity_reserved
+        })
+
+        const targetStatus = hasOutOfStock ? "pending_order" : "pending_preparation"
+        if (caseData.case_status !== targetStatus) {
+          newStatus = targetStatus as CaseStatus
+        }
+      } else {
+        if (caseData.case_status !== "pending_preparation") {
+          newStatus = "pending_preparation" as CaseStatus
+        }
+      }
+    }
+  }
+
+  // Apply status change
+  if (newStatus) {
+    await supabase
+      .from("cases")
+      .update({ case_status: newStatus })
+      .eq("id", caseId)
+
+    // Notify CS to reschedule if appointment is confirmed but now pending_order
+    if (newStatus === "pending_order" && caseData.appointment_status === "confirmed") {
+      const patient = caseData.patients as unknown as { full_name: string } | null
+      const caseNumber = caseData.case_number ?? caseId
+      const patientName = patient?.full_name ?? "ไม่ระบุ"
+
+      let dateInfo = ""
+      if (caseData.scheduled_date) {
+        dateInfo = ` นัด ${caseData.scheduled_date}`
+        if (caseData.scheduled_time) {
+          dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
+        }
+      }
+
+      const { createNotification } = await import("./notifications")
+
+      // Send to all CS users
+      const { data: csUsers } = await supabase
+        .from("users")
+        .select("id")
+        .eq("role", "cs")
+        .eq("is_active", true)
+
+      for (const csUser of csUsers ?? []) {
+        createNotification({
+          user_id: csUser.id,
+          type: "system",
+          title: "กรุณาเลื่อนนัด — วัสดุไม่พร้อม",
+          message: `เคส ${caseNumber} (${patientName})${dateInfo} มีการเพิ่มวัสดุที่ไม่มีในสต๊อก ต้องสั่งของเพิ่ม กรุณาเลื่อนนัดลูกค้า`,
+          data: { case_id: caseId, case_number: caseNumber },
+          overrides: { in_app: true, line: true },
+        }).catch(() => {})
+      }
     }
   }
 }

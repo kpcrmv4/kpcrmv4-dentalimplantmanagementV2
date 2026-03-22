@@ -319,7 +319,7 @@ export function CaseMaterialsEditor({
         ) : (
           <div className="space-y-1.5">
             {reservations.map((r) => {
-              if (["returned", "consumed"].includes(r.status) && !isEditing) return null
+              if (["returned", "consumed"].includes(r.status)) return null
               const rStatus = RESERVATION_STATUS[r.status] ?? RESERVATION_STATUS.reserved
               const isActive = !["returned", "consumed"].includes(r.status)
 

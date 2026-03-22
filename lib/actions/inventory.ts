@@ -458,6 +458,13 @@ export type StockDemandItem = {
   productUnit: string
   totalNeeded: number
   totalAvailable: number
+  activePO: {
+    poId: string
+    poNumber: string
+    status: string
+    quantityOrdered: number
+    expectedDeliveryDate: string | null
+  } | null
   cases: Array<{
     caseId: string
     caseNumber: string
@@ -498,6 +505,32 @@ export async function getStockDemands(): Promise<StockDemandItem[]> {
   for (const inv of inventoryRows ?? []) {
     const current = stockByProduct.get(inv.product_id) ?? 0
     stockByProduct.set(inv.product_id, current + inv.quantity - inv.reserved_quantity)
+  }
+
+  // Check active POs for these products
+  const { data: activePOItems } = await supabase
+    .from("purchase_order_items")
+    .select("product_id, quantity, purchase_orders!inner(id, po_number, status, expected_delivery_date)")
+    .in("product_id", productIds)
+    .in("purchase_orders.status", ["draft", "pending_approval", "approved", "ordered"])
+
+  const poByProduct = new Map<string, StockDemandItem["activePO"]>()
+  for (const item of activePOItems ?? []) {
+    const po = item.purchase_orders as unknown as {
+      id: string; po_number: string; status: string; expected_delivery_date: string | null
+    }
+    const existing = poByProduct.get(item.product_id)
+    // Keep the most advanced PO status (ordered > approved > pending_approval > draft)
+    const statusRank: Record<string, number> = { draft: 0, pending_approval: 1, approved: 2, ordered: 3 }
+    if (!existing || (statusRank[po.status] ?? 0) > (statusRank[existing.status] ?? 0)) {
+      poByProduct.set(item.product_id, {
+        poId: po.id,
+        poNumber: po.po_number,
+        status: po.status,
+        quantityOrdered: item.quantity,
+        expectedDeliveryDate: po.expected_delivery_date,
+      })
+    }
   }
 
   // 48h threshold for urgency
@@ -541,6 +574,7 @@ export async function getStockDemands(): Promise<StockDemandItem[]> {
         productUnit: product.unit,
         totalNeeded: 0,
         totalAvailable: available,
+        activePO: poByProduct.get(r.product_id) ?? null,
         cases: [],
       })
     }
