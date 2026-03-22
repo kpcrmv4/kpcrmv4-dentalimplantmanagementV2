@@ -6,7 +6,6 @@ import { Download, Upload, Loader2, AlertTriangle, CheckCircle2, Pencil, X, Chec
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -48,6 +47,9 @@ const TEMPLATE_COLUMNS = [
   { key: "selling_price", header: "ราคาขาย", example: "25000", width: 12 },
   { key: "diameter", header: "เส้นผ่านศูนย์กลาง (mm)", example: "4.0", width: 20 },
   { key: "length", header: "ความยาว (mm)", example: "10.0", width: 15 },
+  { key: "lot_number", header: "เลข Lot", example: "LOT-2025-001", width: 18 },
+  { key: "quantity", header: "จำนวนสต็อก", example: "10", width: 14 },
+  { key: "expiry_date", header: "วันหมดอายุ (YYYY-MM-DD)", example: "2027-12-31", width: 24 },
 ] as const
 
 // ─── Download Template ─────────────────────────────────────────────
@@ -79,7 +81,14 @@ async function downloadTemplate(
     }
   })
 
-  // Row 2: Example data with dropdown validations
+  // Color inventory columns differently (lot, quantity, expiry)
+  const invStartCol = TEMPLATE_COLUMNS.findIndex(c => c.key === "lot_number") + 1
+  for (let c = invStartCol; c <= TEMPLATE_COLUMNS.length; c++) {
+    const cell = headerRow.getCell(c)
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF548235" } }
+  }
+
+  // Row 2: Example data
   const exampleRow = sheet.addRow(TEMPLATE_COLUMNS.map(col => col.example))
   exampleRow.eachCell(cell => {
     cell.font = { italic: true, color: { argb: "FF808080" } }
@@ -98,7 +107,6 @@ async function downloadTemplate(
 
   if (categories.length > 0) {
     const categoryList = categories.map(c => c.slug)
-    // Apply dropdown validation from row 2 to row 1000
     for (let row = 2; row <= 1000; row++) {
       sheet.getCell(row, categoryColIndex).dataValidation = {
         type: "list",
@@ -165,6 +173,28 @@ async function downloadTemplate(
 
 // ─── Parse Excel File ──────────────────────────────────────────────
 
+function parseDateValue(cell: ExcelJS.Cell): string {
+  const v = cell.value
+  if (!v) return ""
+  // ExcelJS may return a Date object for date cells
+  if (v instanceof Date) {
+    const yyyy = v.getFullYear()
+    const mm = String(v.getMonth() + 1).padStart(2, "0")
+    const dd = String(v.getDate()).padStart(2, "0")
+    return `${yyyy}-${mm}-${dd}`
+  }
+  const s = String(v).trim()
+  // Try to parse common date formats
+  const d = new Date(s)
+  if (!isNaN(d.getTime()) && s.length >= 8) {
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    const dd = String(d.getDate()).padStart(2, "0")
+    return `${yyyy}-${mm}-${dd}`
+  }
+  return s
+}
+
 async function parseExcelFile(file: File): Promise<ImportProductRow[]> {
   const buffer = await file.arrayBuffer()
   const workbook = new ExcelJS.Workbook()
@@ -188,13 +218,14 @@ async function parseExcelFile(file: File): Promise<ImportProductRow[]> {
     const ref = getValue(1)
     const name = getValue(2)
 
-    // Skip completely empty rows and the example row if it matches
+    // Skip completely empty rows
     if (!ref && !name) return
 
     const costPriceStr = getValue(9)
     const sellingPriceStr = getValue(10)
     const diameterStr = getValue(11)
     const lengthStr = getValue(12)
+    const quantityStr = getValue(14)
 
     rows.push({
       rowIndex: rowNumber,
@@ -210,6 +241,9 @@ async function parseExcelFile(file: File): Promise<ImportProductRow[]> {
       selling_price: sellingPriceStr ? parseFloat(sellingPriceStr) : null,
       diameter: diameterStr ? parseFloat(diameterStr) : null,
       length: lengthStr ? parseFloat(lengthStr) : null,
+      lot_number: getValue(13),
+      quantity: quantityStr ? parseInt(quantityStr) : 0,
+      expiry_date: parseDateValue(row.getCell(15)),
       errors: [],
     })
   })
@@ -304,7 +338,7 @@ export default function ProductImportCard() {
   const [downloading, setDownloading] = useState(false)
   const [importRows, setImportRows] = useState<ImportProductRow[] | null>(null)
   const [showPreview, setShowPreview] = useState(false)
-  const [importResult, setImportResult] = useState<{ success: boolean; count: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ success: boolean; createdCount: number; stockCount: number; existingCount: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<Array<{ slug: string; name: string }>>([])
   const [brands, setBrands] = useState<Array<{ name: string }>>([])
@@ -353,15 +387,11 @@ export default function ProductImportCard() {
 
     startTransition(async () => {
       try {
-        // Fetch categories and brands for validation
         const data = await getTemplateData()
         setCategories(data.categories)
         setBrands(data.brands)
 
-        // Parse Excel file
         const parsed = await parseExcelFile(file)
-
-        // Validate on server
         const validated = await validateImportData(parsed)
         setImportRows(validated)
         setShowPreview(true)
@@ -370,7 +400,6 @@ export default function ProductImportCard() {
       }
     })
 
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
@@ -382,7 +411,7 @@ export default function ProductImportCard() {
       const updated = [...prev]
       const row = { ...updated[index] }
 
-      if (field === "min_stock_level") {
+      if (field === "min_stock_level" || field === "quantity") {
         row[field] = parseInt(value as string) || 0
       } else if (field === "cost_price" || field === "selling_price" || field === "diameter" || field === "length") {
         row[field] = value ? parseFloat(value as string) : null
@@ -390,7 +419,6 @@ export default function ProductImportCard() {
         ;(row as Record<string, unknown>)[field] = value
       }
 
-      // Clear errors so they can be re-validated
       row.errors = []
       updated[index] = row
       return updated
@@ -412,7 +440,6 @@ export default function ProductImportCard() {
     setError(null)
     startTransition(async () => {
       try {
-        // Re-validate before import
         const validated = await validateImportData(importRows)
         const hasErrors = validated.some(r => r.errors.length > 0)
 
@@ -423,7 +450,7 @@ export default function ProductImportCard() {
         }
 
         const result = await bulkCreateProducts(validated)
-        setImportResult({ success: true, count: result.count })
+        setImportResult({ success: true, ...result })
         setImportRows(null)
         setShowPreview(false)
       } catch (err) {
@@ -436,13 +463,16 @@ export default function ProductImportCard() {
   const categoryOptions = categories.map(c => ({ value: c.slug, label: `${c.name} (${c.slug})` }))
   const brandOptions = brands.map(b => ({ value: b.name, label: b.name }))
 
+  // Count summary
+  const rowsWithStock = importRows?.filter(r => r.lot_number?.trim()).length ?? 0
+
   return (
     <>
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">นำเข้าสินค้า</CardTitle>
           <p className="text-xs text-muted-foreground">
-            ดาวน์โหลดเทมเพลท Excel กรอกข้อมูลสินค้า แล้วนำเข้าสู่ระบบ
+            ดาวน์โหลดเทมเพลท Excel กรอกข้อมูลสินค้าพร้อมสต็อก แล้วนำเข้าสู่ระบบ
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -456,7 +486,14 @@ export default function ProductImportCard() {
           {importResult?.success && (
             <div className="flex items-center gap-2 text-sm bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-lg px-3 py-2">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>นำเข้าสำเร็จ {importResult.count} รายการ</span>
+              <div>
+                <p>นำเข้าสำเร็จ</p>
+                <p className="text-xs mt-0.5">
+                  สินค้าใหม่ {importResult.createdCount} รายการ
+                  {importResult.existingCount > 0 && `, สินค้าที่มีอยู่แล้ว ${importResult.existingCount} รายการ`}
+                  {importResult.stockCount > 0 && `, สต็อก ${importResult.stockCount} lot`}
+                </p>
+              </div>
             </div>
           )}
 
@@ -501,18 +538,19 @@ export default function ProductImportCard() {
           </div>
 
           <p className="text-[11px] text-muted-foreground">
-            * เทมเพลทจะมีรายการหมวดหมู่และยี่ห้อเป็น dropdown ให้เลือก
+            * เทมเพลทรองรับทั้งข้อมูลสินค้าและสต็อก (Lot, จำนวน, วันหมดอายุ) ในไฟล์เดียว
           </p>
         </CardContent>
       </Card>
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="sm:max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-6xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>ตรวจสอบรายการสินค้าที่จะนำเข้า</DialogTitle>
             <DialogDescription>
               ทั้งหมด {importRows?.length ?? 0} รายการ
+              {rowsWithStock > 0 && ` (${rowsWithStock} รายการมีสต็อก)`}
               {totalErrors > 0 && (
                 <span className="text-destructive ml-2">
                   ({totalErrors} ข้อผิดพลาด)
@@ -535,14 +573,16 @@ export default function ProductImportCard() {
                 <TableRow>
                   <TableHead className="w-8 text-center text-xs">#</TableHead>
                   <TableHead className="text-xs min-w-[100px]">รหัส</TableHead>
-                  <TableHead className="text-xs min-w-[150px]">ชื่อสินค้า</TableHead>
-                  <TableHead className="text-xs min-w-[130px]">หมวดหมู่</TableHead>
-                  <TableHead className="text-xs min-w-[130px]">ยี่ห้อ</TableHead>
-                  <TableHead className="text-xs min-w-[100px]">รุ่น</TableHead>
-                  <TableHead className="text-xs min-w-[80px]">หน่วย</TableHead>
-                  <TableHead className="text-xs min-w-[80px]">ขั้นต่ำ</TableHead>
-                  <TableHead className="text-xs min-w-[90px]">ราคาทุน</TableHead>
-                  <TableHead className="text-xs min-w-[90px]">ราคาขาย</TableHead>
+                  <TableHead className="text-xs min-w-[140px]">ชื่อสินค้า</TableHead>
+                  <TableHead className="text-xs min-w-[120px]">หมวดหมู่</TableHead>
+                  <TableHead className="text-xs min-w-[120px]">ยี่ห้อ</TableHead>
+                  <TableHead className="text-xs min-w-[80px]">รุ่น</TableHead>
+                  <TableHead className="text-xs min-w-[70px]">หน่วย</TableHead>
+                  <TableHead className="text-xs min-w-[80px]">ราคาทุน</TableHead>
+                  <TableHead className="text-xs min-w-[80px]">ราคาขาย</TableHead>
+                  <TableHead className="text-xs min-w-[110px] bg-emerald-50 dark:bg-emerald-950/30">Lot</TableHead>
+                  <TableHead className="text-xs min-w-[80px] bg-emerald-50 dark:bg-emerald-950/30">จำนวน</TableHead>
+                  <TableHead className="text-xs min-w-[110px] bg-emerald-50 dark:bg-emerald-950/30">วันหมดอายุ</TableHead>
                   <TableHead className="text-xs w-10"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -603,13 +643,6 @@ export default function ProductImportCard() {
                     </TableCell>
                     <TableCell>
                       <EditableCell
-                        value={String(row.min_stock_level)}
-                        onChange={v => updateRow(idx, "min_stock_level", v)}
-                        type="number"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <EditableCell
                         value={row.cost_price !== null ? String(row.cost_price) : ""}
                         onChange={v => updateRow(idx, "cost_price", v)}
                         type="number"
@@ -622,6 +655,29 @@ export default function ProductImportCard() {
                         onChange={v => updateRow(idx, "selling_price", v)}
                         type="number"
                         placeholder="-"
+                      />
+                    </TableCell>
+                    {/* Inventory columns */}
+                    <TableCell className="bg-emerald-50/50 dark:bg-emerald-950/20">
+                      <EditableCell
+                        value={row.lot_number}
+                        onChange={v => updateRow(idx, "lot_number", v)}
+                        placeholder="(ไม่มี)"
+                      />
+                    </TableCell>
+                    <TableCell className="bg-emerald-50/50 dark:bg-emerald-950/20">
+                      <EditableCell
+                        value={row.quantity ? String(row.quantity) : ""}
+                        onChange={v => updateRow(idx, "quantity", v)}
+                        type="number"
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="bg-emerald-50/50 dark:bg-emerald-950/20">
+                      <EditableCell
+                        value={row.expiry_date}
+                        onChange={v => updateRow(idx, "expiry_date", v)}
+                        placeholder="YYYY-MM-DD"
                       />
                     </TableCell>
                     <TableCell>
@@ -637,7 +693,6 @@ export default function ProductImportCard() {
               </TableBody>
             </Table>
 
-            {/* Show row-level errors below each row's data */}
             {importRows?.some(r => r.errors.length > 0) && (
               <div className="p-3 border-t space-y-1">
                 <p className="text-xs font-medium text-destructive">ข้อผิดพลาดที่พบ:</p>
