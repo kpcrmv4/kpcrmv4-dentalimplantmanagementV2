@@ -152,7 +152,6 @@ export default async function CaseDetailPage({
             expiryDate: inventory?.expiry_date ? String(inventory.expiry_date) : null,
           }
         })}
-        formatDate={formatDate}
       />
 
       {/* Action Sections (client component) */}

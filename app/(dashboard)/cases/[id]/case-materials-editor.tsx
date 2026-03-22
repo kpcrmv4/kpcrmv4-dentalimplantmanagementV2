@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog"
 import { returnReservation, addMaterialToCase } from "@/lib/actions/cases"
 import { getProducts } from "@/lib/actions/products"
+import { formatDate } from "@/lib/utils"
 
 const RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
   reserved: { label: "จองแล้ว", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
@@ -60,12 +61,10 @@ export function CaseMaterialsEditor({
   caseId,
   caseStatus,
   reservations,
-  formatDate,
 }: {
   caseId: string
   caseStatus: string
   reservations: ReservationItem[]
-  formatDate: (d: string) => string
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
