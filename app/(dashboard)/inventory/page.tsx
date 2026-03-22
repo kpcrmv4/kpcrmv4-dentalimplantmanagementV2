@@ -3,7 +3,6 @@ import { Plus, Package, PackageCheck, Clock, TrendingDown, Settings } from "luci
 import { Button } from "@/components/ui/button"
 import { getStockSummary, getInactiveProducts, getProductIdsWithActivePOs, getInventoryByLot } from "@/lib/actions/inventory"
 import { getCategories } from "@/lib/actions/products"
-import { getBrands } from "@/lib/actions/settings"
 import { InventorySearch } from "./inventory-search"
 import { InventoryList } from "./inventory-list"
 
@@ -25,8 +24,14 @@ export default async function InventoryPage({
 
   const isLotView = view === "lot"
 
-  // Fetch data based on view mode
-  let products: Awaited<ReturnType<typeof getStockSummary>> = []
+  // Always fetch products for filter options (needed in both views)
+  const [allProducts, inactiveProducts, categories] = await Promise.all([
+    getStockSummary(),
+    getInactiveProducts(),
+    getCategories(),
+  ])
+
+  const products = allProducts
   let lotItems: Awaited<ReturnType<typeof getInventoryByLot>> = []
 
   if (isLotView) {
@@ -34,21 +39,42 @@ export default async function InventoryPage({
       search: search || undefined,
       expiry_before: expiryBefore || undefined,
     })
-  } else {
-    products = await getStockSummary()
   }
 
-  // Fetch inactive products count (and data if filter is active)
-  const inactiveProducts = await getInactiveProducts()
   const inactiveCount = inactiveProducts.length
 
-  const [categories, brandsData] = await Promise.all([getCategories(), getBrands()])
-  const activeBrands = brandsData.filter((b: { is_active: boolean }) => b.is_active)
+  // Cascading filter options: each dropdown narrows down the next
+  const allProductsAndInactive = [...allProducts, ...inactiveProducts]
+  let cascadeBase = allProductsAndInactive
 
-  // Extract distinct filter values from products
-  const distinctModels = Array.from(new Set(products.map((p) => p.model).filter(Boolean))) as string[]
-  const distinctDiameters = Array.from(new Set(products.map((p) => p.diameter).filter((d) => d != null))).map(String).sort((a, b) => Number(a) - Number(b))
-  const distinctLengths = Array.from(new Set(products.map((p) => p.length).filter((l) => l != null))).map(String).sort((a, b) => Number(a) - Number(b))
+  // Category narrows everything
+  if (category) {
+    cascadeBase = cascadeBase.filter((p) => p.category === category)
+  }
+
+  // Brands available for current category
+  const distinctBrands = Array.from(new Set(cascadeBase.map((p) => p.brand).filter(Boolean))).sort() as string[]
+
+  if (brand) {
+    cascadeBase = cascadeBase.filter((p) => p.brand?.toLowerCase() === brand.toLowerCase())
+  }
+
+  // Models available for current category + brand
+  const distinctModels = Array.from(new Set(cascadeBase.map((p) => p.model).filter(Boolean))).sort() as string[]
+
+  if (model) {
+    cascadeBase = cascadeBase.filter((p) => p.model?.toLowerCase() === model.toLowerCase())
+  }
+
+  // Diameters available for current category + brand + model
+  const distinctDiameters = Array.from(new Set(cascadeBase.map((p) => p.diameter).filter((d) => d != null))).map(String).sort((a, b) => Number(a) - Number(b))
+
+  if (diameter) {
+    cascadeBase = cascadeBase.filter((p) => p.diameter != null && String(p.diameter) === diameter)
+  }
+
+  // Lengths available for current category + brand + model + diameter
+  const distinctLengths = Array.from(new Set(cascadeBase.map((p) => p.length).filter((l) => l != null))).map(String).sort((a, b) => Number(a) - Number(b))
 
   // Compute summary from unfiltered product data
   const totalProducts = products.length
@@ -71,15 +97,28 @@ export default async function InventoryPage({
 
   // Apply filters after computing summary (so summary reflects totals)
   let filteredProducts = products
+  let filteredLotItems = lotItems
+
+  // Build category label map for text search
+  const categoryLabelMap = new Map<string, string>(categories.map((c: { value: string; label: string }) => [c.value, c.label.toLowerCase()]))
+
+  function matchesSearch(p: { name: string; ref: string; brand: string | null; category: string; model: string | null; diameter: number | null; length: number | null }, q: string): boolean {
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.ref.toLowerCase().includes(q) ||
+      (p.brand?.toLowerCase().includes(q) ?? false) ||
+      (p.category?.toLowerCase().includes(q) ?? false) ||
+      (categoryLabelMap.get(p.category)?.includes(q) ?? false) ||
+      (p.model?.toLowerCase().includes(q) ?? false) ||
+      (p.diameter != null && String(p.diameter).includes(q)) ||
+      (p.length != null && String(p.length).includes(q))
+    )
+  }
+
   if (!isLotView) {
     if (search) {
       const q = search.toLowerCase()
-      filteredProducts = filteredProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.ref.toLowerCase().includes(q) ||
-          (p.brand?.toLowerCase().includes(q) ?? false)
-      )
+      filteredProducts = filteredProducts.filter((p) => matchesSearch(p, q))
     }
     if (filter === "low") {
       filteredProducts = filteredProducts.filter((p) => p.isLowStock)
@@ -92,12 +131,7 @@ export default async function InventoryPage({
       filteredProducts = inactiveProducts
       if (search) {
         const q = search.toLowerCase()
-        filteredProducts = filteredProducts.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.ref.toLowerCase().includes(q) ||
-            (p.brand?.toLowerCase().includes(q) ?? false)
-        )
+        filteredProducts = filteredProducts.filter((p) => matchesSearch(p, q))
       }
     }
     if (category) {
@@ -115,9 +149,26 @@ export default async function InventoryPage({
     if (length) {
       filteredProducts = filteredProducts.filter((p) => p.length != null && String(p.length) === length)
     }
+  } else {
+    // Apply attribute filters in LOT view too
+    if (category) {
+      filteredLotItems = filteredLotItems.filter((l) => l.category === category)
+    }
+    if (brand) {
+      filteredLotItems = filteredLotItems.filter((l) => l.brand?.toLowerCase() === brand.toLowerCase())
+    }
+    if (model) {
+      filteredLotItems = filteredLotItems.filter((l) => l.model?.toLowerCase() === model.toLowerCase())
+    }
+    if (diameter) {
+      filteredLotItems = filteredLotItems.filter((l) => l.diameter != null && String(l.diameter) === diameter)
+    }
+    if (length) {
+      filteredLotItems = filteredLotItems.filter((l) => l.length != null && String(l.length) === length)
+    }
   }
 
-  const isEmpty = isLotView ? lotItems.length === 0 : filteredProducts.length === 0
+  const isEmpty = isLotView ? filteredLotItems.length === 0 : filteredProducts.length === 0
 
   return (
     <div className="space-y-3 p-3 sm:p-4 lg:p-6">
@@ -226,7 +277,7 @@ export default async function InventoryPage({
         currentDiameter={diameter}
         currentLength={length}
         categories={categories}
-        brands={activeBrands}
+        brands={distinctBrands.map((name) => ({ id: name, name }))}
         models={distinctModels}
         diameters={distinctDiameters}
         lengths={distinctLengths}
@@ -240,7 +291,7 @@ export default async function InventoryPage({
           <p className="text-xs mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
         </div>
       ) : isLotView ? (
-        <InventoryList products={[]} lotItems={lotItems} viewMode="lot" />
+        <InventoryList products={[]} lotItems={filteredLotItems} viewMode="lot" />
       ) : (
         <InventoryList products={filteredProducts} lotItems={[]} viewMode="product" />
       )}

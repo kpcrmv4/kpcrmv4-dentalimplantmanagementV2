@@ -93,6 +93,9 @@ export function InventorySearch({
 
   const isLotView = currentView === "lot"
 
+  const hasAnyFilterOption = (categories ?? []).length > 0 || (brands ?? []).length > 0 || (models ?? []).length > 0 || (diameters ?? []).length > 0 || (lengths ?? []).length > 0
+  const activeFilterCount = [currentCategory, currentBrand, currentModel, currentDiameter, currentLength].filter(Boolean).length
+
   return (
     <div className="space-y-2">
       {/* Search + View toggle row */}
@@ -100,7 +103,7 @@ export function InventorySearch({
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isLotView ? "ค้นหาชื่อ, REF, LOT..." : "ค้นหาชื่อ, REF, แบรนด์..."}
+            placeholder={isLotView ? "ค้นหาชื่อ, REF, LOT..." : "ค้นหาชื่อ, REF, ยี่ห้อ, รุ่น, ขนาด..."}
             className="pl-8 h-9 text-sm"
             value={value}
             onChange={(e) => handleSearch(e.target.value)}
@@ -214,84 +217,114 @@ export function InventorySearch({
       </div>
 
       {/* Category, Brand, Model, Diameter, Length filters */}
-      {!isLotView && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select
-            value={currentCategory ?? "all"}
-            onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, val === "all" ? "" : val, currentBrand, currentModel, currentDiameter, currentLength)}
-          >
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="ประเภท" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกประเภท</SelectItem>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex items-center gap-2 flex-wrap">
+        {hasAnyFilterOption && (
+          <>
+            <Select
+              value={currentCategory ?? "all"}
+              onValueChange={(val) => {
+                // Reset downstream filters when category changes
+                navigate(value, currentFilter, currentView, currentExpiryBefore, val === "all" ? "" : val, "", "", "", "")
+              }}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs rounded-full">
+                <SelectValue placeholder="ประเภท" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกประเภท</SelectItem>
+                {(categories ?? []).map((c) => (
+                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={currentBrand ?? "all"}
-            onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, val === "all" ? "" : val, currentModel, currentDiameter, currentLength)}
-          >
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="ยี่ห้อ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกยี่ห้อ</SelectItem>
-              {(brands ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={currentBrand ?? "all"}
+              onValueChange={(val) => {
+                // Reset downstream filters when brand changes
+                navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, val === "all" ? "" : val, "", "", "")
+              }}
+            >
+              <SelectTrigger className="h-8 w-[140px] text-xs rounded-full">
+                <SelectValue placeholder="ยี่ห้อ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทุกยี่ห้อ</SelectItem>
+                {(brands ?? []).map((b) => (
+                  <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={currentModel ?? "all"}
-            onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, val === "all" ? "" : val, currentDiameter, currentLength)}
-          >
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="รุ่น" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกรุ่น</SelectItem>
-              {(models ?? []).map((m) => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {(models ?? []).length > 0 && (
+              <Select
+                value={currentModel ?? "all"}
+                onValueChange={(val) => {
+                  navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, val === "all" ? "" : val, "", "")
+                }}
+              >
+                <SelectTrigger className="h-8 w-[140px] text-xs rounded-full">
+                  <SelectValue placeholder="รุ่น" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุกรุ่น</SelectItem>
+                  {(models ?? []).map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
-          <Select
-            value={currentDiameter ?? "all"}
-            onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, val === "all" ? "" : val, currentLength)}
-          >
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="Diameter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุก Diameter</SelectItem>
-              {(diameters ?? []).map((d) => (
-                <SelectItem key={d} value={d}>{d} mm</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {(diameters ?? []).length > 0 && (
+              <Select
+                value={currentDiameter ?? "all"}
+                onValueChange={(val) => {
+                  navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, val === "all" ? "" : val, "")
+                }}
+              >
+                <SelectTrigger className="h-8 w-[140px] text-xs rounded-full">
+                  <SelectValue placeholder="Diameter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุก Diameter</SelectItem>
+                  {(diameters ?? []).map((d) => (
+                    <SelectItem key={d} value={d}>{d} mm</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
-          <Select
-            value={currentLength ?? "all"}
-            onValueChange={(val) => navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, currentDiameter, val === "all" ? "" : val)}
-          >
-            <SelectTrigger className="h-8 w-[120px] text-xs">
-              <SelectValue placeholder="ความยาว" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกความยาว</SelectItem>
-              {(lengths ?? []).map((l) => (
-                <SelectItem key={l} value={l}>{l} mm</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+            {(lengths ?? []).length > 0 && (
+              <Select
+                value={currentLength ?? "all"}
+                onValueChange={(val) => {
+                  navigate(value, currentFilter, currentView, currentExpiryBefore, currentCategory, currentBrand, currentModel, currentDiameter, val === "all" ? "" : val)
+                }}
+              >
+                <SelectTrigger className="h-8 w-[140px] text-xs rounded-full">
+                  <SelectValue placeholder="ความยาว" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">ทุกความยาว</SelectItem>
+                  {(lengths ?? []).map((l) => (
+                    <SelectItem key={l} value={l}>{l} mm</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {activeFilterCount > 0 && (
+              <button
+                onClick={() => navigate(value, currentFilter, currentView, currentExpiryBefore, "", "", "", "", "")}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted/80 transition-colors"
+              >
+                <X className="h-3 w-3" />
+                ล้างตัวกรอง
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
