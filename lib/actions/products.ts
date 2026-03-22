@@ -173,6 +173,7 @@ export async function updateProduct(id: string, formData: FormData) {
   }
 
   const costPriceRaw = formData.get("cost_price") as string | null
+  const sellingPriceRaw = formData.get("selling_price") as string | null
   const minStockRaw = formData.get("min_stock_level") as string | null
 
   const productData = {
@@ -184,6 +185,7 @@ export async function updateProduct(id: string, formData: FormData) {
     unit: (formData.get("unit") as string | null)?.trim() || "ชิ้น",
     min_stock_level: minStockRaw ? parseInt(minStockRaw, 10) : 0,
     cost_price: costPriceRaw ? parseFloat(costPriceRaw) : null,
+    selling_price: sellingPriceRaw ? parseFloat(sellingPriceRaw) : null,
     supplier_id: (formData.get("supplier_id") as string | null) || null,
     image_url: (formData.get("image_url") as string | null)?.trim() || null,
     model: (formData.get("model") as string | null)?.trim() || null,

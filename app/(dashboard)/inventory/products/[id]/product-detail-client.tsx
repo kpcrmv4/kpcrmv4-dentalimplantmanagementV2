@@ -392,10 +392,14 @@ export function ProductDetailClient({
               <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
                 <p><span className="text-muted-foreground">REF:</span> {product.ref}</p>
                 <p><span className="text-muted-foreground">ยี่ห้อ:</span> {product.brand ?? "-"}</p>
+                <p><span className="text-muted-foreground">รุ่น:</span> {product.model ?? "-"}</p>
+                <p><span className="text-muted-foreground">Diameter (mm):</span> {product.diameter ?? "-"}</p>
+                <p><span className="text-muted-foreground">Length (mm):</span> {product.length ?? "-"}</p>
                 <p><span className="text-muted-foreground">หมวดหมู่:</span> {product.category ? (categories.find((c) => c.value === product.category)?.label ?? product.category) : "-"}</p>
                 <p><span className="text-muted-foreground">หน่วย:</span> {product.unit ?? "-"}</p>
                 <p><span className="text-muted-foreground">สต็อกขั้นต่ำ:</span> {product.min_stock_level}</p>
                 <p><span className="text-muted-foreground">ราคาต้นทุน:</span> {product.cost_price != null ? formatCurrency(product.cost_price) : "-"}</p>
+                <p><span className="text-muted-foreground">ราคาขาย:</span> {product.selling_price != null ? formatCurrency(product.selling_price) : "-"}</p>
                 <p><span className="text-muted-foreground">Supplier:</span> {product.supplier?.name ?? "-"}</p>
               </div>
               {product.description && (
@@ -658,6 +662,32 @@ export function ProductDetailClient({
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="edit-model">รุ่น (Model)</Label>
+                <Input id="edit-model" name="model" defaultValue={product.model ?? ""} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-diameter">Diameter (mm)</Label>
+                <Input
+                  id="edit-diameter"
+                  name="diameter"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  defaultValue={product.diameter ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-length">Length (mm)</Label>
+                <Input
+                  id="edit-length"
+                  name="length"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  defaultValue={product.length ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-category">หมวดหมู่</Label>
                 <Select name="category" defaultValue={product.category ?? ""}>
                   <SelectTrigger id="edit-category">
@@ -695,6 +725,17 @@ export function ProductDetailClient({
                   step="0.01"
                   min={0}
                   defaultValue={product.cost_price ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-selling-price">ราคาขาย (฿)</Label>
+                <Input
+                  id="edit-selling-price"
+                  name="selling_price"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  defaultValue={product.selling_price ?? ""}
                 />
               </div>
               <div className="space-y-2">
