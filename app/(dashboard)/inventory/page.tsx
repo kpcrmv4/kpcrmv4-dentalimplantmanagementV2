@@ -5,6 +5,7 @@ import { getStockSummary, getInactiveProducts, getProductIdsWithActivePOs, getIn
 import { getCategories } from "@/lib/actions/products"
 import { InventorySearch } from "./inventory-search"
 import { InventoryList } from "./inventory-list"
+import { StockDemandPanel } from "./stock-demand-panel"
 
 export default async function InventoryPage({
   searchParams,
@@ -262,6 +263,9 @@ export default async function InventoryPage({
           />
         </div>
       )}
+
+      {/* Stock Demands — cases needing out-of-stock materials */}
+      {!isLotView && <StockDemandPanel />}
 
       {/* Search & Filters */}
       <InventorySearch
