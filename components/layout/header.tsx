@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bell, LogOut, Package, User as UserIcon, Shield } from "lucide-react"
+import { Bell, LogOut, Package, User as UserIcon, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -26,19 +26,6 @@ interface HeaderProps {
 export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const isDesktop = useMediaQuery("(min-width: 1024px)")
-
-  const profileTrigger = (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="rounded-full"
-      onClick={!isDesktop ? () => setSheetOpen(true) : undefined}
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-        {user.full_name.charAt(0)}
-      </div>
-    </Button>
-  )
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background px-4 lg:px-6">
@@ -77,7 +64,11 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
         {isDesktop ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              {profileTrigger}
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                  {user.full_name.charAt(0)}
+                </div>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="w-48">
               <div className="px-2 py-1.5">
@@ -87,14 +78,8 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/profile">
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  โปรไฟล์
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/profile?tab=security">
-                  <Shield className="mr-2 h-4 w-4" />
-                  ความปลอดภัย
+                  <Settings className="mr-2 h-4 w-4" />
+                  ตั้งค่าโปรไฟล์
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -106,7 +91,14 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
           </DropdownMenu>
         ) : (
           <>
-            {profileTrigger}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              onClick={() => setSheetOpen(true)}
+            >
+              <UserIcon className="h-5 w-5 text-muted-foreground" />
+            </Button>
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
               <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <SheetHeader className="pb-2">
@@ -123,16 +115,8 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
                     onClick={() => setSheetOpen(false)}
                     className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted"
                   >
-                    <UserIcon className="h-4 w-4" />
-                    โปรไฟล์
-                  </Link>
-                  <Link
-                    href="/profile?tab=security"
-                    onClick={() => setSheetOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted"
-                  >
-                    <Shield className="h-4 w-4" />
-                    ความปลอดภัย
+                    <Settings className="h-4 w-4" />
+                    ตั้งค่าโปรไฟล์
                   </Link>
                   <div className="my-1 h-px bg-border" />
                   <button
