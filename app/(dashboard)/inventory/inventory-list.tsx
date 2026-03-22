@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ChevronRight,
   Clock,
-  Package,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
@@ -267,121 +266,48 @@ function StatusPill({ status }: { status: "green" | "orange" | "red" }) {
 // ─── LOT View ──────────────────────────────────────────────────
 
 function LotView({ items }: { items: LotItem[] }) {
-  // Group by product for better readability
-  const grouped = new Map<string, { product: { id: string; name: string; ref: string; brand: string | null }; lots: LotItem[] }>()
-  for (const item of items) {
-    const key = item.product_id
-    if (!grouped.has(key)) {
-      grouped.set(key, {
-        product: { id: item.product_id, name: item.product_name, ref: item.ref, brand: item.brand },
-        lots: [],
-      })
-    }
-    grouped.get(key)!.lots.push(item)
-  }
-
   return (
-    <div className="space-y-2">
-      {Array.from(grouped.values()).map(({ product, lots }) => {
-        const totalAvailable = lots.reduce((s, l) => s + l.available, 0)
-        const totalReserved = lots.reduce((s, l) => s + l.reserved_quantity, 0)
+    <div className="space-y-1.5">
+      {items.map((lot) => {
+        const { color } = getExpiryInfo(lot.expiry_date)
+        const borderColor =
+          color === "red"
+            ? "border-l-red-500"
+            : color === "orange"
+            ? "border-l-orange-400"
+            : color === "green"
+            ? "border-l-green-500"
+            : "border-l-muted-foreground/30"
 
         return (
-          <div key={product.id} className="rounded-lg border overflow-hidden">
-            {/* Product header */}
-            <Link
-              href={`/inventory/products/${product.id}`}
-              className="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 hover:bg-muted/60 transition-colors border-b"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-semibold truncate">{product.name}</span>
-                </div>
-                <div className="flex items-center gap-1.5 ml-5">
-                  <span className="text-[10px] sm:text-[11px] font-mono text-muted-foreground">
-                    {product.ref}
-                  </span>
-                  {product.brand && (
-                    <>
-                      <span className="text-muted-foreground/40">·</span>
-                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">
-                        {product.brand}
-                      </span>
-                    </>
-                  )}
-                </div>
+          <Link
+            key={lot.id}
+            href={`/inventory/products/${lot.product_id}`}
+            className={`block rounded-lg border border-l-[3px] ${borderColor} px-3 py-2.5 hover:bg-muted/40 transition-colors`}
+          >
+            {/* Row 1: Product name + quantity */}
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-sm font-semibold truncate">{lot.product_name}</span>
+              <div className="flex items-baseline gap-1 shrink-0">
+                <span className="text-base font-bold tabular-nums">{lot.available}</span>
+                <span className="text-[10px] text-muted-foreground">{lot.unit}</span>
+                {lot.reserved_quantity > 0 && (
+                  <span className="text-[10px] text-orange-500">(จอง {lot.reserved_quantity})</span>
+                )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="text-right">
-                  <span className="text-sm font-bold">{totalAvailable}</span>
-                  {totalReserved > 0 && (
-                    <span className="text-[10px] text-orange-500 ml-1">
-                      (จอง {totalReserved})
-                    </span>
-                  )}
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-              </div>
-            </Link>
-
-            {/* LOT rows */}
-            <div className="divide-y divide-dashed">
-              {lots.map((lot) => {
-                const { color } = getExpiryInfo(lot.expiry_date)
-                const borderColor =
-                  color === "red"
-                    ? "border-l-red-500"
-                    : color === "orange"
-                    ? "border-l-orange-400"
-                    : color === "green"
-                    ? "border-l-green-400"
-                    : "border-l-transparent"
-
-                return (
-                  <div
-                    key={lot.id}
-                    className={`flex items-center justify-between gap-2 px-3 py-2 border-l-[3px] ${borderColor} ml-0`}
-                  >
-                    {/* LOT info */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="outline" className="text-[10px] h-[18px] px-1.5 font-mono shrink-0">
-                          {lot.lot_number}
-                        </Badge>
-                        <ExpiryBadge expiryDate={lot.expiry_date} compact />
-                      </div>
-                      {lot.supplier_name && (
-                        <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5 ml-0.5">
-                          {lot.supplier_name}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="flex items-baseline gap-0.5 shrink-0">
-                      <span className="text-sm font-semibold tabular-nums">
-                        {lot.available}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {lot.unit}
-                      </span>
-                      {lot.reserved_quantity > 0 && (
-                        <span className="text-[10px] text-orange-500 ml-0.5">
-                          (จอง {lot.reserved_quantity})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
             </div>
-          </div>
+            {/* Row 2: LOT number + expiry */}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[11px] font-mono text-muted-foreground">{lot.lot_number}</span>
+              <span className="text-muted-foreground/30">|</span>
+              <ExpiryBadge expiryDate={lot.expiry_date} compact />
+            </div>
+          </Link>
         )
       })}
 
       <p className="text-[10px] sm:text-[11px] text-muted-foreground text-right px-1 pt-1">
-        แสดง {items.length} LOT จาก {grouped.size} สินค้า (เรียงตามวันหมดอายุ)
+        แสดง {items.length} LOT (เรียงตามวันหมดอายุ)
       </p>
     </div>
   )
