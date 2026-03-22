@@ -13,6 +13,10 @@ export async function getProducts(filters?: {
   category?: ProductCategory
   search?: string
   supplier_id?: string
+  brand?: string
+  model?: string
+  diameter?: string
+  length?: string
 }) {
   const supabase = await createClient()
   let query = supabase
@@ -26,11 +30,23 @@ export async function getProducts(filters?: {
   }
   if (filters?.search) {
     query = query.or(
-      `name.ilike.%${filters.search}%,ref.ilike.%${filters.search}%,brand.ilike.%${filters.search}%`
+      `name.ilike.%${filters.search}%,ref.ilike.%${filters.search}%,brand.ilike.%${filters.search}%,model.ilike.%${filters.search}%`
     )
   }
   if (filters?.supplier_id) {
     query = query.eq("supplier_id", filters.supplier_id)
+  }
+  if (filters?.brand) {
+    query = query.ilike("brand", filters.brand)
+  }
+  if (filters?.model) {
+    query = query.ilike("model", filters.model)
+  }
+  if (filters?.diameter) {
+    query = query.eq("diameter", parseFloat(filters.diameter))
+  }
+  if (filters?.length) {
+    query = query.eq("length", parseFloat(filters.length))
   }
 
   const { data, error } = await query
