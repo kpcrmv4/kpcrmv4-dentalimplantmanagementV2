@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bell, LogOut, Package, User, Shield } from "lucide-react"
+import { Bell, LogOut, Package, User as UserIcon, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -71,7 +71,7 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/profile">
-                <User className="mr-2 h-4 w-4" />
+                <UserIcon className="mr-2 h-4 w-4" />
                 โปรไฟล์
               </Link>
             </DropdownMenuItem>
