@@ -93,6 +93,45 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
   })
 }
 
+export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("products")
+    .select(`
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length,
+      suppliers(name),
+      inventory(quantity, reserved_quantity)
+    `)
+    .eq("is_active", false)
+    .order("name")
+
+  if (error) throw error
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((p: any) => {
+    const rows = (p.inventory as Array<{ quantity: number; reserved_quantity: number }>) ?? []
+    const totalStock = rows.reduce((sum: number, r: { quantity: number; reserved_quantity: number }) => sum + r.quantity - r.reserved_quantity, 0)
+    const isLowStock = totalStock <= p.min_stock_level
+    return {
+      id: p.id,
+      ref: p.ref,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      unit: p.unit,
+      min_stock_level: p.min_stock_level,
+      model: p.model ?? null,
+      diameter: p.diameter ?? null,
+      length: p.length ?? null,
+      totalStock,
+      isLowStock,
+      supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
+    }
+  })
+}
+
 export async function getLowStockCount() {
   const supabase = await createClient()
   const { data, error } = await supabase

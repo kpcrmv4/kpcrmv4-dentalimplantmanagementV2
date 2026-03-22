@@ -16,6 +16,7 @@ export function InventorySearch({
   currentView,
   currentExpiryBefore,
   lowStockCount,
+  inactiveCount,
   currentCategory,
   currentBrand,
   currentModel,
@@ -32,6 +33,7 @@ export function InventorySearch({
   currentView: string
   currentExpiryBefore: string
   lowStockCount: number
+  inactiveCount: number
   currentCategory?: string
   currentBrand?: string
   currentModel?: string
@@ -161,6 +163,14 @@ export function InventorySearch({
           color="indigo"
         >
           กำลังสั่ง
+        </FilterPill>
+        <FilterPill
+          active={currentFilter === "inactive"}
+          onClick={() => handleFilterChange("inactive")}
+          color="red"
+          count={inactiveCount > 0 ? inactiveCount : undefined}
+        >
+          ปิดใช้งาน
         </FilterPill>
 
         {/* Expiry date filter - show in LOT view */}
@@ -295,7 +305,7 @@ function FilterPill({
 }: {
   active: boolean
   onClick: () => void
-  color: "default" | "orange" | "indigo"
+  color: "default" | "orange" | "indigo" | "red"
   count?: number
   children: React.ReactNode
 }) {
@@ -303,6 +313,7 @@ function FilterPill({
     default: "bg-primary text-primary-foreground",
     orange: "bg-orange-600 text-white",
     indigo: "bg-indigo-600 text-white",
+    red: "bg-red-600 text-white",
   }
   const inactiveClass = "bg-muted text-muted-foreground hover:bg-muted/80"
 
