@@ -446,10 +446,13 @@ export type Database = {
           cost_price: number | null
           created_at: string
           description: string | null
+          diameter: number | null
           id: string
           image_url: string | null
           is_active: boolean
+          length: number | null
           min_stock_level: number
+          model: string | null
           name: string
           ref: string
           selling_price: number | null
@@ -463,10 +466,13 @@ export type Database = {
           cost_price?: number | null
           created_at?: string
           description?: string | null
+          diameter?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          length?: number | null
           min_stock_level?: number
+          model?: string | null
           name: string
           ref: string
           selling_price?: number | null
@@ -480,10 +486,13 @@ export type Database = {
           cost_price?: number | null
           created_at?: string
           description?: string | null
+          diameter?: number | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          length?: number | null
           min_stock_level?: number
+          model?: string | null
           name?: string
           ref?: string
           selling_price?: number | null

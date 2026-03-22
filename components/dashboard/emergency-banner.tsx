@@ -2,6 +2,7 @@ import Link from "next/link"
 import { AlertTriangle, Clock } from "lucide-react"
 import { getEmergencyAlerts } from "@/lib/actions/dashboard"
 import { Badge } from "@/components/ui/badge"
+import { formatDate, formatDateTime } from "@/lib/utils"
 
 const STATUS_LABELS: Record<string, string> = {
   pending_order: "รอสั่งของ",
@@ -24,9 +25,11 @@ export async function EmergencyBanner() {
       </div>
       <div className="mt-3 space-y-2 pl-7">
         {alerts.map((c) => {
-          const timeLabel = c.scheduled_time
-            ? `${c.scheduled_date} เวลา ${c.scheduled_time}`
-            : c.scheduled_date ?? ""
+          const timeLabel = c.scheduled_date
+            ? c.scheduled_time
+              ? formatDateTime(`${c.scheduled_date}T${c.scheduled_time}`)
+              : formatDate(c.scheduled_date)
+            : ""
 
           return (
             <Link

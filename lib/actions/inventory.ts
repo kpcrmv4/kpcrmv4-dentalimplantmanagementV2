@@ -28,7 +28,8 @@ export async function getInventory(filters?: {
   }
   if (filters?.search) {
     query = query.or(
-      `products.name.ilike.%${filters.search}%,products.ref.ilike.%${filters.search}%,lot_number.ilike.%${filters.search}%`,
+      `name.ilike.%${filters.search}%,ref.ilike.%${filters.search}%`,
+      { referencedTable: "products" },
     )
   }
 
@@ -368,7 +369,8 @@ export async function getInventoryByLot(filters?: {
   }
   if (filters?.search) {
     query = query.or(
-      `products.name.ilike.%${filters.search}%,products.ref.ilike.%${filters.search}%,lot_number.ilike.%${filters.search}%`,
+      `name.ilike.%${filters.search}%,ref.ilike.%${filters.search}%`,
+      { referencedTable: "products" },
     )
   }
   if (filters?.expiry_before) {
