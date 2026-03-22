@@ -100,7 +100,7 @@ export default async function InventoryPage({
   let filteredLotItems = lotItems
 
   // Build category label map for text search
-  const categoryLabelMap = new Map(categories.map((c: { value: string; label: string }) => [c.value, c.label.toLowerCase()]))
+  const categoryLabelMap = new Map<string, string>(categories.map((c: { value: string; label: string }) => [c.value, c.label.toLowerCase()]))
 
   function matchesSearch(p: { name: string; ref: string; brand: string | null; category: string; model: string | null; diameter: number | null; length: number | null }, q: string): boolean {
     return (
