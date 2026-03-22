@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Clock,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 
 type Product = {
   id: string
