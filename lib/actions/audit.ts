@@ -9,9 +9,13 @@ export async function getAuditLogs(filters?: {
   limit?: number
 }) {
   const supabase = await createClient()
+
+  // Build filter conditions for RPC/raw query
+  // PostgREST FK joins don't work reliably on partitioned tables,
+  // so we fetch audit_logs first, then resolve performer names separately.
   let query = supabase
     .from("audit_logs")
-    .select("*, performer:users!audit_logs_performed_by_fkey(full_name)")
+    .select("*")
     .order("performed_at", { ascending: false })
 
   if (filters?.table_name) {
@@ -28,7 +32,35 @@ export async function getAuditLogs(filters?: {
 
   const { data, error } = await query.limit(filters?.limit ?? 100)
   if (error) throw error
-  return data ?? []
+  if (!data || data.length === 0) return []
+
+  // Resolve performer names in a separate query
+  const performerIds = Array.from(
+    new Set(
+      data
+        .map((log) => log.performed_by)
+        .filter((id): id is string => id != null)
+    )
+  )
+
+  let performerMap: Record<string, string> = {}
+  if (performerIds.length > 0) {
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, full_name")
+      .in("id", performerIds)
+
+    performerMap = Object.fromEntries(
+      (users ?? []).map((u) => [u.id, u.full_name])
+    )
+  }
+
+  return data.map((log) => ({
+    ...log,
+    performer: log.performed_by
+      ? { full_name: performerMap[log.performed_by] ?? null }
+      : null,
+  }))
 }
 
 export async function getAuditTables() {
