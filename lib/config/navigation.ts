@@ -6,7 +6,6 @@ import {
   Settings,
   Calendar,
   PlusCircle,
-  User,
   ShoppingCart,
   Truck,
   ArrowLeftRight,
