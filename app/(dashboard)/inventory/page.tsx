@@ -31,7 +31,7 @@ export default async function InventoryPage({
     getCategories(),
   ])
 
-  let products = allProducts
+  const products = allProducts
   let lotItems: Awaited<ReturnType<typeof getInventoryByLot>> = []
 
   if (isLotView) {
@@ -99,15 +99,26 @@ export default async function InventoryPage({
   let filteredProducts = products
   let filteredLotItems = lotItems
 
+  // Build category label map for text search
+  const categoryLabelMap = new Map(categories.map((c) => [c.value, c.label.toLowerCase()]))
+
+  function matchesSearch(p: { name: string; ref: string; brand: string | null; category: string; model: string | null; diameter: number | null; length: number | null }, q: string): boolean {
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.ref.toLowerCase().includes(q) ||
+      (p.brand?.toLowerCase().includes(q) ?? false) ||
+      (p.category?.toLowerCase().includes(q) ?? false) ||
+      (categoryLabelMap.get(p.category)?.includes(q) ?? false) ||
+      (p.model?.toLowerCase().includes(q) ?? false) ||
+      (p.diameter != null && String(p.diameter).includes(q)) ||
+      (p.length != null && String(p.length).includes(q))
+    )
+  }
+
   if (!isLotView) {
     if (search) {
       const q = search.toLowerCase()
-      filteredProducts = filteredProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.ref.toLowerCase().includes(q) ||
-          (p.brand?.toLowerCase().includes(q) ?? false)
-      )
+      filteredProducts = filteredProducts.filter((p) => matchesSearch(p, q))
     }
     if (filter === "low") {
       filteredProducts = filteredProducts.filter((p) => p.isLowStock)
@@ -120,12 +131,7 @@ export default async function InventoryPage({
       filteredProducts = inactiveProducts
       if (search) {
         const q = search.toLowerCase()
-        filteredProducts = filteredProducts.filter(
-          (p) =>
-            p.name.toLowerCase().includes(q) ||
-            p.ref.toLowerCase().includes(q) ||
-            (p.brand?.toLowerCase().includes(q) ?? false)
-        )
+        filteredProducts = filteredProducts.filter((p) => matchesSearch(p, q))
       }
     }
     if (category) {

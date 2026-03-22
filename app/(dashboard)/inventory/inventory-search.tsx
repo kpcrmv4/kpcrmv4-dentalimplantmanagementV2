@@ -103,7 +103,7 @@ export function InventorySearch({
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder={isLotView ? "ค้นหาชื่อ, REF, LOT..." : "ค้นหาชื่อ, REF, แบรนด์..."}
+            placeholder={isLotView ? "ค้นหาชื่อ, REF, LOT..." : "ค้นหาชื่อ, REF, ยี่ห้อ, รุ่น, ขนาด..."}
             className="pl-8 h-9 text-sm"
             value={value}
             onChange={(e) => handleSearch(e.target.value)}
