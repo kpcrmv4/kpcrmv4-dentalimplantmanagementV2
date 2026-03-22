@@ -1,12 +1,13 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Calendar, User, Package } from "lucide-react"
+import { ArrowLeft, Calendar, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getCaseById } from "@/lib/actions/cases"
 import { formatDate } from "@/lib/utils"
 import { CaseActions } from "./case-actions"
+import { CaseMaterialsEditor } from "./case-materials-editor"
 import { AppointmentActions } from "./appointment-actions"
 import { AppointmentTimeline } from "./appointment-timeline"
 
@@ -19,12 +20,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
 }
 
-const RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
-  reserved: { label: "จองแล้ว", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
-  prepared: { label: "จัดเตรียมแล้ว", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
-  consumed: { label: "ใช้แล้ว", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
-  returned: { label: "คืนแล้ว", color: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
-}
 
 export default async function CaseDetailPage({
   params,
@@ -45,7 +40,6 @@ export default async function CaseDetailPage({
   const dentist = caseData.dentist as Record<string, unknown> | null
   const assistant = caseData.assistant as Record<string, unknown> | null
   const reservations = caseData.reservations as Array<Record<string, unknown>>
-  const canOrder = ["pending_order"].includes(caseData.case_status)
   const canCancel = !["completed", "cancelled"].includes(caseData.case_status)
   const isActive = !["completed", "cancelled"].includes(caseData.case_status)
 
@@ -138,57 +132,28 @@ export default async function CaseDetailPage({
       {/* Appointment Timeline */}
       <AppointmentTimeline caseId={id} />
 
-      {/* Materials / Reservations */}
-      <div className="rounded-xl border bg-card p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <Package className="h-3.5 w-3.5 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">วัสดุที่สั่ง ({reservations.length})</h2>
-          </div>
-          {canOrder && (
-            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-              <Link href={`/shop?case_id=${id}`}>+ สั่งเพิ่ม</Link>
-            </Button>
-          )}
-        </div>
-        {reservations.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            ยังไม่มีรายการวัสดุ
-          </p>
-        ) : (
-          <div className="space-y-1.5">
-            {reservations.map((r) => {
-              const product = r.products as Record<string, unknown> | null
-              const inventory = r.inventory as Record<string, unknown> | null
-              const rStatus = RESERVATION_STATUS[r.status as string] ?? RESERVATION_STATUS.reserved
-
-              return (
-                <div key={r.id as string} className="flex items-start gap-2 rounded-lg border p-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-tight">{String(product?.name ?? "")}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {String(product?.brand ?? "")} · REF: {String(product?.ref ?? "")}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      จำนวน: {Number(r.quantity_reserved)} {String(product?.unit ?? "")}
-                      {r.quantity_used != null ? ` → ใช้จริง: ${Number(r.quantity_used)}` : ""}
-                    </p>
-                    {inventory && (
-                      <p className="text-[11px] text-muted-foreground">
-                        LOT: {String(inventory.lot_number)}
-                        {inventory.expiry_date ? ` · Exp: ${formatDate(String(inventory.expiry_date))}` : ""}
-                      </p>
-                    )}
-                  </div>
-                  <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${rStatus.color}`}>
-                    {rStatus.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      {/* Materials / Reservations (editable) */}
+      <CaseMaterialsEditor
+        caseId={id}
+        caseStatus={caseData.case_status}
+        reservations={reservations.map((r) => {
+          const product = r.products as Record<string, unknown> | null
+          const inventory = r.inventory as Record<string, unknown> | null
+          return {
+            id: r.id as string,
+            status: r.status as string,
+            productId: r.product_id as string,
+            productName: String(product?.name ?? ""),
+            productBrand: String(product?.brand ?? ""),
+            productRef: String(product?.ref ?? ""),
+            productUnit: String(product?.unit ?? "ชิ้น"),
+            quantityReserved: Number(r.quantity_reserved),
+            lotNumber: inventory ? String(inventory.lot_number) : null,
+            expiryDate: inventory?.expiry_date ? String(inventory.expiry_date) : null,
+          }
+        })}
+        formatDate={formatDate}
+      />
 
       {/* Action Sections (client component) */}
       {isActive && (

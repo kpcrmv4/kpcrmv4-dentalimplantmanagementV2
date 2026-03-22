@@ -430,6 +430,187 @@ export async function closeCaseWithUsage(
   revalidatePath(`/cases/${caseId}`)
 }
 
+/**
+ * Return a single reservation to inventory (prepared/reserved → returned).
+ * Trigger handles releasing reserved_quantity.
+ * After returning, re-evaluates case status.
+ */
+export async function returnReservation(reservationId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  const { data: reservation } = await supabase
+    .from("case_reservations")
+    .select("id, status, case_id, inventory_id")
+    .eq("id", reservationId)
+    .single()
+
+  if (!reservation) throw new Error("ไม่พบรายการจอง")
+  if (!["reserved", "prepared"].includes(reservation.status)) {
+    throw new Error("ไม่สามารถคืนรายการนี้ได้ (สถานะ: " + reservation.status + ")")
+  }
+
+  // Set status to returned (trigger releases reserved_quantity)
+  const { error } = await supabase
+    .from("case_reservations")
+    .update({ status: "returned" as ReservationStatus })
+    .eq("id", reservationId)
+
+  if (error) throw error
+
+  // Re-evaluate case status
+  await revalidateCaseReadyStatus(reservation.case_id)
+
+  revalidatePath("/cases")
+  revalidatePath(`/cases/${reservation.case_id}`)
+  revalidatePath("/preparation")
+  revalidatePath("/inventory")
+}
+
+/**
+ * Add a new material to an existing case (ready/pending_preparation).
+ * Checks stock and tries to auto-assign LOT via FEFO.
+ * Returns { hasStock, reservationId }.
+ */
+export async function addMaterialToCase(
+  caseId: string,
+  productId: string,
+  quantity: number
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // Validate case exists and is editable
+  const { data: caseData } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", caseId)
+    .single()
+
+  if (!caseData) throw new Error("ไม่พบเคส")
+  if (["completed", "cancelled"].includes(caseData.case_status)) {
+    throw new Error("ไม่สามารถเพิ่มวัสดุในเคสที่ปิดแล้ว")
+  }
+
+  // Check available stock via FEFO
+  const { data: lotRows } = await supabase
+    .from("inventory")
+    .select("id, quantity, reserved_quantity, expiry_date")
+    .eq("product_id", productId)
+    .gt("quantity", 0)
+    .order("expiry_date", { ascending: true, nullsFirst: false })
+    .order("received_date", { ascending: true })
+
+  let bestLotId: string | null = null
+  let hasStock = false
+
+  for (const lot of lotRows ?? []) {
+    const available = lot.quantity - lot.reserved_quantity
+    if (available >= quantity) {
+      bestLotId = lot.id
+      hasStock = true
+      break
+    }
+  }
+
+  // Step 1: Create reservation as "reserved"
+  const { data: newReservation, error } = await supabase
+    .from("case_reservations")
+    .insert({
+      case_id: caseId,
+      product_id: productId,
+      quantity_reserved: quantity,
+      status: "reserved" as ReservationStatus,
+      reserved_by: user.id,
+      reserved_at: new Date().toISOString(),
+      lot_specified: false,
+    })
+    .select("id")
+    .single()
+
+  if (error) throw error
+
+  // Step 2: If stock available, update to "prepared" (trigger handles reserved_quantity)
+  if (hasStock && bestLotId) {
+    const { error: updateErr } = await supabase
+      .from("case_reservations")
+      .update({
+        inventory_id: bestLotId,
+        lot_specified: true,
+        prepared_by: user.id,
+        prepared_at: new Date().toISOString(),
+        status: "prepared" as ReservationStatus,
+      })
+      .eq("id", newReservation.id)
+
+    if (updateErr) throw updateErr
+  }
+
+  // Re-evaluate case status
+  await revalidateCaseReadyStatus(caseId)
+
+  revalidatePath("/cases")
+  revalidatePath(`/cases/${caseId}`)
+  revalidatePath("/preparation")
+  revalidatePath("/inventory")
+
+  return {
+    hasStock,
+    reservationId: newReservation.id,
+  }
+}
+
+/**
+ * Re-evaluate case readiness after editing materials.
+ * If all active reservations are prepared → ready
+ * If any are still reserved → pending_preparation
+ */
+async function revalidateCaseReadyStatus(caseId: string) {
+  const supabase = await createClient()
+
+  const { data: activeReservations } = await supabase
+    .from("case_reservations")
+    .select("id, status")
+    .eq("case_id", caseId)
+    .neq("status", "returned")
+    .neq("status", "consumed")
+
+  const { data: caseData } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", caseId)
+    .single()
+
+  if (!caseData || ["completed", "cancelled"].includes(caseData.case_status)) return
+
+  if (!activeReservations || activeReservations.length === 0) {
+    // No active reservations left
+    if (caseData.case_status === "ready") {
+      await supabase
+        .from("cases")
+        .update({ case_status: "pending_order" as CaseStatus })
+        .eq("id", caseId)
+    }
+    return
+  }
+
+  const allPrepared = activeReservations.every((r) => r.status === "prepared")
+
+  if (allPrepared && caseData.case_status !== "ready") {
+    await supabase
+      .from("cases")
+      .update({ case_status: "ready" as CaseStatus })
+      .eq("id", caseId)
+  } else if (!allPrepared && caseData.case_status === "ready") {
+    await supabase
+      .from("cases")
+      .update({ case_status: "pending_preparation" as CaseStatus })
+      .eq("id", caseId)
+  }
+}
+
 export async function cancelCase(caseId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

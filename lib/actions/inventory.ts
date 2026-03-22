@@ -359,7 +359,7 @@ export async function getInventoryByLot(filters?: {
     .from("inventory")
     .select(`
       id, lot_number, quantity, reserved_quantity, expiry_date, received_date,
-      products!inner(id, ref, name, brand, category, unit, min_stock_level, suppliers(name))
+      products!inner(id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, suppliers(name))
     `)
     .gt("quantity", 0)
     .order("expiry_date", { ascending: true, nullsFirst: false })
@@ -384,6 +384,7 @@ export async function getInventoryByLot(filters?: {
     const product = row.products as unknown as {
       id: string; ref: string; name: string; brand: string | null
       category: string; unit: string; min_stock_level: number
+      model: string | null; diameter: number | null; length: number | null
       suppliers: { name: string } | null
     }
     const available = row.quantity - row.reserved_quantity
@@ -393,6 +394,10 @@ export async function getInventoryByLot(filters?: {
       product_name: product.name,
       ref: product.ref,
       brand: product.brand,
+      category: product.category,
+      model: product.model,
+      diameter: product.diameter,
+      length: product.length,
       unit: product.unit,
       supplier_name: product.suppliers?.name ?? null,
       lot_number: row.lot_number,
