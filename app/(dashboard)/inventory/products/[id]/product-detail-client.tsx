@@ -382,7 +382,10 @@ export function ProductDetailClient({
             <div className="flex-1 space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold">{product.name}</h2>
-                <Badge variant={product.is_active ? "default" : "secondary"}>
+                <Badge
+                  variant={product.is_active ? "default" : "destructive"}
+                  className={product.is_active ? "bg-green-600 text-white" : "bg-red-600 text-white"}
+                >
                   {product.is_active ? "ใช้งาน" : "ปิดใช้งาน"}
                 </Badge>
               </div>
