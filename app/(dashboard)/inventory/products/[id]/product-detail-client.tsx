@@ -98,11 +98,15 @@ interface ProductData {
   ref: string
   name: string
   brand: string | null
+  model: string | null
+  diameter: number | null
+  length: number | null
   category: string | null
   description: string | null
   unit: string | null
   min_stock_level: number
   cost_price: number | null
+  selling_price: number | null
   supplier_id: string | null
   image_url: string | null
   is_active: boolean
