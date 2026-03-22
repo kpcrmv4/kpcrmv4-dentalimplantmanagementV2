@@ -22,7 +22,8 @@ export type DashboardCase = {
 
 function deriveTrafficLight(status: CaseStatus): TrafficLight {
   if (status === "ready") return "green"
-  if (status === "pending_order" || status === "pending_preparation") return "orange"
+  if (status === "pending_preparation") return "orange"
+  if (status === "pending_order") return "red"
   return "neutral" // completed, cancelled
 }
 
@@ -266,7 +267,10 @@ export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
     const mat = materialMap.get(c.id)
     let materialSummary = ""
     if (c.case_status === "pending_order") {
-      materialSummary = "รอสั่งของ"
+      const reserved = mat?.reserved ?? []
+      materialSummary = reserved.length > 0
+        ? `ของขาด: ${reserved.join(", ")}`
+        : "รอสั่งของ"
     } else if (c.case_status === "pending_preparation") {
       const reserved = mat?.reserved ?? []
       materialSummary = reserved.length > 0
