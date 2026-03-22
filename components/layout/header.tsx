@@ -55,7 +55,7 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
         </Button>
 
         {/* User menu */}
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
@@ -63,7 +63,7 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="w-48">
             <div className="px-2 py-1.5">
               <p className="text-sm font-medium">{user.full_name}</p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
