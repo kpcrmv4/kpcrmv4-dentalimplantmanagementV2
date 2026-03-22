@@ -49,6 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { updateProduct, toggleProductActive, uploadProductImage } from "@/lib/actions/products"
 import { formatDate, formatCurrency } from "@/lib/utils"
+import type { Product } from "@/types/database"
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -93,23 +94,7 @@ interface UsageHistoryItem {
   scheduled_date: string | null
 }
 
-interface ProductData {
-  id: string
-  ref: string
-  name: string
-  brand: string | null
-  model: string | null
-  diameter: number | null
-  length: number | null
-  category: string | null
-  description: string | null
-  unit: string | null
-  min_stock_level: number
-  cost_price: number | null
-  selling_price: number | null
-  supplier_id: string | null
-  image_url: string | null
-  is_active: boolean
+type ProductData = Product & {
   supplier: { name: string; code: string } | null
   inventory_lots: InventoryLot[]
   stock_summary: {
