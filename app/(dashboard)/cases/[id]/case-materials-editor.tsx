@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   AlertCircle,
   AlertTriangle,
   Check,
+  ChevronDown,
+  Filter,
   Loader2,
   Minus,
   Package,
@@ -25,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { returnReservation, addMaterialToCase } from "@/lib/actions/cases"
-import { getProducts } from "@/lib/actions/products"
+import { getProducts, getCategories } from "@/lib/actions/products"
 import { formatDate } from "@/lib/utils"
 
 const RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
@@ -55,6 +57,15 @@ interface ProductOption {
   ref: string
   unit: string
   totalStock: number
+  category: string | null
+  model: string | null
+  diameter: number | null
+  length: number | null
+}
+
+interface CategoryOption {
+  value: string
+  label: string
 }
 
 export function CaseMaterialsEditor({
@@ -82,6 +93,17 @@ export function CaseMaterialsEditor({
   const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null)
   const [addQuantity, setAddQuantity] = useState("1")
 
+  // Filter state
+  const [showFilters, setShowFilters] = useState(false)
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [filterCategory, setFilterCategory] = useState("")
+  const [filterBrand, setFilterBrand] = useState("")
+  const [filterModel, setFilterModel] = useState("")
+  const [filterDiameter, setFilterDiameter] = useState("")
+  const [filterLength, setFilterLength] = useState("")
+  // All results (unfiltered by text) for computing cascading options
+  const [allFilteredProducts, setAllFilteredProducts] = useState<ProductOption[]>([])
+
   // Save result notification
   const [saveResult, setSaveResult] = useState<{ outOfStock: string[] } | null>(null)
 
@@ -108,36 +130,115 @@ export function CaseMaterialsEditor({
   }
 
   // === Add Material Handlers ===
-  async function handleSearch(query: string) {
-    setSearchQuery(query)
-    if (query.length < 2) {
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const fetchProducts = useCallback(async (
+    search: string,
+    cat: string,
+    br: string,
+    mod: string,
+    dia: string,
+    len: string,
+  ) => {
+    const hasFilter = cat || br || mod || dia || len
+    if (!hasFilter && search.length < 2) {
       setSearchResults([])
+      setAllFilteredProducts([])
       return
     }
     setSearchLoading(true)
     try {
-      const products = await getProducts({ search: query })
-      setSearchResults(products.map((p) => ({
+      const products = await getProducts({
+        search: search.length >= 2 ? search : undefined,
+        category: cat || undefined,
+        brand: br || undefined,
+        model: mod || undefined,
+        diameter: dia || undefined,
+        length: len || undefined,
+      })
+      const mapped = products.map((p) => ({
         id: p.id,
         name: p.name,
         brand: p.brand,
         ref: p.ref,
         unit: p.unit,
         totalStock: p.totalStock,
-      })))
+        category: p.category,
+        model: (p as Record<string, unknown>).model as string | null,
+        diameter: (p as Record<string, unknown>).diameter as number | null,
+        length: (p as Record<string, unknown>).length as number | null,
+      }))
+      setSearchResults(mapped)
+      // Store unfiltered-by-text results for cascading options
+      if (!search) setAllFilteredProducts(mapped)
     } catch {
       setSearchResults([])
     } finally {
       setSearchLoading(false)
     }
+  }, [])
+
+  function handleSearch(query: string) {
+    setSearchQuery(query)
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => {
+      fetchProducts(query, filterCategory, filterBrand, filterModel, filterDiameter, filterLength)
+    }, 300)
   }
 
-  function openAddDialog() {
+  function handleFilterChange(
+    newCategory: string,
+    newBrand: string,
+    newModel: string,
+    newDiameter: string,
+    newLength: string,
+  ) {
+    setFilterCategory(newCategory)
+    setFilterBrand(newBrand)
+    setFilterModel(newModel)
+    setFilterDiameter(newDiameter)
+    setFilterLength(newLength)
+    fetchProducts(searchQuery, newCategory, newBrand, newModel, newDiameter, newLength)
+  }
+
+  // Compute cascading filter options from allFilteredProducts
+  let cascadeBase = allFilteredProducts
+  const distinctBrands = Array.from(new Set(cascadeBase.map((p) => p.brand).filter(Boolean))).sort() as string[]
+  if (filterBrand) {
+    cascadeBase = cascadeBase.filter((p) => p.brand?.toLowerCase() === filterBrand.toLowerCase())
+  }
+  const distinctModels = Array.from(new Set(cascadeBase.map((p) => p.model).filter(Boolean))).sort() as string[]
+  if (filterModel) {
+    cascadeBase = cascadeBase.filter((p) => p.model?.toLowerCase() === filterModel.toLowerCase())
+  }
+  const distinctDiameters = Array.from(new Set(cascadeBase.map((p) => p.diameter).filter((d) => d != null))).map(String).sort((a, b) => Number(a) - Number(b))
+  if (filterDiameter) {
+    cascadeBase = cascadeBase.filter((p) => p.diameter != null && String(p.diameter) === filterDiameter)
+  }
+  const distinctLengths = Array.from(new Set(cascadeBase.map((p) => p.length).filter((l) => l != null))).map(String).sort((a, b) => Number(a) - Number(b))
+
+  const activeFilterCount = [filterCategory, filterBrand, filterModel, filterDiameter, filterLength].filter(Boolean).length
+
+  async function openAddDialog() {
     setAddDialog(true)
     setSearchQuery("")
     setSearchResults([])
+    setAllFilteredProducts([])
     setSelectedProduct(null)
     setAddQuantity("1")
+    setFilterCategory("")
+    setFilterBrand("")
+    setFilterModel("")
+    setFilterDiameter("")
+    setFilterLength("")
+    setShowFilters(false)
+    // Load categories
+    try {
+      const cats = await getCategories()
+      setCategories(cats)
+    } catch {
+      setCategories([])
+    }
   }
 
   function confirmAdd() {
@@ -323,43 +424,178 @@ export function CaseMaterialsEditor({
           <DialogHeader>
             <DialogTitle>เพิ่มวัสดุ</DialogTitle>
             <DialogDescription>
-              ค้นหาสินค้าจากชื่อ, REF, หรือแบรนด์
+              ค้นหาจากชื่อ, REF, แบรนด์, รุ่น หรือใช้ตัวกรอง
             </DialogDescription>
           </DialogHeader>
 
           {!selectedProduct ? (
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="ค้นหาสินค้า..."
-                  className="pl-8 h-10"
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  autoFocus
-                />
+            <div className="space-y-2">
+              {/* Search + Filter toggle */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="ค้นหาสินค้า..."
+                    className="pl-8 h-10"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant={showFilters || activeFilterCount > 0 ? "default" : "outline"}
+                  className="h-10 w-10 shrink-0"
+                  onClick={() => {
+                    setShowFilters(!showFilters)
+                    // Load all products for filter options when opening filters
+                    if (!showFilters && allFilteredProducts.length === 0 && !filterCategory) {
+                      fetchProducts("", "", "", "", "", "")
+                    }
+                  }}
+                >
+                  <Filter className="h-4 w-4" />
+                  {activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
               </div>
 
+              {/* Filter dropdowns */}
+              {showFilters && (
+                <div className="space-y-1.5 rounded-lg border bg-muted/30 p-2.5">
+                  {/* Category */}
+                  <div className="relative">
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => handleFilterChange(e.target.value, "", "", "", "")}
+                      className="w-full h-8 rounded-md border bg-background px-2 text-xs appearance-none pr-7"
+                    >
+                      <option value="">ประเภท — ทั้งหมด</option>
+                      {categories.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+
+                  {/* Brand */}
+                  {distinctBrands.length > 0 && (
+                    <div className="relative">
+                      <select
+                        value={filterBrand}
+                        onChange={(e) => handleFilterChange(filterCategory, e.target.value, "", "", "")}
+                        className="w-full h-8 rounded-md border bg-background px-2 text-xs appearance-none pr-7"
+                      >
+                        <option value="">ยี่ห้อ — ทั้งหมด</option>
+                        {distinctBrands.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {/* Model */}
+                  {distinctModels.length > 0 && (
+                    <div className="relative">
+                      <select
+                        value={filterModel}
+                        onChange={(e) => handleFilterChange(filterCategory, filterBrand, e.target.value, "", "")}
+                        className="w-full h-8 rounded-md border bg-background px-2 text-xs appearance-none pr-7"
+                      >
+                        <option value="">รุ่น — ทั้งหมด</option>
+                        {distinctModels.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {/* Diameter + Length row */}
+                  {(distinctDiameters.length > 0 || distinctLengths.length > 0) && (
+                    <div className="flex gap-1.5">
+                      {distinctDiameters.length > 0 && (
+                        <div className="relative flex-1">
+                          <select
+                            value={filterDiameter}
+                            onChange={(e) => handleFilterChange(filterCategory, filterBrand, filterModel, e.target.value, "")}
+                            className="w-full h-8 rounded-md border bg-background px-2 text-xs appearance-none pr-7"
+                          >
+                            <option value="">Ø — ทั้งหมด</option>
+                            {distinctDiameters.map((d) => (
+                              <option key={d} value={d}>{d} mm</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        </div>
+                      )}
+                      {distinctLengths.length > 0 && (
+                        <div className="relative flex-1">
+                          <select
+                            value={filterLength}
+                            onChange={(e) => handleFilterChange(filterCategory, filterBrand, filterModel, filterDiameter, e.target.value)}
+                            className="w-full h-8 rounded-md border bg-background px-2 text-xs appearance-none pr-7"
+                          >
+                            <option value="">ยาว — ทั้งหมด</option>
+                            {distinctLengths.map((l) => (
+                              <option key={l} value={l}>{l} mm</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Clear filters */}
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => {
+                        handleFilterChange("", "", "", "", "")
+                      }}
+                      className="text-[11px] text-primary underline"
+                    >
+                      ล้างตัวกรองทั้งหมด
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Results */}
               <div className="max-h-60 overflow-y-auto space-y-1">
                 {searchLoading && (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
                 )}
-                {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
+                {!searchLoading && (searchQuery.length >= 2 || activeFilterCount > 0) && searchResults.length === 0 && (
                   <p className="py-4 text-center text-sm text-muted-foreground">ไม่พบสินค้า</p>
                 )}
                 {searchResults.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => setSelectedProduct(p)}
-                    className="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm hover:bg-muted transition-colors"
+                    className="flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-sm hover:bg-muted transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium">{p.name}</p>
+                      <p className="text-sm font-medium leading-tight">{p.name}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {p.brand ?? ""} · REF: {p.ref}
+                        {p.brand ?? ""}
+                        {p.model ? ` · ${p.model}` : ""}
+                        {" · REF: "}{p.ref}
                       </p>
+                      {(p.diameter != null || p.length != null) && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {p.diameter != null ? `Ø${p.diameter}` : ""}
+                          {p.diameter != null && p.length != null ? " × " : ""}
+                          {p.length != null ? `${p.length}mm` : ""}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0 ml-2">
                       <p className={`text-xs font-medium ${p.totalStock > 0 ? "text-green-600" : "text-destructive"}`}>
