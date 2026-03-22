@@ -6,6 +6,7 @@ import { AlertTriangle, Clock, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { EmergencyAlert } from "@/lib/actions/dashboard"
+import { formatDate, formatDateTime } from "@/lib/utils"
 
 const STATUS_LABELS: Record<string, string> = {
   pending_order: "รอสั่งของ",
@@ -85,9 +86,11 @@ export function EmergencyModal({ alerts }: { alerts: EmergencyAlert[] }) {
           <div className="max-h-[50vh] overflow-y-auto p-4">
             <div className="space-y-2">
               {alerts.map((c) => {
-                const timeLabel = c.scheduled_time
-                  ? `${c.scheduled_date} ${c.scheduled_time.slice(0, 5)}`
-                  : c.scheduled_date ?? ""
+                const timeLabel = c.scheduled_date
+                  ? c.scheduled_time
+                    ? formatDateTime(`${c.scheduled_date}T${c.scheduled_time}`)
+                    : formatDate(c.scheduled_date)
+                  : ""
 
                 return (
                   <Link
