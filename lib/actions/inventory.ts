@@ -448,6 +448,138 @@ export async function getDeadStock(days: number = 90) {
   return deadItems
 }
 
+// ─── Stock Demands: cases needing out-of-stock materials ─────────────
+
+export type StockDemandItem = {
+  productId: string
+  productName: string
+  productRef: string
+  productBrand: string | null
+  productUnit: string
+  totalNeeded: number
+  totalAvailable: number
+  cases: Array<{
+    caseId: string
+    caseNumber: string
+    patientName: string
+    scheduledDate: string | null
+    scheduledTime: string | null
+    quantityNeeded: number
+    isUrgent: boolean // within 48h
+  }>
+}
+
+export async function getStockDemands(): Promise<StockDemandItem[]> {
+  const supabase = await createClient()
+
+  // Get all "reserved" reservations (no LOT assigned — likely no stock)
+  const { data: reservations, error } = await supabase
+    .from("case_reservations")
+    .select(`
+      id, product_id, quantity_reserved,
+      cases!inner(id, case_number, case_status, scheduled_date, scheduled_time, patients(full_name)),
+      products!inner(id, ref, name, brand, unit)
+    `)
+    .eq("status", "reserved")
+    .in("cases.case_status", ["pending_order", "pending_preparation"])
+
+  if (error) throw error
+  if (!reservations || reservations.length === 0) return []
+
+  // Get stock levels for these products
+  const productIds = Array.from(new Set(reservations.map((r) => r.product_id)))
+  const { data: inventoryRows } = await supabase
+    .from("inventory")
+    .select("product_id, quantity, reserved_quantity")
+    .in("product_id", productIds)
+    .gt("quantity", 0)
+
+  const stockByProduct = new Map<string, number>()
+  for (const inv of inventoryRows ?? []) {
+    const current = stockByProduct.get(inv.product_id) ?? 0
+    stockByProduct.set(inv.product_id, current + inv.quantity - inv.reserved_quantity)
+  }
+
+  // 48h threshold for urgency
+  const now = new Date()
+  const urgentCutoff = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+
+  // Group by product
+  const productMap = new Map<string, StockDemandItem>()
+
+  for (const r of reservations) {
+    const caseData = r.cases as unknown as {
+      id: string
+      case_number: string
+      case_status: string
+      scheduled_date: string | null
+      scheduled_time: string | null
+      patients: { full_name: string } | null
+    }
+    const product = r.products as unknown as {
+      id: string; ref: string; name: string; brand: string | null; unit: string
+    }
+
+    const available = stockByProduct.get(r.product_id) ?? 0
+    const needed = r.quantity_reserved
+
+    // Only include if stock is truly insufficient
+    if (available >= needed) continue
+
+    let isUrgent = false
+    if (caseData.scheduled_date) {
+      const caseDate = new Date(caseData.scheduled_date)
+      isUrgent = caseDate <= urgentCutoff
+    }
+
+    if (!productMap.has(r.product_id)) {
+      productMap.set(r.product_id, {
+        productId: product.id,
+        productName: product.name,
+        productRef: product.ref,
+        productBrand: product.brand,
+        productUnit: product.unit,
+        totalNeeded: 0,
+        totalAvailable: available,
+        cases: [],
+      })
+    }
+
+    const entry = productMap.get(r.product_id)!
+    entry.totalNeeded += needed
+    entry.cases.push({
+      caseId: caseData.id,
+      caseNumber: caseData.case_number,
+      patientName: caseData.patients?.full_name ?? "ไม่ระบุ",
+      scheduledDate: caseData.scheduled_date,
+      scheduledTime: caseData.scheduled_time,
+      quantityNeeded: needed,
+      isUrgent,
+    })
+  }
+
+  // Sort: products with urgent cases first, then by total needed desc
+  const result = Array.from(productMap.values())
+  result.sort((a, b) => {
+    const aUrgent = a.cases.some((c) => c.isUrgent) ? 1 : 0
+    const bUrgent = b.cases.some((c) => c.isUrgent) ? 1 : 0
+    if (aUrgent !== bUrgent) return bUrgent - aUrgent
+    return b.totalNeeded - a.totalNeeded
+  })
+
+  // Sort cases within each product by date
+  for (const item of result) {
+    item.cases.sort((a, b) => {
+      if (!a.scheduledDate && !b.scheduledDate) return 0
+      if (!a.scheduledDate) return 1
+      if (!b.scheduledDate) return -1
+      return a.scheduledDate.localeCompare(b.scheduledDate)
+    })
+  }
+
+  return result
+}
+
 export async function checkAutoReorder() {
   const supabase = await createClient()
 
