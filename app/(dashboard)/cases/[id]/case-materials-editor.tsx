@@ -107,7 +107,7 @@ export function CaseMaterialsEditor({
   // Save result notification
   const [saveResult, setSaveResult] = useState<{ outOfStock: string[] } | null>(null)
 
-  const canEdit = ["ready", "pending_preparation"].includes(caseStatus)
+  const canEdit = ["ready", "pending_preparation", "pending_order"].includes(caseStatus)
   const activeReservations = reservations.filter((r) => !["returned", "consumed"].includes(r.status))
 
   // === Remove Handlers ===

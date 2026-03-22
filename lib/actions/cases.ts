@@ -572,7 +572,7 @@ async function revalidateCaseReadyStatus(caseId: string) {
 
   const { data: activeReservations } = await supabase
     .from("case_reservations")
-    .select("id, status")
+    .select("id, status, product_id, quantity_reserved")
     .eq("case_id", caseId)
     .neq("status", "returned")
     .neq("status", "consumed")
@@ -587,7 +587,7 @@ async function revalidateCaseReadyStatus(caseId: string) {
 
   if (!activeReservations || activeReservations.length === 0) {
     // No active reservations left
-    if (caseData.case_status === "ready") {
+    if (caseData.case_status === "ready" || caseData.case_status === "pending_preparation") {
       await supabase
         .from("cases")
         .update({ case_status: "pending_order" as CaseStatus })
@@ -598,16 +598,50 @@ async function revalidateCaseReadyStatus(caseId: string) {
 
   const allPrepared = activeReservations.every((r) => r.status === "prepared")
 
-  if (allPrepared && caseData.case_status !== "ready") {
-    await supabase
-      .from("cases")
-      .update({ case_status: "ready" as CaseStatus })
-      .eq("id", caseId)
-  } else if (!allPrepared && caseData.case_status === "ready") {
-    await supabase
-      .from("cases")
-      .update({ case_status: "pending_preparation" as CaseStatus })
-      .eq("id", caseId)
+  if (allPrepared) {
+    if (caseData.case_status !== "ready") {
+      await supabase
+        .from("cases")
+        .update({ case_status: "ready" as CaseStatus })
+        .eq("id", caseId)
+    }
+    return
+  }
+
+  // Some items are still "reserved" (not prepared) — check if stock is available
+  const reservedItems = activeReservations.filter((r) => r.status === "reserved")
+
+  if (reservedItems.length > 0) {
+    // Check stock for reserved products
+    const productIds = Array.from(new Set(reservedItems.map((r) => r.product_id)))
+    const { data: inventoryRows } = await supabase
+      .from("inventory")
+      .select("product_id, quantity, reserved_quantity")
+      .in("product_id", productIds)
+      .gt("quantity", 0)
+
+    // For each reserved item, check if any lot has enough available stock
+    const hasOutOfStock = reservedItems.some((r) => {
+      const lots = (inventoryRows ?? []).filter((inv) => inv.product_id === r.product_id)
+      const totalAvailable = lots.reduce((sum, inv) => sum + inv.quantity - inv.reserved_quantity, 0)
+      return totalAvailable < r.quantity_reserved
+    })
+
+    const newStatus = hasOutOfStock ? "pending_order" : "pending_preparation"
+    if (caseData.case_status !== newStatus) {
+      await supabase
+        .from("cases")
+        .update({ case_status: newStatus as CaseStatus })
+        .eq("id", caseId)
+    }
+  } else {
+    // All items are "prepared" or other non-reserved status but not all prepared
+    if (caseData.case_status !== "pending_preparation") {
+      await supabase
+        .from("cases")
+        .update({ case_status: "pending_preparation" as CaseStatus })
+        .eq("id", caseId)
+    }
   }
 }
 
