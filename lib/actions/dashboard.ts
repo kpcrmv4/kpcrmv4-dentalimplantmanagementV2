@@ -198,6 +198,7 @@ export async function getLowStockItems(): Promise<LowStockItem[]> {
 
 export type EmergencyAlert = DashboardCase & {
   materialSummary: string
+  isOverdue: boolean
 }
 
 export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
@@ -205,7 +206,8 @@ export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
   const now = new Date()
   const fortyEightHoursLater = new Date(now.getTime() + 48 * 60 * 60 * 1000)
 
-  const todayStr = now.toISOString().split("T")[0]
+  // Use a wider date range then filter precisely with datetime
+  const pastDayStr = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   const futureStr = fortyEightHoursLater.toISOString().split("T")[0]
 
   const { data, error } = await supabase
@@ -213,31 +215,46 @@ export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
     .select(
       "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
     )
-    .gte("scheduled_date", todayStr)
+    .gte("scheduled_date", pastDayStr)
     .lte("scheduled_date", futureStr)
     .not("case_status", "in", '("ready","completed","cancelled")')
     .order("scheduled_date")
 
   if (error) throw error
 
-  const cases = (data ?? []).map((c) => {
-    const patient = c.patients as unknown as { hn: string; full_name: string } | null
-    const dentist = c.users as unknown as { full_name: string } | null
-    return {
-      id: c.id,
-      case_number: c.case_number,
-      scheduled_date: c.scheduled_date,
-      scheduled_time: c.scheduled_time,
-      case_status: c.case_status as CaseStatus,
-      appointment_status: (c.appointment_status ?? "pending") as AppointmentStatus,
-      procedure_type: c.procedure_type,
-      patient_name: patient?.full_name ?? "ไม่ระบุ",
-      patient_hn: patient?.hn ?? "-",
-      dentist_name: dentist?.full_name ?? "ไม่ระบุ",
-      tooth_positions: c.tooth_positions,
-      trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
-    }
-  })
+  // Filter precisely: include overdue cases and cases within 48h
+  const cases = (data ?? [])
+    .map((c) => {
+      const patient = c.patients as unknown as { hn: string; full_name: string } | null
+      const dentist = c.users as unknown as { full_name: string } | null
+
+      // Build actual datetime for precise comparison
+      const dateStr = c.scheduled_date ?? ""
+      const timeStr = c.scheduled_time ?? "23:59"
+      const scheduledDt = new Date(`${dateStr}T${timeStr.slice(0, 5)}:00`)
+
+      const isOverdue = scheduledDt < now
+      const isWithin48h = scheduledDt >= now && scheduledDt <= fortyEightHoursLater
+
+      if (!isOverdue && !isWithin48h) return null
+
+      return {
+        id: c.id,
+        case_number: c.case_number,
+        scheduled_date: c.scheduled_date,
+        scheduled_time: c.scheduled_time,
+        case_status: c.case_status as CaseStatus,
+        appointment_status: (c.appointment_status ?? "pending") as AppointmentStatus,
+        procedure_type: c.procedure_type,
+        patient_name: patient?.full_name ?? "ไม่ระบุ",
+        patient_hn: patient?.hn ?? "-",
+        dentist_name: dentist?.full_name ?? "ไม่ระบุ",
+        tooth_positions: c.tooth_positions,
+        trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
+        isOverdue,
+      }
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null)
 
   if (cases.length === 0) return []
 
