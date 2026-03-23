@@ -153,80 +153,85 @@ export function CaseSearch({
         </div>
       </div>
 
-      {/* Period filter + Date picker */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {PERIOD_CHIPS.map((chip) => (
-          <button
-            key={chip.value}
-            onClick={() => handlePeriodChange(chip.value)}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              period === chip.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
-        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-          <PopoverTrigger asChild>
+      {/* Filter groups - single row on desktop */}
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+        {/* Period filter + Date picker */}
+        <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-blue-200/60 bg-blue-50/50 px-2.5 py-1.5 dark:border-blue-900/40 dark:bg-blue-950/20">
+          <span className="shrink-0 text-[10px] font-medium text-blue-600 dark:text-blue-400">ช่วงเวลา</span>
+          {PERIOD_CHIPS.map((chip) => (
             <button
-              className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                period === "custom"
+              key={chip.value}
+              onClick={() => handlePeriodChange(chip.value)}
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                period === chip.value
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  : "text-muted-foreground hover:bg-blue-100 dark:hover:bg-blue-900/30"
               }`}
             >
-              <CalendarIcon className="h-3 w-3" />
-              {selectedDate
-                ? format(selectedDate, "d MMM", { locale: th })
-                : "เลือกวัน"}
+              {chip.label}
             </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              locale={th}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+          ))}
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                  period === "custom"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                }`}
+              >
+                <CalendarIcon className="h-3 w-3" />
+                {selectedDate
+                  ? format(selectedDate, "d MMM", { locale: th })
+                  : "เลือกวัน"}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                locale={th}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
-      {/* Status chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {STATUS_CHIPS.map((chip) => (
-          <button
-            key={chip.value}
-            onClick={() => handleStatusChange(chip.value)}
-            className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-              status === chip.value
-                ? "border-primary/50 bg-primary/10 text-primary"
-                : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
+        {/* Status chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-amber-200/60 bg-amber-50/50 px-2.5 py-1.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <span className="shrink-0 text-[10px] font-medium text-amber-600 dark:text-amber-400">สถานะ</span>
+          {STATUS_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              onClick={() => handleStatusChange(chip.value)}
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                status === chip.value
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-amber-100 dark:hover:bg-amber-900/30"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
 
-      {/* Appointment status chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="shrink-0 text-[10px] text-muted-foreground">นัดหมาย:</span>
-        {APPT_CHIPS.map((chip) => (
-          <button
-            key={chip.value}
-            onClick={() => handleApptChange(chip.value)}
-            className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-              appt === chip.value
-                ? "border-primary/50 bg-primary/10 text-primary"
-                : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
+        {/* Appointment status chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto rounded-lg border border-emerald-200/60 bg-emerald-50/50 px-2.5 py-1.5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+          <span className="shrink-0 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">นัดหมาย</span>
+          {APPT_CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              onClick={() => handleApptChange(chip.value)}
+              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                appt === chip.value
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
