@@ -1,9 +1,9 @@
 import Link from "next/link"
 import {
-  ClipboardList,
   Phone,
   CheckCircle2,
-  TrendingUp,
+  ShoppingCart,
+  PackageOpen,
 } from "lucide-react"
 import { getDashboardCases } from "@/lib/actions/dashboard"
 import { cn } from "@/lib/utils"
@@ -12,8 +12,6 @@ export async function TrafficLightStats() {
   const now = new Date()
   const cases = await getDashboardCases(now.getFullYear(), now.getMonth() + 1)
 
-  const total = cases.length
-  const completed = cases.filter((c) => c.case_status === "completed").length
   const activeCases = cases.filter((c) => c.case_status !== "completed")
   const active = activeCases.length
   const pendingAppt = cases.filter(
@@ -28,32 +26,8 @@ export async function TrafficLightStats() {
 
   return (
     <div className="space-y-3">
-      {/* Row 1: Key metrics in a single compact row */}
+      {/* Row 1: Status boxes */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Link href="/cases?period=month">
-          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-500/20">
-              <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-blue-700 dark:text-blue-400">{total}</p>
-              <p className="text-[10px] text-muted-foreground">เคสทั้งหมด</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link href="/cases?period=month&status=pending_order">
-          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-500/20">
-              <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-indigo-700 dark:text-indigo-400">{active}</p>
-              <p className="text-[10px] text-muted-foreground">ดำเนินการ</p>
-            </div>
-          </div>
-        </Link>
-
         <Link href="/cases?period=month&appt=pending">
           <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20">
@@ -66,14 +40,38 @@ export async function TrafficLightStats() {
           </div>
         </Link>
 
-        <Link href="/cases?period=month&status=completed">
+        <Link href="/cases?period=month&status=pending_order">
+          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-500/20">
+              <ShoppingCart className="h-4 w-4 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-red-700 dark:text-red-400">{pendingOrder}</p>
+              <p className="text-[10px] text-muted-foreground">รอสั่งของ</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/cases?period=month&status=pending_preparation">
+          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-500/20">
+              <PackageOpen className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-tight text-orange-700 dark:text-orange-400">{pendingPrep}</p>
+              <p className="text-[10px] text-muted-foreground">รอจัดของ</p>
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/cases?period=month&status=ready">
           <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-emerald-700 dark:text-emerald-400">{completed}</p>
-              <p className="text-[10px] text-muted-foreground">เสร็จสิ้น</p>
+              <p className="text-lg font-bold leading-tight text-emerald-700 dark:text-emerald-400">{ready}</p>
+              <p className="text-[10px] text-muted-foreground">พร้อม</p>
             </div>
           </div>
         </Link>
