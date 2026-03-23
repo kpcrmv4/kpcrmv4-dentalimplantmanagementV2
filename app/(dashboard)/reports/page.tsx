@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getDashboardReport, getCaseStatusDistribution, getTopProducts } from "@/lib/actions/reports"
 import { formatNumber } from "@/lib/utils"
 import { ReportsTabs } from "@/components/reports/reports-tabs"
+import { ReportDateFilter } from "@/components/reports/report-date-filter"
 import { cn } from "@/lib/utils"
 import {
   ClipboardList,
@@ -14,8 +15,10 @@ import {
   TrendingUp,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { startOfMonth, endOfMonth, format } from "date-fns"
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pending_appointment: { label: "รอทำนัด", color: "bg-purple-500" },
   pending_order: { label: "รอสั่งของ", color: "bg-yellow-500" },
   pending_preparation: { label: "รอจัดของ", color: "bg-orange-500" },
   ready: { label: "พร้อม", color: "bg-green-500" },
@@ -109,11 +112,11 @@ function StatCard({
   )
 }
 
-async function ReportContent() {
+async function ReportContent({ from, to }: { from?: string; to?: string }) {
   const [stats, statusDist, topProducts] = await Promise.all([
     getDashboardReport(),
-    getCaseStatusDistribution(),
-    getTopProducts(),
+    getCaseStatusDistribution(from, to),
+    getTopProducts(from, to),
   ])
 
   const total = Object.values(statusDist).reduce((a, b) => a + b, 0)
@@ -248,15 +251,42 @@ function ReportSkeleton() {
   )
 }
 
-export default function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string; from?: string; to?: string }>
+}) {
+  const params = await searchParams
+  const period = params.period || "month"
+
+  let from: string | undefined
+  let to: string | undefined
+
+  if (period === "month") {
+    const now = new Date()
+    from = format(startOfMonth(now), "yyyy-MM-dd")
+    to = format(endOfMonth(now), "yyyy-MM-dd")
+  } else if (period === "custom" && params.from && params.to) {
+    from = params.from
+    to = params.to
+  }
+  // period === "all" → no date filters
+
   return (
     <div className="space-y-4 p-4 lg:p-6">
       <h1 className="text-xl font-semibold">รายงาน</h1>
       <ReportsTabs
         overviewContent={
-          <Suspense fallback={<ReportSkeleton />}>
-            <ReportContent />
-          </Suspense>
+          <>
+            <ReportDateFilter
+              currentPeriod={period}
+              currentFrom={params.from}
+              currentTo={params.to}
+            />
+            <Suspense fallback={<ReportSkeleton />}>
+              <ReportContent from={from} to={to} />
+            </Suspense>
+          </>
         }
       />
     </div>

@@ -209,7 +209,7 @@ export function CalendarGrid({
           {isCs ? (
             <>
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-amber-500" /> รอยืนยัน
+                <span className="h-2 w-2 rounded-full bg-amber-500" /> รอทำนัด
               </span>
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="font-semibold">3</span> จำนวนเคส

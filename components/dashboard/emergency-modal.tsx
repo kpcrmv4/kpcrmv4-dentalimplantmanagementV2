@@ -11,7 +11,7 @@ import { formatDate, formatDateTime } from "@/lib/utils"
 const STATUS_LABELS: Record<string, string> = {
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
-  pending_appointment: "รอนัด",
+  pending_appointment: "รอทำนัด",
 }
 
 /**

@@ -14,6 +14,9 @@ type Product = {
   brand: string | null
   unit: string
   min_stock_level: number
+  model: string | null
+  diameter: number | null
+  length: number | null
   totalStock: number
   isLowStock: boolean
   supplierName: string | null
@@ -25,6 +28,9 @@ type LotItem = {
   product_name: string
   ref: string
   brand: string | null
+  model: string | null
+  diameter: number | null
+  length: number | null
   unit: string
   supplier_name: string | null
   lot_number: string
@@ -187,7 +193,7 @@ function ProductView({ products }: { products: Product[] }) {
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-500" />
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <span className="text-[10px] sm:text-[11px] text-muted-foreground font-mono">
                     {product.ref}
                   </span>
@@ -196,6 +202,26 @@ function ProductView({ products }: { products: Product[] }) {
                       <span className="text-muted-foreground/40">·</span>
                       <span className="text-[10px] sm:text-[11px] text-muted-foreground truncate">
                         {product.brand}
+                      </span>
+                    </>
+                  )}
+                  {product.model && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                        {product.model}
+                      </span>
+                    </>
+                  )}
+                  {(product.diameter != null || product.length != null) && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                        {product.diameter != null && product.length != null
+                          ? `Ø${product.diameter} × ${product.length}mm`
+                          : product.diameter != null
+                          ? `Ø${product.diameter}mm`
+                          : `${product.length}mm`}
                       </span>
                     </>
                   )}
@@ -295,8 +321,25 @@ function LotView({ items }: { items: LotItem[] }) {
                 )}
               </div>
             </div>
-            {/* Row 2: LOT number + expiry */}
-            <div className="flex items-center gap-2 mt-1">
+            {/* Row 2: size details + LOT number + expiry */}
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              {lot.model && (
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                  {lot.model}
+                </span>
+              )}
+              {(lot.diameter != null || lot.length != null) && (
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground">
+                  {lot.diameter != null && lot.length != null
+                    ? `Ø${lot.diameter} × ${lot.length}mm`
+                    : lot.diameter != null
+                    ? `Ø${lot.diameter}mm`
+                    : `${lot.length}mm`}
+                </span>
+              )}
+              {(lot.model || lot.diameter != null || lot.length != null) && (
+                <span className="text-muted-foreground/30">|</span>
+              )}
               <span className="text-[11px] font-mono text-muted-foreground">{lot.lot_number}</span>
               <span className="text-muted-foreground/30">|</span>
               <ExpiryBadge expiryDate={lot.expiry_date} compact />
