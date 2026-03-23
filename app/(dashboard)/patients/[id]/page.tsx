@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 const STATUS_LABELS: Record<string, string> = {
-  pending_appointment: "รอนัด",
+  pending_appointment: "รอทำนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   ready: "พร้อม",

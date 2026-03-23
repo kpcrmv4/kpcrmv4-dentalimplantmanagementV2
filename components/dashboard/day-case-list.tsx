@@ -20,7 +20,7 @@ import type { DashboardCase, TrafficLight } from "@/lib/actions/dashboard"
 import type { UserRole } from "@/types/database"
 
 const STATUS_LABELS: Record<string, string> = {
-  pending_appointment: "รอนัด",
+  pending_appointment: "รอทำนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   ready: "พร้อม",
@@ -30,11 +30,11 @@ const STATUS_LABELS: Record<string, string> = {
 
 const APPT_STATUS: Record<string, { label: string; color: string }> = {
   pending: {
-    label: "รอยืนยัน",
+    label: "รอทำนัด",
     color: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
   },
   confirmed: {
-    label: "ยืนยันแล้ว",
+    label: "นัดแล้ว",
     color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
   },
   postponed: {
@@ -336,7 +336,7 @@ function QuickConfirmButton({ caseId }: { caseId: string }) {
     return (
       <div className="mt-1 flex items-center justify-center gap-1 text-[11px] text-green-600 dark:text-green-400">
         <Check className="h-3 w-3" />
-        ยืนยันแล้ว
+        นัดแล้ว
       </div>
     )
   }

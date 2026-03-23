@@ -39,11 +39,16 @@ export async function getDashboardReport() {
   }
 }
 
-export async function getCaseStatusDistribution() {
+export async function getCaseStatusDistribution(from?: string, to?: string) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from("cases")
     .select("case_status")
+
+  if (from) query = query.gte("created_at", from)
+  if (to) query = query.lte("created_at", `${to}T23:59:59`)
+
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -55,11 +60,16 @@ export async function getCaseStatusDistribution() {
   return counts
 }
 
-export async function getTopProducts() {
+export async function getTopProducts(from?: string, to?: string) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from("case_reservations")
-    .select("product_id, quantity_reserved, products(name, ref)")
+    .select("product_id, quantity_reserved, created_at, products(name, ref)")
+
+  if (from) query = query.gte("created_at", from)
+  if (to) query = query.lte("created_at", `${to}T23:59:59`)
+
+  const { data, error } = await query
 
   if (error) throw error
 

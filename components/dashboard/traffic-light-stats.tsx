@@ -61,7 +61,7 @@ export async function TrafficLightStats() {
             </div>
             <div className="min-w-0">
               <p className="text-lg font-bold leading-tight text-amber-700 dark:text-amber-400">{pendingAppt}</p>
-              <p className="text-[10px] text-muted-foreground">รอยืนยันนัด</p>
+              <p className="text-[10px] text-muted-foreground">รอทำนัด</p>
             </div>
           </div>
         </Link>

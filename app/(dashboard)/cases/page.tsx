@@ -24,7 +24,7 @@ import { th } from "date-fns/locale"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
   pending_appointment: {
-    label: "รอนัด",
+    label: "รอทำนัด",
     color: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400",
     dot: "bg-purple-500",
   },
