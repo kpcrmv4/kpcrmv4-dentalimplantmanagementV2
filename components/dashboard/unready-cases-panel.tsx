@@ -19,15 +19,15 @@ const TRAFFIC_DOT: Record<string, string> = {
   orange: "bg-orange-500",
 }
 
-export async function UnreadyCasesPanel() {
-  const cases = await getUnreadyCases()
+export async function UnreadyCasesPanel({ dentistId }: { dentistId?: string } = {}) {
+  const cases = await getUnreadyCases(dentistId)
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
           <AlertTriangle className="h-4 w-4 text-orange-500" />
-          เคสที่วัสดุยังไม่พร้อม
+          {dentistId ? "เคสที่ยังไม่ได้สั่งของ / วัสดุยังไม่พร้อม" : "เคสที่วัสดุยังไม่พร้อม"}
         </CardTitle>
       </CardHeader>
       <CardContent>

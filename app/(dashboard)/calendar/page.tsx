@@ -13,10 +13,11 @@ export default async function CalendarPage() {
     .single()
 
   const role = (userData?.role ?? "assistant") as UserRole
+  const dentistId = role === "dentist" ? authUser!.id : undefined
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
-  const cases = await getDashboardCases(year, month)
+  const cases = await getDashboardCases(year, month, dentistId)
 
   const roleLabels: Record<string, { title: string; subtitle: string }> = {
     cs: { title: "ปฏิทินนัดหมาย", subtitle: "จัดการนัดหมายและยืนยันคนไข้" },
@@ -36,6 +37,7 @@ export default async function CalendarPage() {
         initialYear={year}
         initialMonth={month}
         role={role}
+        dentistId={dentistId}
       />
     </div>
   )

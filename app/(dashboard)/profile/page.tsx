@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createClient } from "@/lib/supabase/client"
+import { testLineConnection } from "@/lib/actions/line"
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "ผู้ดูแลระบบ",
@@ -48,6 +49,8 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [savingPassword, setSavingPassword] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<{ text: string; success: boolean } | null>(null)
+  const [testingLine, setTestingLine] = useState(false)
+  const [lineTestMessage, setLineTestMessage] = useState<{ text: string; success: boolean } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -235,6 +238,34 @@ export default function ProfilePage() {
                   <p className="text-[10px] text-muted-foreground">
                     ใช้สำหรับรับการแจ้งเตือนส่วนตัวผ่าน LINE
                   </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={testingLine || !user.line_user_id?.trim()}
+                    onClick={async () => {
+                      setTestingLine(true)
+                      setLineTestMessage(null)
+                      try {
+                        await testLineConnection(user.line_user_id.trim())
+                        setLineTestMessage({ text: "ส่งข้อความทดสอบสำเร็จ กรุณาตรวจสอบ LINE ของคุณ", success: true })
+                      } catch {
+                        setLineTestMessage({ text: "ไม่สามารถส่งข้อความได้ กรุณาตรวจสอบ LINE User ID", success: false })
+                      } finally {
+                        setTestingLine(false)
+                      }
+                    }}
+                  >
+                    {testingLine ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> กำลังทดสอบ...</> : "ทดสอบแจ้งเตือน LINE"}
+                  </Button>
+                  {lineTestMessage && (
+                    <p className={`text-xs rounded-lg px-3 py-2 ${
+                      lineTestMessage.success
+                        ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                        : "bg-destructive/10 text-destructive"
+                    }`}>
+                      {lineTestMessage.text}
+                    </p>
+                  )}
                 </div>
 
                 {message ? (

@@ -9,6 +9,7 @@ import { EmergencyBanner } from "@/components/dashboard/emergency-banner"
 import { EmergencyModal } from "@/components/dashboard/emergency-modal"
 import { getDashboardCases } from "@/lib/actions/dashboard"
 import { getEmergencyAlerts } from "@/lib/actions/dashboard"
+import { getCurrentUser } from "@/lib/actions/auth"
 
 function StatsSkeleton() {
   return (
@@ -49,39 +50,50 @@ function PanelSkeleton() {
   )
 }
 
+async function getDentistId() {
+  const user = await getCurrentUser()
+  if (user?.role === "dentist") return user.id
+  return undefined
+}
+
 async function CalendarSection() {
+  const dentistId = await getDentistId()
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1
-  const cases = await getDashboardCases(year, month)
+  const cases = await getDashboardCases(year, month, dentistId)
 
   return (
     <CaseCalendar
       initialCases={cases}
       initialYear={year}
       initialMonth={month}
+      dentistId={dentistId}
     />
   )
 }
 
 async function EmergencySection() {
-  const alerts = await getEmergencyAlerts()
+  const dentistId = await getDentistId()
+  const alerts = await getEmergencyAlerts(dentistId)
   return (
     <>
-      <EmergencyBanner />
+      <EmergencyBanner dentistId={dentistId} />
       <EmergencyModal alerts={alerts} />
     </>
   )
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const dentistId = await getDentistId()
+
   return (
     <div className="space-y-4 p-4 lg:p-6">
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold">แดชบอร์ด</h1>
         <p className="text-xs text-muted-foreground">
-          ภาพรวมระบบจัดการสต็อกวัสดุและรากฟันเทียม
+          {dentistId ? "ภาพรวมเคสของคุณ" : "ภาพรวมระบบจัดการสต็อกวัสดุและรากฟันเทียม"}
         </p>
       </div>
 
@@ -92,7 +104,7 @@ export default function DashboardPage() {
 
       {/* Case Summary + Material Readiness Stats */}
       <Suspense fallback={<StatsSkeleton />}>
-        <TrafficLightStats />
+        <TrafficLightStats dentistId={dentistId} />
       </Suspense>
 
       {/* Calendar */}
@@ -106,13 +118,15 @@ export default function DashboardPage() {
           <AlertTriangle className="h-3.5 w-3.5" />
           รายการที่ต้องดำเนินการ
         </h2>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className={dentistId ? "" : "grid gap-4 lg:grid-cols-2"}>
           <Suspense fallback={<PanelSkeleton />}>
-            <UnreadyCasesPanel />
+            <UnreadyCasesPanel dentistId={dentistId} />
           </Suspense>
-          <Suspense fallback={<PanelSkeleton />}>
-            <LowStockPanel />
-          </Suspense>
+          {!dentistId && (
+            <Suspense fallback={<PanelSkeleton />}>
+              <LowStockPanel />
+            </Suspense>
+          )}
         </div>
       </div>
     </div>

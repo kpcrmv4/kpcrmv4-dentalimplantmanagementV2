@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getCaseById } from "@/lib/actions/cases"
+import { getCurrentUser } from "@/lib/actions/auth"
 import { formatDate } from "@/lib/utils"
 import { CaseActions } from "./case-actions"
 import { CaseMaterialsEditor } from "./case-materials-editor"
@@ -28,19 +29,23 @@ export default async function CaseDetailPage({
 }) {
   const { id } = await params
 
-  let caseData: Awaited<ReturnType<typeof getCaseById>>
-  try {
-    caseData = await getCaseById(id)
-  } catch {
-    notFound()
-  }
+  const [caseResult, currentUser] = await Promise.all([
+    getCaseById(id).catch(() => null),
+    getCurrentUser(),
+  ])
+
+  if (!caseResult) notFound()
+  const caseData = caseResult
+
+  const userRole = currentUser?.role ?? "assistant"
+  const isDentist = userRole === "dentist"
 
   const status = STATUS_CONFIG[caseData.case_status] ?? STATUS_CONFIG.pending_order
   const patient = caseData.patients as Record<string, unknown> | null
   const dentist = caseData.dentist as Record<string, unknown> | null
   const assistant = caseData.assistant as Record<string, unknown> | null
   const reservations = caseData.reservations as Array<Record<string, unknown>>
-  const canCancel = !["completed", "cancelled"].includes(caseData.case_status)
+  const canCancel = !isDentist && !["completed", "cancelled"].includes(caseData.case_status)
   const isActive = !["completed", "cancelled"].includes(caseData.case_status)
 
   return (
@@ -122,15 +127,17 @@ export default async function CaseDetailPage({
         )}
       </div>
 
-      {/* Appointment Confirmation */}
-      <AppointmentActions
-        caseId={id}
-        appointmentStatus={(caseData as Record<string, unknown>).appointment_status as string ?? "pending"}
-        caseStatus={caseData.case_status}
-      />
+      {/* Appointment Confirmation - hidden for dentists */}
+      {!isDentist && (
+        <AppointmentActions
+          caseId={id}
+          appointmentStatus={(caseData as Record<string, unknown>).appointment_status as string ?? "pending"}
+          caseStatus={caseData.case_status}
+        />
+      )}
 
-      {/* Appointment Timeline */}
-      <AppointmentTimeline caseId={id} />
+      {/* Appointment Timeline - hidden for dentists */}
+      {!isDentist && <AppointmentTimeline caseId={id} />}
 
       {/* Materials / Reservations (editable) */}
       <CaseMaterialsEditor
@@ -154,8 +161,8 @@ export default async function CaseDetailPage({
         })}
       />
 
-      {/* Action Sections (client component) */}
-      {isActive && (
+      {/* Action Sections (client component) - hidden for dentists */}
+      {isActive && !isDentist && (
         <CaseActions
           caseId={id}
           caseStatus={caseData.case_status}

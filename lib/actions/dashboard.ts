@@ -29,7 +29,8 @@ function deriveTrafficLight(status: CaseStatus): TrafficLight {
 
 export async function getDashboardCases(
   year: number,
-  month: number
+  month: number,
+  dentistId?: string
 ): Promise<DashboardCase[]> {
   const supabase = await createClient()
 
@@ -38,7 +39,7 @@ export async function getDashboardCases(
   const nextYear = month === 12 ? year + 1 : year
   const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("cases")
     .select(
       "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
@@ -48,6 +49,12 @@ export async function getDashboardCases(
     .neq("case_status", "cancelled")
     .order("scheduled_date")
     .order("scheduled_time", { nullsFirst: false })
+
+  if (dentistId) {
+    query = query.eq("dentist_id", dentistId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -120,11 +127,11 @@ export async function getDashboardCases(
   return mapped
 }
 
-export async function getUnreadyCases(): Promise<DashboardCase[]> {
+export async function getUnreadyCases(dentistId?: string): Promise<DashboardCase[]> {
   const supabase = await createClient()
   const today = new Date().toISOString().split("T")[0]
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("cases")
     .select(
       "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
@@ -133,6 +140,12 @@ export async function getUnreadyCases(): Promise<DashboardCase[]> {
     .not("case_status", "in", '("ready","completed","cancelled")')
     .order("scheduled_date")
     .limit(10)
+
+  if (dentistId) {
+    query = query.eq("dentist_id", dentistId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -201,7 +214,7 @@ export type EmergencyAlert = DashboardCase & {
   isOverdue: boolean
 }
 
-export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
+export async function getEmergencyAlerts(dentistId?: string): Promise<EmergencyAlert[]> {
   const supabase = await createClient()
   const now = new Date()
   const fortyEightHoursLater = new Date(now.getTime() + 48 * 60 * 60 * 1000)
@@ -210,7 +223,7 @@ export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
   const pastDayStr = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   const futureStr = fortyEightHoursLater.toISOString().split("T")[0]
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("cases")
     .select(
       "id, case_number, scheduled_date, scheduled_time, case_status, appointment_status, procedure_type, tooth_positions, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
@@ -219,6 +232,12 @@ export async function getEmergencyAlerts(): Promise<EmergencyAlert[]> {
     .lte("scheduled_date", futureStr)
     .not("case_status", "in", '("ready","completed","cancelled")')
     .order("scheduled_date")
+
+  if (dentistId) {
+    query = query.eq("dentist_id", dentistId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
 

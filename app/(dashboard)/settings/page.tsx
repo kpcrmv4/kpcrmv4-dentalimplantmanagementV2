@@ -199,7 +199,6 @@ export default function SettingsPage() {
 
   // Admin: LINE
   const [lineToken, setLineToken] = useState("")
-  const [lineSecret, setLineSecret] = useState("")
   const [lineEnabled, setLineEnabled] = useState(false)
   const [savingLine, setSavingLine] = useState(false)
   const [lineMessage, setLineMessage] = useState<string | null>(null)
@@ -238,8 +237,7 @@ export default function SettingsPage() {
           setNotifSettings(ns)
           if (lineCfg) {
             setLineToken(lineCfg.line_channel_access_token ?? "")
-            setLineSecret(lineCfg.line_channel_secret ?? "")
-            setLineEnabled(lineCfg.line_notify_enabled ?? false)
+setLineEnabled(lineCfg.line_notify_enabled ?? false)
           }
         } catch {
           // ignore
@@ -279,7 +277,6 @@ export default function SettingsPage() {
     try {
       await updateLineSettings({
         line_channel_access_token: lineToken || undefined,
-        line_channel_secret: lineSecret || undefined,
         line_notify_enabled: lineEnabled,
       })
       setLineMessage("บันทึกสำเร็จ")
@@ -371,16 +368,6 @@ export default function SettingsPage() {
                       type="password"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Channel Secret</Label>
-                    <Input
-                      value={lineSecret}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLineSecret(e.target.value)}
-                      placeholder="Channel Secret"
-                      type="password"
-                    />
-                  </div>
-
                   {lineMessage && (
                     <p className={`text-sm rounded-lg px-3 py-2 ${
                       lineMessage.includes("สำเร็จ")
