@@ -8,9 +8,9 @@ import {
 import { getDashboardCases } from "@/lib/actions/dashboard"
 import { cn } from "@/lib/utils"
 
-export async function TrafficLightStats() {
+export async function TrafficLightStats({ dentistId }: { dentistId?: string } = {}) {
   const now = new Date()
-  const cases = await getDashboardCases(now.getFullYear(), now.getMonth() + 1)
+  const cases = await getDashboardCases(now.getFullYear(), now.getMonth() + 1, dentistId)
 
   const activeCases = cases.filter((c) => c.case_status !== "completed")
   const active = activeCases.length

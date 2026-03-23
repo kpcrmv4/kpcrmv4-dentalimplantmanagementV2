@@ -10,8 +10,8 @@ const STATUS_LABELS: Record<string, string> = {
   pending_appointment: "รอทำนัด",
 }
 
-export async function EmergencyBanner() {
-  const alerts = await getEmergencyAlerts()
+export async function EmergencyBanner({ dentistId }: { dentistId?: string } = {}) {
+  const alerts = await getEmergencyAlerts(dentistId)
 
   if (alerts.length === 0) return null
 

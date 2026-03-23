@@ -13,11 +13,13 @@ export function CaseCalendar({
   initialYear,
   initialMonth,
   role,
+  dentistId,
 }: {
   initialCases: DashboardCase[]
   initialYear: number
   initialMonth: number
   role?: UserRole
+  dentistId?: string
 }) {
   const [cases, setCases] = useState(initialCases)
   const [currentMonth, setCurrentMonth] = useState(
@@ -31,7 +33,7 @@ export function CaseCalendar({
     startTransition(async () => {
       const year = newMonth.getFullYear()
       const month = newMonth.getMonth() + 1
-      const data = await getDashboardCases(year, month)
+      const data = await getDashboardCases(year, month, dentistId)
       setCases(data)
     })
   }
