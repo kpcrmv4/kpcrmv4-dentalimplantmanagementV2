@@ -31,7 +31,7 @@ import { getProducts, getCategories } from "@/lib/actions/products"
 import { formatDate } from "@/lib/utils"
 
 const RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
-  reserved: { label: "จองแล้ว", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
+  reserved: { label: "รอจัดเตรียม", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
   prepared: { label: "จัดเตรียมแล้ว", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
   consumed: { label: "ใช้แล้ว", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
   returned: { label: "คืนแล้ว", color: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
@@ -106,6 +106,13 @@ export function CaseMaterialsEditor({
 
   // Save result notification
   const [saveResult, setSaveResult] = useState<{ outOfStock: string[] } | null>(null)
+
+  // Track materials added to a "ready" case during this editing session
+  const [addedToReadyCase, setAddedToReadyCase] = useState<{ hasStock: boolean; noStock: boolean }>({
+    hasStock: false,
+    noStock: false,
+  })
+  const [statusChangeDialog, setStatusChangeDialog] = useState(false)
 
   const canEdit = ["ready", "pending_preparation", "pending_order"].includes(caseStatus)
   const activeReservations = reservations.filter((r) => !["returned", "consumed"].includes(r.status))
@@ -256,6 +263,14 @@ export function CaseMaterialsEditor({
           setSaveResult({ outOfStock: [selectedProduct.name] })
         }
 
+        // Track if materials were added to a ready case
+        if (result.wasReady) {
+          setAddedToReadyCase((prev) => ({
+            hasStock: prev.hasStock || result.hasStock,
+            noStock: prev.noStock || !result.hasStock,
+          }))
+        }
+
         router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
@@ -278,8 +293,17 @@ export function CaseMaterialsEditor({
               variant={isEditing ? "default" : "outline"}
               className="h-7 text-xs"
               onClick={() => {
-                setIsEditing(!isEditing)
-                setSaveResult(null)
+                if (isEditing && (addedToReadyCase.hasStock || addedToReadyCase.noStock)) {
+                  // Show confirmation modal before exiting edit mode
+                  setStatusChangeDialog(true)
+                } else {
+                  setIsEditing(!isEditing)
+                  setSaveResult(null)
+                  if (!isEditing) {
+                    // Reset tracking when entering edit mode
+                    setAddedToReadyCase({ hasStock: false, noStock: false })
+                  }
+                }
               }}
             >
               {isEditing ? (
@@ -300,7 +324,7 @@ export function CaseMaterialsEditor({
                 วัสดุไม่เพียงพอในสต๊อก
               </p>
               <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                {saveResult.outOfStock.join(", ")} — สถานะเคสเปลี่ยนเป็น &quot;รอจัดของ&quot;
+                {saveResult.outOfStock.join(", ")} — สถานะเคสจะเปลี่ยนเป็น &quot;รอสั่งของ&quot;
               </p>
               <button
                 onClick={() => setSaveResult(null)}
@@ -644,7 +668,7 @@ export function CaseMaterialsEditor({
                       สินค้าไม่มีในสต๊อก
                     </p>
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                      สามารถเพิ่มได้ แต่สถานะเคสจะเปลี่ยนเป็น &quot;รอจัดของ&quot;
+                      สถานะเคสจะเปลี่ยนเป็น &quot;รอสั่งของ&quot; ระบบจะแจ้งเตือนสต๊อกให้อัตโนมัติ
                     </p>
                   </div>
                 </div>
@@ -658,7 +682,7 @@ export function CaseMaterialsEditor({
                       จำนวนเกินสต๊อก
                     </p>
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                      สต๊อกเหลือ {selectedProduct.totalStock} {selectedProduct.unit} — สถานะเคสจะเปลี่ยนเป็น &quot;รอจัดของ&quot;
+                      สต๊อกเหลือ {selectedProduct.totalStock} {selectedProduct.unit} — สถานะเคสจะเปลี่ยนเป็น &quot;รอสั่งของ&quot;
                     </p>
                   </div>
                 </div>
@@ -688,6 +712,40 @@ export function CaseMaterialsEditor({
             )}
             <Button variant="outline" className="w-full" onClick={() => setAddDialog(false)}>
               ยกเลิก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ── Status Change Confirmation Dialog (when materials added to ready case) ── */}
+      <Dialog open={statusChangeDialog} onOpenChange={(open) => !open && setStatusChangeDialog(false)}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] rounded-xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>สถานะเคสจะเปลี่ยน</DialogTitle>
+            <DialogDescription>
+              {addedToReadyCase.noStock
+                ? "สถานะเคสจะเปลี่ยนเป็น รอสั่งของ ระบบจะแจ้งเตือนสต๊อกให้อัตโนมัติ"
+                : "สถานะเคสจะเปลี่ยนเป็น รอจัดของ กรุณาจัดเตรียมวัสดุที่เพิ่มมา"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full h-11"
+              onClick={() => {
+                setStatusChangeDialog(false)
+                setIsEditing(false)
+                setSaveResult(null)
+                setAddedToReadyCase({ hasStock: false, noStock: false })
+                router.refresh()
+              }}
+            >
+              ยืนยัน
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setStatusChangeDialog(false)}
+            >
+              กลับไปแก้ไขต่อ
             </Button>
           </DialogFooter>
         </DialogContent>
