@@ -597,7 +597,7 @@ export async function addMaterialToCase(
   if (!hasStock) {
     const { data: fullCase } = await supabase
       .from("cases")
-      .select("case_number, scheduled_date, scheduled_time")
+      .select("case_number, scheduled_date, scheduled_time, patients(full_name), dentists:users!cases_dentist_id_fkey(full_name)")
       .eq("id", caseId)
       .single()
 
@@ -609,6 +609,16 @@ export async function addMaterialToCase(
 
     const productName = product?.name ?? "สินค้า"
     const caseNumber = fullCase?.case_number ?? caseId
+    const patientName = (fullCase?.patients as unknown as { full_name: string } | null)?.full_name ?? "ไม่ระบุ"
+    const dentistName = (fullCase?.dentists as unknown as { full_name: string } | null)?.full_name ?? "ไม่ระบุ"
+
+    let dateInfo = ""
+    if (fullCase?.scheduled_date) {
+      dateInfo = ` นัด ${fullCase.scheduled_date}`
+      if (fullCase?.scheduled_time) {
+        dateInfo += ` ${(fullCase.scheduled_time as string).slice(0, 5)}`
+      }
+    }
 
     // Check if urgent (within 48h)
     let isUrgent = false
@@ -624,7 +634,7 @@ export async function addMaterialToCase(
       smartNotify({
         type: "emergency_case",
         title: "ด่วน — ของขาดสต๊อก",
-        message: `เคส ${caseNumber} นัดภายใน 48 ชม. แต่ ${productName} (${quantity} ชิ้น) ไม่มีในสต๊อก`,
+        message: `เคส ${caseNumber} (${patientName}) ทพ.${dentistName}${dateInfo}\n${productName} (${quantity} ชิ้น) ไม่มีในสต๊อก`,
         data: { case_id: caseId, product_id: productId, case_number: caseNumber },
       }).catch(() => {})
     } else {
@@ -633,7 +643,7 @@ export async function addMaterialToCase(
       smartNotify({
         type: "out_of_stock",
         title: "สินค้าหมด — ต้องสั่งเพิ่ม",
-        message: `${productName} (${quantity} ชิ้น) ถูกจองในเคส ${caseNumber} แต่ไม่มีสต๊อก`,
+        message: `เคส ${caseNumber} (${patientName}) ทพ.${dentistName}${dateInfo}\n${productName} (${quantity} ชิ้น) ไม่มีในสต๊อก`,
         data: { case_id: caseId, product_id: productId, case_number: caseNumber },
       }).catch(() => {})
     }

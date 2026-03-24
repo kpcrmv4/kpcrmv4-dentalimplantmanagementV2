@@ -159,7 +159,7 @@ export async function smartNotify(params: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: setting } = await (supabase as any)
     .from("notification_settings")
-    .select("target_roles, is_active")
+    .select("target_roles, is_active, default_discord")
     .eq("event_type", params.type)
     .single()
 
@@ -168,6 +168,12 @@ export async function smartNotify(params: {
   const targetRoles = setting.target_roles ?? []
   if (targetRoles.length === 0) return
 
+  // Send Discord once (shared channel), not per-user
+  const shouldDiscord = params.overrides?.discord ?? setting?.default_discord ?? false
+  if (shouldDiscord) {
+    sendDiscordWebhook(params.title, params.message).catch(() => {})
+  }
+
   // Get users matching target roles
   const { data: users } = await supabase
     .from("users")
@@ -175,10 +181,12 @@ export async function smartNotify(params: {
     .in("role", targetRoles)
     .eq("is_active", true)
 
+  // Send in-app + LINE per user, but skip Discord (already sent above)
   for (const user of users ?? []) {
     await createNotification({
       user_id: user.id,
       ...params,
+      overrides: { ...params.overrides, discord: false },
     })
   }
 }
