@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { ArrowLeft, Trash2, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,14 +33,37 @@ interface SupplierInfo {
 export default function NewOrderPage() {
   const router = useRouter()
   const [suppliers, setSuppliers] = useState<Array<{ id: string; code: string; name: string }>>([])
-  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; unit: string }>>([])
+  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; category: string; unit: string; model: string | null; diameter: number | null; length: number | null }>>([])
   const [selectedSupplier, setSelectedSupplier] = useState("")
   const [items, setItems] = useState<POItem[]>([])
   const [notes, setNotes] = useState("")
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("")
   const [supplierInfo, setSupplierInfo] = useState<SupplierInfo | null>(null)
+  const [supplierSearch, setSupplierSearch] = useState("")
+  const [productSearch, setProductSearch] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const filteredSuppliers = suppliers.filter((s) =>
+    supplierSearch === ""
+      ? true
+      : `${s.name} ${s.code}`.toLowerCase().includes(supplierSearch.toLowerCase())
+  )
+
+  const filteredProducts = productSearch === ""
+    ? []
+    : products.filter((p) => {
+        const q = productSearch.toLowerCase()
+        return (
+          p.name.toLowerCase().includes(q) ||
+          p.ref.toLowerCase().includes(q) ||
+          (p.brand?.toLowerCase().includes(q) ?? false) ||
+          (p.category?.toLowerCase().includes(q) ?? false) ||
+          (p.model?.toLowerCase().includes(q) ?? false) ||
+          (p.diameter != null && String(p.diameter).includes(q)) ||
+          (p.length != null && String(p.length).includes(q))
+        )
+      })
 
   useEffect(() => {
     getSuppliers().then(setSuppliers).catch(() => {})
@@ -114,10 +137,19 @@ export default function NewOrderPage() {
           <CardTitle className="text-sm">เลือก Supplier</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {suppliers.map((s) => (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ค้นหา Supplier..."
+              value={supplierSearch}
+              onChange={(e) => setSupplierSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          {filteredSuppliers.map((s) => (
             <button
               key={s.id}
-              onClick={() => { setSelectedSupplier(s.id); setItems([]) }}
+              onClick={() => { setSelectedSupplier(s.id); setItems([]); setProductSearch("") }}
               className={`w-full rounded-lg border p-2 text-left text-sm transition-colors ${
                 selectedSupplier === s.id ? "border-primary bg-primary/5" : "hover:bg-muted/50"
               }`}
@@ -159,8 +191,20 @@ export default function NewOrderPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">เลือกสินค้า</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {products.map((p) => {
+          <CardContent className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="พิมพ์เพื่อค้นหาสินค้า..."
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            {productSearch === "" && (
+              <p className="text-xs text-muted-foreground py-1">พิมพ์ชื่อหรือ REF เพื่อค้นหาสินค้า</p>
+            )}
+            {filteredProducts.map((p) => {
               const inList = items.some((i) => i.product_id === p.id)
               return (
                 <button
