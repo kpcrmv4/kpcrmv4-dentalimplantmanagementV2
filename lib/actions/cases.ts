@@ -572,8 +572,10 @@ export async function addMaterialToCase(
 
   if (error) throw error
 
-  // Step 2: If stock available, update to "prepared" (trigger handles reserved_quantity)
-  if (hasStock && bestLotId) {
+  // Step 2: If stock available AND case is NOT already "ready", auto-prepare.
+  // When case is "ready", keep new materials as "reserved" so staff must re-prepare.
+  const wasReady = caseData.case_status === "ready"
+  if (hasStock && bestLotId && !wasReady) {
     const { error: updateErr } = await supabase
       .from("case_reservations")
       .update({
@@ -644,6 +646,7 @@ export async function addMaterialToCase(
 
   return {
     hasStock,
+    wasReady,
     reservationId: newReservation.id,
   }
 }
