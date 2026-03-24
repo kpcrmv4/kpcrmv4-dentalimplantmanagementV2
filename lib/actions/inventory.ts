@@ -52,6 +52,7 @@ export type StockSummaryItem = {
   totalStock: number
   isLowStock: boolean
   supplierName: string | null
+  supplier_id: string | null
 }
 
 export async function getStockSummary(): Promise<StockSummaryItem[]> {
@@ -62,7 +63,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -90,6 +91,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
       totalStock,
       isLowStock,
       supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
+      supplier_id: p.supplier_id ?? null,
     }
   })
 }
@@ -101,7 +103,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -129,6 +131,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
       totalStock,
       isLowStock,
       supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
+      supplier_id: p.supplier_id ?? null,
     }
   })
 }
