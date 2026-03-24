@@ -324,7 +324,7 @@ export function CaseMaterialsEditor({
                 วัสดุไม่เพียงพอในสต๊อก
               </p>
               <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                {saveResult.outOfStock.join(", ")} — สถานะเคสเปลี่ยนเป็น &quot;รอจัดของ&quot;
+                {saveResult.outOfStock.join(", ")} — สถานะเคสจะเปลี่ยนเป็น &quot;รอสั่งของ&quot;
               </p>
               <button
                 onClick={() => setSaveResult(null)}
@@ -668,7 +668,7 @@ export function CaseMaterialsEditor({
                       สินค้าไม่มีในสต๊อก
                     </p>
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                      สามารถเพิ่มได้ แต่สถานะเคสจะเปลี่ยนเป็น &quot;รอจัดของ&quot;
+                      สถานะเคสจะเปลี่ยนเป็น &quot;รอสั่งของ&quot; ระบบจะแจ้งเตือนสต๊อกให้อัตโนมัติ
                     </p>
                   </div>
                 </div>
@@ -682,7 +682,7 @@ export function CaseMaterialsEditor({
                       จำนวนเกินสต๊อก
                     </p>
                     <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                      สต๊อกเหลือ {selectedProduct.totalStock} {selectedProduct.unit} — สถานะเคสจะเปลี่ยนเป็น &quot;รอจัดของ&quot;
+                      สต๊อกเหลือ {selectedProduct.totalStock} {selectedProduct.unit} — สถานะเคสจะเปลี่ยนเป็น &quot;รอสั่งของ&quot;
                     </p>
                   </div>
                 </div>
