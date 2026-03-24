@@ -117,12 +117,15 @@ function ExpiryBadge({ expiryDate, compact }: { expiryDate: string | null; compa
 }
 
 function StockBadge({ stock, unit, isLow, minStock }: { stock: number; unit: string; isLow: boolean; minStock: number }) {
+  const isOutOfStock = stock === 0
   return (
     <div className="text-right">
       <div className="flex items-baseline justify-end gap-0.5">
         <span
           className={`text-sm sm:text-base font-bold tabular-nums ${
-            isLow
+            isOutOfStock
+              ? "text-red-600 dark:text-red-400"
+              : isLow
               ? "text-orange-600 dark:text-orange-400"
               : "text-foreground"
           }`}
@@ -131,11 +134,15 @@ function StockBadge({ stock, unit, isLow, minStock }: { stock: number; unit: str
         </span>
         <span className="text-[10px] text-muted-foreground">{unit}</span>
       </div>
-      {isLow && (
+      {isOutOfStock ? (
+        <span className="text-[9px] sm:text-[10px] text-red-500">
+          หมดสต๊อก
+        </span>
+      ) : isLow ? (
         <span className="text-[9px] sm:text-[10px] text-orange-500">
           ขั้นต่ำ {minStock}
         </span>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -171,10 +178,10 @@ function ProductView({ products }: { products: Product[] }) {
 
       <div className="divide-y rounded-lg border sm:border-t-0 sm:rounded-t-none">
         {products.map((product) => {
-          const statusColor = product.isLowStock
-            ? "orange"
-            : product.totalStock === 0
+          const statusColor = product.totalStock === 0
             ? "red"
+            : product.isLowStock
+            ? "orange"
             : "green"
 
           return (
@@ -189,8 +196,8 @@ function ProductView({ products }: { products: Product[] }) {
                   <p className="text-sm font-medium truncate leading-tight">
                     {product.name}
                   </p>
-                  {product.isLowStock && (
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+                  {(product.isLowStock || product.totalStock === 0) && (
+                    <AlertTriangle className={`h-3.5 w-3.5 shrink-0 ${product.totalStock === 0 ? "text-red-500" : "text-orange-500"}`} />
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
