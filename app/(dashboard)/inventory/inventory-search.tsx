@@ -16,6 +16,7 @@ export function InventorySearch({
   currentView,
   currentExpiryBefore,
   lowStockCount,
+  outOfStockCount,
   inactiveCount,
   currentCategory,
   currentBrand,
@@ -33,6 +34,7 @@ export function InventorySearch({
   currentView: string
   currentExpiryBefore: string
   lowStockCount: number
+  outOfStockCount: number
   inactiveCount: number
   currentCategory?: string
   currentBrand?: string
@@ -159,6 +161,14 @@ export function InventorySearch({
           count={lowStockCount > 0 ? lowStockCount : undefined}
         >
           ใกล้หมด
+        </FilterPill>
+        <FilterPill
+          active={currentFilter === "out"}
+          onClick={() => handleFilterChange("out")}
+          color="red"
+          count={outOfStockCount > 0 ? outOfStockCount : undefined}
+        >
+          หมด
         </FilterPill>
         <FilterPill
           active={currentFilter === "ordering"}
@@ -361,7 +371,11 @@ function FilterPill({
       {count !== undefined && count > 0 && (
         <span
           className={`inline-flex items-center justify-center rounded-full min-w-[16px] h-4 px-1 text-[10px] font-bold ${
-            active ? "bg-white/20" : "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+            active
+              ? "bg-white/20"
+              : color === "red"
+              ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+              : "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
           }`}
         >
           {count}

@@ -79,7 +79,8 @@ export default async function InventoryPage({
 
   // Compute summary from unfiltered product data
   const totalProducts = products.length
-  const lowStockCount = products.filter((p) => p.isLowStock).length
+  const lowStockCount = products.filter((p) => p.isLowStock && p.totalStock > 0).length
+  const outOfStockCount = products.filter((p) => p.totalStock === 0).length
   const totalStockQty = products.reduce((s, p) => s + p.totalStock, 0)
 
   // Count expiring lots (within 90 days)
@@ -122,7 +123,10 @@ export default async function InventoryPage({
       filteredProducts = filteredProducts.filter((p) => matchesSearch(p, q))
     }
     if (filter === "low") {
-      filteredProducts = filteredProducts.filter((p) => p.isLowStock)
+      filteredProducts = filteredProducts.filter((p) => p.isLowStock && p.totalStock > 0)
+    }
+    if (filter === "out") {
+      filteredProducts = filteredProducts.filter((p) => p.totalStock === 0)
     }
     if (filter === "ordering") {
       const activePOProductIds = await getProductIdsWithActivePOs()
@@ -274,6 +278,7 @@ export default async function InventoryPage({
         currentView={view}
         currentExpiryBefore={expiryBefore}
         lowStockCount={lowStockCount}
+        outOfStockCount={outOfStockCount}
         inactiveCount={inactiveCount}
         currentCategory={category}
         currentBrand={brand}
