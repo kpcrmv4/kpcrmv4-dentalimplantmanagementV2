@@ -326,7 +326,7 @@ export async function getProductsBySupplier(supplierId: string, category?: Produ
   const supabase = await createClient()
   let query = supabase
     .from("products")
-    .select("id, ref, name, brand, category, unit")
+    .select("id, ref, name, brand, category, unit, model, diameter, length")
     .eq("supplier_id", supplierId)
     .eq("is_active", true)
     .order("name")

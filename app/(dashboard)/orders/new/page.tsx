@@ -33,7 +33,7 @@ interface SupplierInfo {
 export default function NewOrderPage() {
   const router = useRouter()
   const [suppliers, setSuppliers] = useState<Array<{ id: string; code: string; name: string }>>([])
-  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; unit: string }>>([])
+  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; category: string; unit: string; model: string | null; diameter: number | null; length: number | null }>>([])
   const [selectedSupplier, setSelectedSupplier] = useState("")
   const [items, setItems] = useState<POItem[]>([])
   const [notes, setNotes] = useState("")
@@ -52,9 +52,18 @@ export default function NewOrderPage() {
 
   const filteredProducts = productSearch === ""
     ? []
-    : products.filter((p) =>
-        `${p.name} ${p.ref}`.toLowerCase().includes(productSearch.toLowerCase())
-      )
+    : products.filter((p) => {
+        const q = productSearch.toLowerCase()
+        return (
+          p.name.toLowerCase().includes(q) ||
+          p.ref.toLowerCase().includes(q) ||
+          (p.brand?.toLowerCase().includes(q) ?? false) ||
+          (p.category?.toLowerCase().includes(q) ?? false) ||
+          (p.model?.toLowerCase().includes(q) ?? false) ||
+          (p.diameter != null && String(p.diameter).includes(q)) ||
+          (p.length != null && String(p.length).includes(q))
+        )
+      })
 
   useEffect(() => {
     getSuppliers().then(setSuppliers).catch(() => {})
