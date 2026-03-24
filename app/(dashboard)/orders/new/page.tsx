@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Trash2, Search } from "lucide-react"
+import { ArrowLeft, Trash2, Search, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { getSuppliers, getProductsBySupplier } from "@/lib/actions/inventory"
+import { getSuppliers, getStockSummary } from "@/lib/actions/inventory"
 import { createPurchaseOrder } from "@/lib/actions/orders"
 import { getSupplierWithScore } from "@/lib/actions/suppliers"
 import { formatCurrency } from "@/lib/utils"
@@ -33,7 +33,7 @@ interface SupplierInfo {
 export default function NewOrderPage() {
   const router = useRouter()
   const [suppliers, setSuppliers] = useState<Array<{ id: string; code: string; name: string }>>([])
-  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; category: string; unit: string; model: string | null; diameter: number | null; length: number | null }>>([])
+  const [products, setProducts] = useState<Array<{ id: string; ref: string; name: string; brand: string | null; category: string; unit: string; model: string | null; diameter: number | null; length: number | null; supplierName: string | null; supplier_id: string | null }>>([])
   const [selectedSupplier, setSelectedSupplier] = useState("")
   const [items, setItems] = useState<POItem[]>([])
   const [notes, setNotes] = useState("")
@@ -67,11 +67,11 @@ export default function NewOrderPage() {
 
   useEffect(() => {
     getSuppliers().then(setSuppliers).catch(() => {})
+    getStockSummary().then(setProducts).catch(() => {})
   }, [])
 
   useEffect(() => {
     if (selectedSupplier) {
-      getProductsBySupplier(selectedSupplier).then(setProducts).catch(() => {})
       getSupplierWithScore(selectedSupplier).then((info) => {
         if (info) {
           setSupplierInfo({ lead_time_days: info.lead_time_days, delivery_score: info.delivery_score })
@@ -186,42 +186,49 @@ export default function NewOrderPage() {
       ) : null}
 
       {/* Products */}
-      {selectedSupplier ? (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">เลือกสินค้า</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="พิมพ์เพื่อค้นหาสินค้า..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            {productSearch === "" && (
-              <p className="text-xs text-muted-foreground py-1">พิมพ์ชื่อหรือ REF เพื่อค้นหาสินค้า</p>
-            )}
-            {filteredProducts.map((p) => {
-              const inList = items.some((i) => i.product_id === p.id)
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => addProduct(p)}
-                  disabled={inList}
-                  className={`w-full rounded-lg border p-2 text-left text-sm transition-colors ${
-                    inList ? "bg-muted/50 opacity-50" : "hover:bg-muted/50"
-                  }`}
-                >
-                  {p.name} · REF: {p.ref}
-                </button>
-              )
-            })}
-          </CardContent>
-        </Card>
-      ) : null}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">เลือกสินค้า</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ค้นหาชื่อ, REF, แบรนด์, รุ่น, ขนาด..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          {productSearch === "" && (
+            <p className="text-xs text-muted-foreground py-1">พิมพ์เพื่อค้นหาสินค้าจากชื่อ, REF, แบรนด์, รุ่น, ขนาด</p>
+          )}
+          {filteredProducts.map((p) => {
+            const inList = items.some((i) => i.product_id === p.id)
+            const details = [p.ref, p.brand, p.model, p.diameter != null && p.length != null ? `Ø${p.diameter} × ${p.length}mm` : null, p.supplierName].filter(Boolean).join(" · ")
+            const supplierMismatch = selectedSupplier && p.supplier_id && p.supplier_id !== selectedSupplier
+            return (
+              <button
+                key={p.id}
+                onClick={() => addProduct(p)}
+                disabled={inList}
+                className={`w-full rounded-lg border p-2 text-left text-sm transition-colors ${
+                  inList ? "bg-muted/50 opacity-50" : "hover:bg-muted/50"
+                }`}
+              >
+                <span className="font-medium">{p.name}</span>
+                <span className="block text-xs text-muted-foreground">{details}</span>
+                {supplierMismatch && (
+                  <span className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                    <AlertTriangle className="h-3 w-3" />
+                    สินค้านี้ไม่ตรงกับ Supplier ที่เลือก
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </CardContent>
+      </Card>
 
       {/* Items with price */}
       {items.length > 0 ? (
