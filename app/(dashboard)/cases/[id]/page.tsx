@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/actions/auth"
 import { formatDate } from "@/lib/utils"
 import { CaseActions } from "./case-actions"
 import { CaseMaterialsEditor } from "./case-materials-editor"
+import { CaseSupplierOrder } from "./case-supplier-order"
 import { AppointmentActions } from "./appointment-actions"
 import { AppointmentTimeline } from "./appointment-timeline"
 
@@ -177,6 +178,29 @@ export default async function CaseDetailPage({
           }
         })}
       />
+
+      {/* Supplier Order - for stock_staff/admin when case has out-of-stock items */}
+      {isActive && ["stock_staff", "admin"].includes(userRole) && caseData.case_status === "pending_order" && (
+        <CaseSupplierOrder
+          caseId={id}
+          outOfStockItems={reservations
+            .filter((r) => r.status === "reserved")
+            .map((r) => {
+              const product = r.products as Record<string, unknown> | null
+              const supplier = (product as Record<string, unknown>)?.suppliers as Record<string, unknown> | null
+              return {
+                productId: r.product_id as string,
+                productName: String(product?.name ?? ""),
+                productBrand: String(product?.brand ?? ""),
+                productRef: String(product?.ref ?? ""),
+                productUnit: String(product?.unit ?? "ชิ้น"),
+                quantity: Number(r.quantity_reserved),
+                supplierId: supplier?.id ? String(supplier.id) : null,
+                supplierName: supplier?.name ? String(supplier.name) : null,
+              }
+            })}
+        />
+      )}
 
       {/* Action Sections (client component) - hidden for dentists */}
       {isActive && !isDentist && (

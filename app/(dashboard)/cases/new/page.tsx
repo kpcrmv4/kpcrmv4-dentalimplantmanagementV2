@@ -232,7 +232,19 @@ function NewCaseForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="scheduled_time">เวลานัด</Label>
-                <Input id="scheduled_time" name="scheduled_time" type="time" />
+                <select
+                  id="scheduled_time"
+                  name="scheduled_time"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  defaultValue=""
+                >
+                  <option value="">-- เลือกเวลา --</option>
+                  {Array.from({ length: 24 * 6 }, (_, i) => {
+                    const h = String(Math.floor(i / 6)).padStart(2, "0")
+                    const m = String((i % 6) * 10).padStart(2, "0")
+                    return <option key={`${h}:${m}`} value={`${h}:${m}`}>{h}:{m}</option>
+                  })}
+                </select>
               </div>
 
             </div>

@@ -52,7 +52,7 @@ export async function getCaseById(id: string) {
       .from("case_reservations")
       .select(`
         *,
-        products(id, ref, name, brand, category, unit),
+        products(id, ref, name, brand, category, unit, supplier_id, suppliers(id, name, line_id)),
         inventory(id, lot_number, expiry_date)
       `)
       .eq("case_id", id)
