@@ -91,29 +91,29 @@ export default function AdminUsersPage() {
 
   function handleRoleChange(userId: string, newRole: string) {
     startTransition(async () => {
-      try {
-        await updateUserRole(userId, newRole as UserRole)
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
-        )
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      const result = await updateUserRole(userId, newRole as UserRole)
+      if (!result.success) {
+        setError(result.error ?? "เกิดข้อผิดพลาด")
+        return
       }
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      )
     })
   }
 
   function handleToggleActive(userId: string) {
     startTransition(async () => {
-      try {
-        await toggleUserActive(userId)
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === userId ? { ...u, is_active: !u.is_active } : u
-          )
-        )
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      const result = await toggleUserActive(userId)
+      if (!result.success) {
+        setError(result.error ?? "เกิดข้อผิดพลาด")
+        return
       }
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, is_active: !u.is_active } : u
+        )
+      )
     })
   }
 
@@ -151,11 +151,15 @@ export default function AdminUsersPage() {
     setFormLoading(true)
     setFormError(null)
     try {
-      await createUser(newEmail, newPassword, newName, newRole as UserRole)
+      const result = await createUser(newEmail, newPassword, newName, newRole as UserRole)
+      if (!result.success) {
+        setFormError(result.error ?? "สร้างผู้ใช้ไม่สำเร็จ")
+        return
+      }
       setModal({ type: "none" })
       await loadUsers()
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "สร้างผู้ใช้ไม่สำเร็จ")
+    } catch {
+      setFormError("สร้างผู้ใช้ไม่สำเร็จ")
     } finally {
       setFormLoading(false)
     }
@@ -166,11 +170,15 @@ export default function AdminUsersPage() {
     setFormLoading(true)
     setFormError(null)
     try {
-      await updateUserProfile(modal.user.id, { full_name: editName, phone: editPhone })
+      const result = await updateUserProfile(modal.user.id, { full_name: editName, phone: editPhone })
+      if (!result.success) {
+        setFormError(result.error ?? "แก้ไขไม่สำเร็จ")
+        return
+      }
       setModal({ type: "none" })
       await loadUsers()
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "แก้ไขไม่สำเร็จ")
+    } catch {
+      setFormError("แก้ไขไม่สำเร็จ")
     } finally {
       setFormLoading(false)
     }
@@ -185,10 +193,14 @@ export default function AdminUsersPage() {
     setFormLoading(true)
     setFormError(null)
     try {
-      await resetUserPassword(modal.user.id, resetPw)
+      const result = await resetUserPassword(modal.user.id, resetPw)
+      if (!result.success) {
+        setFormError(result.error ?? "รีเซ็ตรหัสผ่านไม่สำเร็จ")
+        return
+      }
       setModal({ type: "none" })
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "รีเซ็ตรหัสผ่านไม่สำเร็จ")
+    } catch {
+      setFormError("รีเซ็ตรหัสผ่านไม่สำเร็จ")
     } finally {
       setFormLoading(false)
     }
@@ -197,12 +209,12 @@ export default function AdminUsersPage() {
   async function handleDelete(userId: string) {
     if (!confirm("ต้องการลบผู้ใช้นี้?")) return
     startTransition(async () => {
-      try {
-        await deleteUser(userId)
-        await loadUsers()
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "ลบไม่สำเร็จ")
+      const result = await deleteUser(userId)
+      if (!result.success) {
+        setError(result.error ?? "ลบไม่สำเร็จ")
+        return
       }
+      await loadUsers()
     })
   }
 
