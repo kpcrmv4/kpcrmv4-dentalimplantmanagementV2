@@ -550,6 +550,139 @@ export async function returnReservation(reservationId: string) {
  * Checks stock and tries to auto-assign LOT via FEFO.
  * Returns { hasStock, reservationId }.
  */
+/**
+ * Batch save materials for a case (draft mode).
+ * - Creates new reservations for added items
+ * - Returns (soft-deletes) removed items that are still "reserved"
+ * - Checks stock availability at save time
+ * - Re-evaluates case status
+ */
+export async function saveCaseMaterials(
+  caseId: string,
+  items: Array<{ productId: string; quantity: number }>,
+  removedReservationIds: string[]
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // Validate case
+  const { data: caseData } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", caseId)
+    .single()
+
+  if (!caseData) throw new Error("ไม่พบเคส")
+  if (["completed", "cancelled"].includes(caseData.case_status)) {
+    throw new Error("ไม่สามารถแก้ไขเคสที่ปิดแล้ว")
+  }
+
+  // Step 1: Return removed reservations (only if still "reserved")
+  if (removedReservationIds.length > 0) {
+    const { error: returnErr } = await supabase
+      .from("case_reservations")
+      .update({ status: "returned" as ReservationStatus })
+      .in("id", removedReservationIds)
+      .eq("status", "reserved") // Only return reserved items, not prepared ones
+
+    if (returnErr) throw new Error("ลบรายการไม่สำเร็จ: " + returnErr.message)
+  }
+
+  // Step 2: Create new reservations
+  const outOfStockNames: string[] = []
+
+  if (items.length > 0) {
+    // Get product info for stock checking
+    const productIds = items.map((i) => i.productId)
+    const { data: products } = await supabase
+      .from("products")
+      .select("id, name")
+      .in("id", productIds)
+
+    const productNameMap = new Map((products ?? []).map((p) => [p.id, p.name]))
+
+    for (const item of items) {
+      // Check stock availability
+      const { data: lotRows } = await supabase
+        .from("inventory")
+        .select("id, quantity, reserved_quantity")
+        .eq("product_id", item.productId)
+        .gt("quantity", 0)
+        .order("expiry_date", { ascending: true, nullsFirst: false })
+
+      let hasStock = false
+      for (const lot of lotRows ?? []) {
+        const available = lot.quantity - lot.reserved_quantity
+        if (available >= item.quantity) {
+          hasStock = true
+          break
+        }
+      }
+
+      if (!hasStock) {
+        outOfStockNames.push(productNameMap.get(item.productId) ?? "สินค้า")
+      }
+
+      // Create reservation as "reserved"
+      const { error } = await supabase
+        .from("case_reservations")
+        .insert({
+          case_id: caseId,
+          product_id: item.productId,
+          quantity_reserved: item.quantity,
+          status: "reserved" as ReservationStatus,
+          reserved_by: user.id,
+          reserved_at: new Date().toISOString(),
+          lot_specified: false,
+        })
+
+      if (error) throw new Error("เพิ่มวัสดุไม่สำเร็จ: " + error.message)
+    }
+  }
+
+  // Step 3: Re-evaluate case status
+  await revalidateCaseReadyStatus(caseId)
+
+  // Step 4: Notify if out of stock
+  if (outOfStockNames.length > 0) {
+    const { data: fullCase } = await supabase
+      .from("cases")
+      .select("case_number, scheduled_date, scheduled_time, patients(full_name), dentists:users!cases_dentist_id_fkey(full_name)")
+      .eq("id", caseId)
+      .single()
+
+    const caseNumber = fullCase?.case_number ?? caseId
+    const patientName = (fullCase?.patients as unknown as { full_name: string } | null)?.full_name ?? "ไม่ระบุ"
+    const dentistName = (fullCase?.dentists as unknown as { full_name: string } | null)?.full_name ?? "ไม่ระบุ"
+
+    let dateInfo = ""
+    if (fullCase?.scheduled_date) {
+      dateInfo = ` นัด ${formatDate(String(fullCase.scheduled_date))}`
+      if (fullCase?.scheduled_time) {
+        dateInfo += ` ${(fullCase.scheduled_time as string).slice(0, 5)}`
+      }
+    }
+
+    const { smartNotify } = await import("./notifications")
+    smartNotify({
+      type: "out_of_stock",
+      title: "สินค้าหมด — ต้องสั่งเพิ่ม",
+      message: `เคส ${caseNumber} (${patientName}) ทพ.${dentistName}${dateInfo}\n${outOfStockNames.join(", ")} ไม่มีในสต๊อก`,
+      data: { case_id: caseId, case_number: caseNumber },
+    }).catch(() => {})
+  }
+
+  revalidatePath("/cases")
+  revalidatePath(`/cases/${caseId}`)
+
+  return {
+    savedCount: items.length,
+    removedCount: removedReservationIds.length,
+    outOfStock: outOfStockNames,
+  }
+}
+
 export async function addMaterialToCase(
   caseId: string,
   productId: string,
