@@ -79,7 +79,8 @@ export default async function InventoryPage({
 
   // Compute summary from unfiltered product data
   const totalProducts = products.length
-  const lowStockCount = products.filter((p) => p.isLowStock).length
+  const outOfStockCount = products.filter((p) => p.isOutOfStock).length
+  const lowStockCount = products.filter((p) => p.isLowStock && !p.isOutOfStock).length
   const totalStockQty = products.reduce((s, p) => s + p.totalStock, 0)
 
   // Count expiring lots (within 90 days)
@@ -220,12 +221,13 @@ export default async function InventoryPage({
             href="/inventory"
           />
           <SummaryCard
-            icon={<TrendingDown className="h-4 w-4 text-orange-600" />}
-            label="ใกล้หมด"
-            value={lowStockCount}
+            icon={<TrendingDown className="h-4 w-4 text-red-600" />}
+            label="หมดสต๊อก / ใกล้หมด"
+            value={outOfStockCount + lowStockCount}
+            sublabel={outOfStockCount > 0 ? `หมด ${outOfStockCount} · ใกล้หมด ${lowStockCount}` : undefined}
             unit="รายการ"
-            color={lowStockCount > 0 ? "orange" : "green"}
-            highlight={lowStockCount > 0}
+            color={outOfStockCount > 0 ? "red" : lowStockCount > 0 ? "orange" : "green"}
+            highlight={outOfStockCount > 0 || lowStockCount > 0}
             href="/inventory?filter=low"
           />
           <SummaryCard

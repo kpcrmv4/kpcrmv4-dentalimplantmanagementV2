@@ -51,6 +51,7 @@ export type StockSummaryItem = {
   length: number | null
   totalStock: number
   isLowStock: boolean
+  isOutOfStock: boolean
   supplierName: string | null
   supplier_id: string | null
 }
@@ -77,6 +78,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
     const rows = (p.inventory as Array<{ quantity: number; reserved_quantity: number }>) ?? []
     const totalStock = rows.reduce((sum: number, r: { quantity: number; reserved_quantity: number }) => sum + r.quantity - r.reserved_quantity, 0)
     const isLowStock = totalStock <= p.min_stock_level
+    const isOutOfStock = totalStock <= 0
     return {
       id: p.id,
       ref: p.ref,
@@ -90,6 +92,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
       length: p.length ?? null,
       totalStock,
       isLowStock,
+      isOutOfStock,
       supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
       supplier_id: p.supplier_id ?? null,
     }
@@ -117,6 +120,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
     const rows = (p.inventory as Array<{ quantity: number; reserved_quantity: number }>) ?? []
     const totalStock = rows.reduce((sum: number, r: { quantity: number; reserved_quantity: number }) => sum + r.quantity - r.reserved_quantity, 0)
     const isLowStock = totalStock <= p.min_stock_level
+    const isOutOfStock = totalStock <= 0
     return {
       id: p.id,
       ref: p.ref,
@@ -130,6 +134,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
       length: p.length ?? null,
       totalStock,
       isLowStock,
+      isOutOfStock,
       supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
       supplier_id: p.supplier_id ?? null,
     }
