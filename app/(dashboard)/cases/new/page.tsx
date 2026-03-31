@@ -239,9 +239,9 @@ function NewCaseForm() {
                   defaultValue=""
                 >
                   <option value="">-- เลือกเวลา --</option>
-                  {Array.from({ length: 24 * 2 }, (_, i) => {
-                    const h = String(Math.floor(i / 2)).padStart(2, "0")
-                    const m = i % 2 === 0 ? "00" : "30"
+                  {Array.from({ length: 24 * 6 }, (_, i) => {
+                    const h = String(Math.floor(i / 6)).padStart(2, "0")
+                    const m = String((i % 6) * 10).padStart(2, "0")
                     return <option key={`${h}:${m}`} value={`${h}:${m}`}>{h}:{m}</option>
                   })}
                 </select>
