@@ -27,21 +27,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "ยกเลิก",
 }
 
-const APPT_STATUS: Record<string, { label: string; color: string }> = {
-  pending: {
-    label: "รอทำนัด",
-    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
-  },
-  confirmed: {
-    label: "นัดแล้ว",
-    color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
-  },
-  cancelled: {
-    label: "ยกเลิกนัด",
-    color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
-  },
-}
-
 const TRAFFIC_BADGE: Record<TrafficLight, string> = {
   green: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
   yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
@@ -153,7 +138,6 @@ function DayCaseCard({
   variant: "timeline" | "list"
 }) {
   const isCs = role === "cs"
-  const apptConfig = APPT_STATUS[c.appointment_status] ?? APPT_STATUS.pending
 
   if (variant === "timeline") {
     return (

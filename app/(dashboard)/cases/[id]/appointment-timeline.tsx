@@ -1,6 +1,6 @@
 import { getAppointmentLogs } from "@/lib/actions/appointments"
 import { formatDate } from "@/lib/utils"
-import { Check, CalendarClock, CalendarX, Ban, Clock } from "lucide-react"
+import { Check, CalendarClock, CalendarX, Ban } from "lucide-react"
 
 const ACTION_CONFIG: Record<
   string,
