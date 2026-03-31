@@ -2,17 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Bell, LogOut, Package, User as UserIcon, Settings } from "lucide-react"
+import { Bell, LogOut, Package, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import type { User } from "@/types/database"
 
@@ -58,82 +51,57 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
           </Link>
         </Button>
 
-        {/* Desktop: DropdownMenu (always rendered, hidden on mobile via CSS) */}
-        <div className="hidden lg:block">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                  {user.full_name.charAt(0)}
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="w-48">
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{user.full_name}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/profile">
-                  <Settings className="mr-2 h-4 w-4" />
-                  ตั้งค่าโปรไฟล์
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onSignOut} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                ออกจากระบบ
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        {/* User profile button - opens sheet on all screen sizes */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          onClick={() => setSheetOpen(true)}
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+            {user.full_name.charAt(0)}
+          </div>
+        </Button>
 
-        {/* Mobile: Sheet (always rendered, hidden on desktop via CSS) */}
-        <div className="lg:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full"
-            onClick={() => setSheetOpen(true)}
-          >
-            <UserIcon className="h-5 w-5 text-muted-foreground" />
-          </Button>
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <SheetHeader className="pb-2">
-                <SheetTitle className="text-left">
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetContent side="right" className="w-72 px-4 pt-6">
+            <SheetHeader className="pb-2">
+              <SheetTitle className="text-left">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+                    {user.full_name.charAt(0)}
+                  </div>
                   <div>
                     <p className="text-sm font-medium">{user.full_name}</p>
                     <p className="text-xs font-normal text-muted-foreground">{user.email}</p>
                   </div>
-                </SheetTitle>
-              </SheetHeader>
-              <div className="grid gap-1">
-                <Link
-                  href="/profile"
-                  onClick={() => setSheetOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted"
-                >
-                  <Settings className="h-4 w-4" />
-                  ตั้งค่าโปรไฟล์
-                </Link>
-                <div className="my-1 h-px bg-border" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSheetOpen(false)
-                    onSignOut()
-                  }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
-                >
-                  <LogOut className="h-4 w-4" />
-                  ออกจากระบบ
-                </button>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+                </div>
+              </SheetTitle>
+            </SheetHeader>
+            <div className="grid gap-1 mt-2">
+              <Link
+                href="/profile"
+                onClick={() => setSheetOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted"
+              >
+                <Settings className="h-4 w-4" />
+                ตั้งค่าโปรไฟล์
+              </Link>
+              <div className="my-1 h-px bg-border" />
+              <button
+                type="button"
+                onClick={() => {
+                  setSheetOpen(false)
+                  onSignOut()
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" />
+                ออกจากระบบ
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </header>
   )
