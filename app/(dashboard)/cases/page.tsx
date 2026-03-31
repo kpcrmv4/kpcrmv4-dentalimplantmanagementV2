@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
-import { Plus, ClipboardList, Calendar as CalendarIcon, User } from "lucide-react"
+import { Plus, ClipboardList, Calendar as CalendarIcon, User, Package, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
@@ -285,14 +285,16 @@ export default async function CasesPage({
                                 </span>
                               )}
                               <span
-                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${st.color}`}
+                                className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${st.color}`}
                               >
+                                <Package className="h-2.5 w-2.5" />
                                 {st.label}
                               </span>
                               {(() => {
                                 const appt = APPT_STATUS[c.appointment_status as string]
                                 return appt ? (
-                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${appt.color}`}>
+                                  <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${appt.color}`}>
+                                    <Phone className="h-2.5 w-2.5" />
                                     {appt.label}
                                   </span>
                                 ) : null
@@ -410,13 +412,15 @@ export default async function CasesPage({
                               <span className="text-sm font-semibold">
                                 {c.case_number as string}
                               </span>
-                              <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.color}`}>
+                              <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.color}`}>
+                                <Package className="h-2.5 w-2.5" />
                                 {st.label}
                               </span>
                               {(() => {
                                 const appt = APPT_STATUS[c.appointment_status as string]
                                 return appt ? (
-                                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${appt.color}`}>
+                                  <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${appt.color}`}>
+                                    <Phone className="h-2.5 w-2.5" />
                                     {appt.label}
                                   </span>
                                 ) : null

@@ -168,7 +168,7 @@ function DayCaseCard({
 
         <Link href={`/cases/${c.id}`}>
           <div className="rounded-lg border bg-card p-2.5 transition-colors group-hover:bg-muted/50">
-            {/* Time + Status badges (inventory + appointment) */}
+            {/* Time + Status badge (inventory only) */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {c.scheduled_time && (
                 <span className="text-sm font-bold tabular-nums leading-tight">
@@ -177,9 +177,6 @@ function DayCaseCard({
               )}
               <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
                 {STATUS_LABELS[c.case_status] ?? c.case_status}
-              </span>
-              <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", apptConfig.color)}>
-                {apptConfig.label}
               </span>
             </div>
 
@@ -238,24 +235,28 @@ function DayCaseCard({
           {/* Time / Status dot */}
           <div className="flex w-12 shrink-0 flex-col items-center">
             {c.scheduled_time ? (
-              <span className="text-xs font-bold tabular-nums leading-tight">
-                {c.scheduled_time.slice(0, 5)}
-              </span>
+              <>
+                <span className="text-xs font-bold tabular-nums leading-tight">
+                  {c.scheduled_time.slice(0, 5)}
+                </span>
+                <span className={cn("mt-0.5 inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
+                  {STATUS_LABELS[c.case_status] ?? c.case_status}
+                </span>
+              </>
             ) : (
-              <div className={cn("h-2 w-2 rounded-full", TRAFFIC_DOT[c.trafficLight])} />
+              <>
+                <div className={cn("h-2 w-2 rounded-full", TRAFFIC_DOT[c.trafficLight])} />
+                <span className="mt-0.5 text-[9px] font-medium text-muted-foreground">
+                  {STATUS_LABELS[c.case_status] ?? c.case_status}
+                </span>
+              </>
             )}
           </div>
 
           {/* Content */}
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5">
               <span className="text-xs font-medium">{c.case_number}</span>
-              <span className={cn("inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                {STATUS_LABELS[c.case_status] ?? c.case_status}
-              </span>
-              <span className={cn("inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", apptConfig.color)}>
-                {apptConfig.label}
-              </span>
             </div>
             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
               {c.patient_name} ({c.patient_hn})
