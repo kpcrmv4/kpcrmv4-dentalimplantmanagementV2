@@ -228,8 +228,8 @@ export async function approveSupplierOrder(orderId: string) {
     const patient = caseData?.patients as unknown as { full_name: string; hn: string } | null
     const dentist = caseData?.users as unknown as { full_name: string } | null
 
-    const itemLines = (items ?? []).map((item) => {
-      const p = item.products as unknown as { name: string; brand: string | null; unit: string } | null
+    const itemLines = ((items ?? []) as Array<Record<string, unknown>>).map((item) => {
+      const p = item.products as { name: string; brand: string | null; unit: string } | null
       return `  - ${p?.name ?? "สินค้า"} ${p?.brand ? `(${p.brand})` : ""} × ${item.quantity} ${p?.unit ?? "ชิ้น"}`
     }).join("\n")
 
