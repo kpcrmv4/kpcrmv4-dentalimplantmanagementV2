@@ -11,10 +11,11 @@ import type { User } from "@/types/database"
 
 interface SidebarProps {
   user: User
+  notificationCount?: number
   onSignOut: () => void
 }
 
-export function Sidebar({ user, onSignOut }: SidebarProps) {
+export function Sidebar({ user, notificationCount = 0, onSignOut }: SidebarProps) {
   const pathname = usePathname()
 
   const filteredItems = sidebarMenus.filter(
@@ -74,6 +75,7 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
                   {items.map((item) => {
                     const isActive = item.href === activeHref
                     const Icon = item.icon
+                    const isNotification = item.href === "/notifications"
                     return (
                       <Link
                         key={item.href + item.label}
@@ -85,8 +87,20 @@ export function Sidebar({ user, onSignOut }: SidebarProps) {
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         )}
                       >
-                        <Icon className="h-4 w-4" />
+                        <span className="relative">
+                          <Icon className="h-4 w-4" />
+                          {isNotification && notificationCount > 0 && (
+                            <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-0.5 text-[9px] font-bold text-destructive-foreground">
+                              {notificationCount > 99 ? "99+" : notificationCount}
+                            </span>
+                          )}
+                        </span>
                         {item.label}
+                        {isNotification && notificationCount > 0 && (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                            {notificationCount > 99 ? "99+" : notificationCount}
+                          </span>
+                        )}
                       </Link>
                     )
                   })}
