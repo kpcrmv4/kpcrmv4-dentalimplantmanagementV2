@@ -294,8 +294,8 @@ export function CaseActions({
         </div>
       )}
 
-      {/* ─── Section: Mark Ready ─── */}
-      {caseStatus === "pending_preparation" && reservations.length > 0 && (
+      {/* ─── Section: Mark Ready (only when all items are prepared, no reserved left) ─── */}
+      {caseStatus === "pending_preparation" && reservations.length > 0 && reservedItems.length === 0 && (
         <Button
           className="w-full bg-green-600 hover:bg-green-700 text-white h-11"
           onClick={() => { setUnpreparedItems([]); setReadyDialog(true) }}
