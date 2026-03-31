@@ -109,8 +109,8 @@ function getDateRange(
       return null
     default:
       return {
-        from: format(startOfDay(now), "yyyy-MM-dd"),
-        to: format(endOfDay(now), "yyyy-MM-dd"),
+        from: format(startOfDay(ict), "yyyy-MM-dd"),
+        to: format(endOfDay(ict), "yyyy-MM-dd"),
       }
   }
 }
