@@ -26,8 +26,8 @@ import { th } from "date-fns/locale"
 const INVENTORY_STATUS: Record<string, { label: string; color: string; dot: string }> = {
   waiting_doctor: {
     label: "รอแพทย์สั่งของ",
-    color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
-    dot: "bg-red-500",
+    color: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400",
+    dot: "bg-purple-500",
   },
   pending_order: {
     label: "รอสั่งของ",
