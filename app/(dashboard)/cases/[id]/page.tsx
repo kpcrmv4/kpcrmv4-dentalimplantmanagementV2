@@ -43,7 +43,6 @@ export default async function CaseDetailPage({
   const caseData = caseResult
 
   const userRole = currentUser?.role ?? "assistant"
-  const isDentist = userRole === "dentist"
   const canManageAppointment = ["admin", "cs"].includes(userRole)
   const canManageStock = ["admin", "stock_staff", "assistant"].includes(userRole)
 

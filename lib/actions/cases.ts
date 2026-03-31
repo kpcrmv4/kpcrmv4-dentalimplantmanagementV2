@@ -580,13 +580,11 @@ export async function addMaterialToCase(
     .order("expiry_date", { ascending: true, nullsFirst: false })
     .order("received_date", { ascending: true })
 
-  let bestLotId: string | null = null
   let hasStock = false
 
   for (const lot of lotRows ?? []) {
     const available = lot.quantity - lot.reserved_quantity
     if (available >= quantity) {
-      bestLotId = lot.id
       hasStock = true
       break
     }
