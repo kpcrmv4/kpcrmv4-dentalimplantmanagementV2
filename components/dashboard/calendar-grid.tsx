@@ -124,7 +124,7 @@ export function CalendarGrid({
             // Unique traffic light colors present
             const lights = Array.from(
               new Set(dayCases.map((c) => c.trafficLight))
-            ).filter((l) => l !== "neutral") as TrafficLight[]
+            ) as TrafficLight[]
 
             // CS: count unconfirmed appointments
             const pendingAppts = isCs
@@ -217,6 +217,9 @@ export function CalendarGrid({
             </>
           ) : (
             <>
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-gray-400" /> รอทำนัด
+              </span>
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="h-2 w-2 rounded-full bg-green-500" /> พร้อม
               </span>
