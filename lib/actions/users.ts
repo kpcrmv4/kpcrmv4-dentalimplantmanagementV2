@@ -90,6 +90,13 @@ export async function toggleUserActive(userId: string): Promise<{ success: boole
 
 export async function createUser(email: string, password: string, fullName: string, role: UserRole): Promise<{ success: boolean; error?: string }> {
   try {
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanName = fullName.trim()
+
+    if (!cleanEmail || !password || !cleanName) {
+      return { success: false, error: "กรุณากรอกข้อมูลให้ครบ" }
+    }
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
@@ -108,7 +115,7 @@ export async function createUser(email: string, password: string, fullName: stri
 
     // Create auth user
     const { data: newAuthUser, error: authError } = await serviceSupabase.auth.admin.createUser({
-      email,
+      email: cleanEmail,
       password,
       email_confirm: true,
     })
@@ -123,8 +130,8 @@ export async function createUser(email: string, password: string, fullName: stri
       .from("users")
       .insert({
         id: newAuthUser.user.id,
-        email,
-        full_name: fullName,
+        email: cleanEmail,
+        full_name: cleanName,
         role,
         is_active: true,
       })
