@@ -24,6 +24,11 @@ import { th } from "date-fns/locale"
 
 // Inventory status — traffic light colors (red → yellow → green → blue)
 const INVENTORY_STATUS: Record<string, { label: string; color: string; dot: string }> = {
+  waiting_doctor: {
+    label: "รอแพทย์สั่งของ",
+    color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
+    dot: "bg-red-500",
+  },
   pending_order: {
     label: "รอสั่งของ",
     color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
@@ -49,6 +54,14 @@ const INVENTORY_STATUS: Record<string, { label: string; color: string; dot: stri
     color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
     dot: "bg-red-500",
   },
+}
+
+function getInventoryStatus(caseStatus: string, reservations: unknown) {
+  if (caseStatus === "pending_order") {
+    const hasReservations = Array.isArray(reservations) && reservations.length > 0
+    return hasReservations ? INVENTORY_STATUS.pending_order : INVENTORY_STATUS.waiting_doctor
+  }
+  return INVENTORY_STATUS[caseStatus] ?? INVENTORY_STATUS.pending_order
 }
 
 // Appointment status — traffic light colors
@@ -279,9 +292,7 @@ export default async function CasesPage({
                   {dateCases.map((c: Record<string, unknown>) => {
                     const patient = c.patients as Record<string, string> | null
                     const dentist = c.users as Record<string, string> | null
-                    const st =
-                      INVENTORY_STATUS[c.case_status as string] ??
-                      INVENTORY_STATUS.pending_order
+                    const st = getInventoryStatus(c.case_status as string, c.case_reservations)
                     const time = c.scheduled_time as string | null
 
                     return (
@@ -403,9 +414,7 @@ export default async function CasesPage({
                   {dateCases.map((c: Record<string, unknown>) => {
                     const patient = c.patients as Record<string, string> | null
                     const dentist = c.users as Record<string, string> | null
-                    const st =
-                      INVENTORY_STATUS[c.case_status as string] ??
-                      INVENTORY_STATUS.pending_order
+                    const st = getInventoryStatus(c.case_status as string, c.case_reservations)
                     const time = c.scheduled_time as string | null
 
                     return (
