@@ -211,7 +211,8 @@ export async function approveSupplierOrder(orderId: string) {
   const supplier = order.suppliers as unknown as { name: string; line_id: string | null } | null
   if (supplier?.line_id) {
     // Get items and case info
-    const { data: items } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: items } = await (supabase as any)
       .from("inventory_borrow_items")
       .select("quantity, unit_price, products(name, brand, unit)")
       .eq("borrow_id", orderId)
