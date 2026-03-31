@@ -113,7 +113,7 @@ async function getCases(
     query = query.eq("case_status", status as CaseStatus)
   }
   if (appt && appt !== "all") {
-    query = query.eq("appointment_status", appt as "pending" | "confirmed" | "postponed" | "cancelled")
+    query = query.eq("appointment_status", appt as "pending" | "confirmed" | "cancelled")
   }
   if (search) {
     query = query.or(`case_number.ilike.%${search}%`)
