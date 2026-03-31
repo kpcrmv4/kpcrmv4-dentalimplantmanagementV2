@@ -100,7 +100,7 @@ export default async function PODetailPage({
               </p>
             </div>
           )}
-          {approver?.full_name && (
+          {approver?.full_name ? (
             <div>
               <span className="text-xs text-muted-foreground">อนุมัติโดย</span>
               <p className="text-sm font-medium leading-tight">
@@ -108,36 +108,36 @@ export default async function PODetailPage({
                 {po.approved_at ? ` · ${formatDate(String(po.approved_at))}` : ""}
               </p>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Supplier contact */}
-        {(supplier?.contact_person || supplier?.phone || supplier?.email) && (
+        {(supplier?.contact_person || supplier?.phone || supplier?.email) ? (
           <>
             <Separator />
             <div className="space-y-1">
-              {supplier?.contact_person && (
+              {supplier?.contact_person ? (
                 <p className="text-xs text-muted-foreground">
                   ติดต่อ: {String(supplier.contact_person)}
                 </p>
-              )}
+              ) : null}
               <div className="flex flex-wrap gap-3">
-                {supplier?.phone && (
+                {supplier?.phone ? (
                   <a href={`tel:${supplier.phone}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
                     <Phone className="h-3 w-3" /> {String(supplier.phone)}
                   </a>
-                )}
-                {supplier?.email && (
+                ) : null}
+                {supplier?.email ? (
                   <a href={`mailto:${supplier.email}`} className="flex items-center gap-1 text-xs text-primary hover:underline">
                     <Mail className="h-3 w-3" /> {String(supplier.email)}
                   </a>
-                )}
+                ) : null}
               </div>
             </div>
           </>
-        )}
+        ) : null}
 
-        {po.notes && (
+        {po.notes ? (
           <>
             <Separator />
             <div>
@@ -145,7 +145,7 @@ export default async function PODetailPage({
               <p className="text-sm">{String(po.notes)}</p>
             </div>
           </>
-        )}
+        ) : null}
       </div>
 
       {/* Items */}
