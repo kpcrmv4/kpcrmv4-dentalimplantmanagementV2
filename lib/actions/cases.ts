@@ -609,25 +609,9 @@ export async function addMaterialToCase(
 
   if (error) throw error
 
-  // Step 2: If stock available AND case is NOT already "ready", auto-prepare.
-  // When case is "ready", keep new materials as "reserved" so staff must re-prepare.
-  const wasReady = caseData.case_status === "ready"
-  if (hasStock && bestLotId && !wasReady) {
-    const { error: updateErr } = await supabase
-      .from("case_reservations")
-      .update({
-        inventory_id: bestLotId,
-        lot_specified: true,
-        prepared_by: user.id,
-        prepared_at: new Date().toISOString(),
-        status: "prepared" as ReservationStatus,
-      })
-      .eq("id", newReservation.id)
-
-    if (updateErr) throw updateErr
-  }
-
+  // All reservations stay as "reserved" - stock staff must assign LOT and prepare
   // Re-evaluate case status
+  const wasReady = caseData.case_status === "ready"
   await revalidateCaseReadyStatus(caseId)
 
   // Notify stock_staff/admin when material is out of stock

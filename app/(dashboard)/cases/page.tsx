@@ -125,10 +125,13 @@ async function getCases(
   const supabase = await createClient()
   let query = supabase
     .from("cases")
-    .select("*, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)")
+    .select("*, patients(hn, full_name), users!cases_dentist_id_fkey(full_name), case_reservations(id)")
     .limit(100)
 
-  if (status && status !== "all") {
+  if (status === "waiting_doctor") {
+    // Virtual status: pending_order cases with no reservations (doctor hasn't ordered)
+    query = query.eq("case_status", "pending_order" as CaseStatus)
+  } else if (status && status !== "all") {
     query = query.eq("case_status", status as CaseStatus)
   }
   if (appt && appt !== "all") {
@@ -151,7 +154,18 @@ async function getCases(
 
   const { data, error } = await query
   if (error) return []
-  return data ?? []
+  let results = data ?? []
+
+  // Post-filter for virtual statuses
+  if (status === "waiting_doctor") {
+    // Only cases with NO reservations (doctor hasn't ordered materials yet)
+    results = results.filter((c) => !c.case_reservations || (c.case_reservations as unknown[]).length === 0)
+  } else if (status === "pending_order") {
+    // Only cases WITH reservations but out of stock
+    results = results.filter((c) => c.case_reservations && (c.case_reservations as unknown[]).length > 0)
+  }
+
+  return results
 }
 
 function getRelativeDateLabel(dateStr: string): string {
