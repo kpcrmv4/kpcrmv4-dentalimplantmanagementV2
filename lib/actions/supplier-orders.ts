@@ -297,3 +297,261 @@ export async function getSupplierOrdersForCase(caseId: string) {
   if (error) throw error
   return (data ?? []) as Array<Record<string, unknown>>
 }
+
+// ═══════════════════════════════════════
+// Phase 2: Return items (flexible)
+// ═══════════════════════════════════════
+
+/**
+ * Create a return record for a supplier order (borrow).
+ * Items can be different product/qty/price from original.
+ * Returns require admin approval.
+ */
+export async function createSupplierReturn(params: {
+  borrowId: string
+  items: Array<{ productId: string; quantity: number; unitPrice: number; lotNumber?: string; notes?: string }>
+  notes?: string
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: returnRecord, error: returnError } = await (supabase as any)
+    .from("supplier_order_returns")
+    .insert({
+      borrow_id: params.borrowId,
+      status: "pending",
+      notes: params.notes || null,
+      created_by: user.id,
+    })
+    .select("id")
+    .single()
+
+  if (returnError) throw returnError
+
+  // Insert return items
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: itemsError } = await (supabase as any)
+    .from("supplier_order_return_items")
+    .insert(
+      params.items.map((item) => ({
+        return_id: returnRecord.id,
+        product_id: item.productId,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        lot_number: item.lotNumber || null,
+        notes: item.notes || null,
+      }))
+    )
+
+  if (itemsError) throw itemsError
+
+  // Notify admin about pending return
+  const { smartNotify } = await import("./notifications")
+  smartNotify({
+    type: "system",
+    title: "คืนของรออนุมัติ",
+    message: `ใบยืมมีการคืนของ ${params.items.length} รายการ รออนุมัติ`,
+    data: { borrow_id: params.borrowId },
+  }).catch(() => {})
+
+  revalidatePath("/inventory/borrows")
+  return { returnId: returnRecord.id }
+}
+
+/**
+ * Approve or reject a return
+ */
+export async function approveSupplierReturn(returnId: string, action: "approved" | "rejected") {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  if (currentUser?.role !== "admin") throw new Error("Admin only")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("supplier_order_returns")
+    .update({
+      status: action,
+      approved_by: user.id,
+      approved_at: new Date().toISOString(),
+    })
+    .eq("id", returnId)
+
+  if (error) throw error
+
+  // If approved, update the borrow status
+  if (action === "approved") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: returnRecord } = await (supabase as any)
+      .from("supplier_order_returns")
+      .select("borrow_id")
+      .eq("id", returnId)
+      .single()
+
+    if (returnRecord) {
+      // Check if there are any non-approved returns remaining
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count } = await (supabase as any)
+        .from("supplier_order_returns")
+        .select("id", { count: "exact", head: true })
+        .eq("borrow_id", returnRecord.borrow_id)
+        .eq("status", "pending")
+
+      // If no pending returns, mark borrow as returned
+      if (!count || count === 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("inventory_borrows")
+          .update({ status: "returned" })
+          .eq("id", returnRecord.borrow_id)
+      }
+    }
+  }
+
+  revalidatePath("/inventory/borrows")
+}
+
+/**
+ * Get returns for a specific borrow order
+ */
+export async function getReturnsForOrder(borrowId: string) {
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("supplier_order_returns")
+    .select(`
+      id, status, return_date, notes, approved_by, approved_at, created_at,
+      approver:users!supplier_order_returns_approved_by_fkey(full_name),
+      supplier_order_return_items(
+        id, product_id, quantity, unit_price, lot_number, notes,
+        products(name, ref, brand, unit)
+      )
+    `)
+    .eq("borrow_id", borrowId)
+    .order("created_at", { ascending: false })
+
+  if (error) throw error
+  return (data ?? []) as Array<Record<string, unknown>>
+}
+
+// ═══════════════════════════════════════
+// Phase 3: Convert borrow → purchase
+// ═══════════════════════════════════════
+
+/**
+ * Convert a borrow order to a purchase order.
+ * Creates a new purchase record referencing the original borrow.
+ * The purchase requires admin approval.
+ * When approved, the original borrow is marked as 'closed'.
+ */
+export async function convertBorrowToPurchase(borrowId: string, notes?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // Get original borrow with items
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: borrow } = await (supabase as any)
+    .from("inventory_borrows")
+    .select(`
+      id, borrow_number, supplier_id, source_name, case_id, notes,
+      inventory_borrow_items(product_id, quantity, unit_price)
+    `)
+    .eq("id", borrowId)
+    .single()
+
+  if (!borrow) throw new Error("ไม่พบใบยืม")
+  if (borrow.order_type === "purchase") throw new Error("ใบนี้เป็นใบซื้ออยู่แล้ว")
+
+  // Create new purchase order referencing the borrow
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: purchaseOrder, error: poError } = await (supabase as any)
+    .from("inventory_borrows")
+    .insert({
+      borrow_number: generateBorrowNumber(),
+      source_type: "supplier",
+      source_name: borrow.source_name,
+      supplier_id: borrow.supplier_id,
+      status: "pending_approval",
+      borrow_date: new Date().toISOString().split("T")[0],
+      notes: notes || `แปลงจากใบยืม ${borrow.borrow_number}`,
+      requested_by: user.id,
+      order_type: "purchase",
+      case_id: borrow.case_id,
+      converted_from_id: borrowId,
+    })
+    .select("id, borrow_number")
+    .single()
+
+  if (poError) throw poError
+
+  // Copy items to the new purchase order
+  const items = (borrow.inventory_borrow_items ?? []) as Array<Record<string, unknown>>
+  if (items.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from("inventory_borrow_items")
+      .insert(
+        items.map((item) => ({
+          borrow_id: purchaseOrder.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price ?? 0,
+          status: "borrowed",
+          case_id: borrow.case_id,
+        }))
+      )
+  }
+
+  // Mark original borrow as converted (link to new PO)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("inventory_borrows")
+    .update({ converted_to_id: purchaseOrder.id })
+    .eq("id", borrowId)
+
+  // Notify admin
+  const { smartNotify } = await import("./notifications")
+  smartNotify({
+    type: "po_created",
+    title: "ใบยืม → ใบซื้อ รออนุมัติ",
+    message: `แปลงใบยืม ${borrow.borrow_number} → ใบซื้อ ${purchaseOrder.borrow_number} รออนุมัติ`,
+    data: { borrow_id: purchaseOrder.id, original_borrow_id: borrowId },
+  }).catch(() => {})
+
+  revalidatePath("/inventory/borrows")
+  revalidatePath(`/cases/${borrow.case_id}`)
+
+  return {
+    purchaseId: purchaseOrder.id,
+    purchaseNumber: purchaseOrder.borrow_number,
+    originalBorrowNumber: borrow.borrow_number,
+  }
+}
+
+/**
+ * Close a borrow order (after purchase order is approved or return completed)
+ */
+export async function closeBorrowOrder(borrowId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("inventory_borrows")
+    .update({ status: "closed" })
+    .eq("id", borrowId)
+
+  if (error) throw error
+  revalidatePath("/inventory/borrows")
+}
