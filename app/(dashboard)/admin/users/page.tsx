@@ -364,7 +364,7 @@ export default function AdminUsersPage() {
                 <div>
                   <Label className="text-xs">บทบาท</Label>
                   <Select value={newRole} onValueChange={setNewRole}>
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger className="mt-1 w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

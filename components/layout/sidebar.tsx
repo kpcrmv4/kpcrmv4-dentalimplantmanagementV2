@@ -96,11 +96,6 @@ export function Sidebar({ user, notificationCount = 0, onSignOut }: SidebarProps
                           )}
                         </span>
                         {item.label}
-                        {isNotification && notificationCount > 0 && (
-                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-                            {notificationCount > 99 ? "99+" : notificationCount}
-                          </span>
-                        )}
                       </Link>
                     )
                   })}

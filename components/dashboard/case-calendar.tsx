@@ -22,11 +22,26 @@ export function CaseCalendar({
   dentistId?: string
 }) {
   const [cases, setCases] = useState(initialCases)
+  const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(
-    new Date(initialYear, initialMonth - 1, 1)
+    new Date(today.getFullYear(), today.getMonth(), 1)
   )
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(today)
   const [isPending, startTransition] = useTransition()
+  const [initialized, setInitialized] = useState(false)
+
+  // If client's month differs from server's initialMonth, fetch correct data on mount
+  if (!initialized) {
+    setInitialized(true)
+    const clientMonth = today.getMonth() + 1
+    const clientYear = today.getFullYear()
+    if (clientYear !== initialYear || clientMonth !== initialMonth) {
+      startTransition(async () => {
+        const data = await getDashboardCases(clientYear, clientMonth, dentistId)
+        setCases(data)
+      })
+    }
+  }
 
   function handleMonthChange(newMonth: Date) {
     setCurrentMonth(newMonth)
