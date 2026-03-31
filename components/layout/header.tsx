@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { useMediaQuery } from "@/lib/hooks/use-media-query"
 import type { User } from "@/types/database"
 
 interface HeaderProps {
@@ -25,7 +24,6 @@ interface HeaderProps {
 
 export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
-  const isDesktop = useMediaQuery("(min-width: 1024px)")
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background px-4 lg:px-6">
@@ -60,8 +58,8 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
           </Link>
         </Button>
 
-        {/* Desktop: DropdownMenu */}
-        {isDesktop ? (
+        {/* Desktop: DropdownMenu (always rendered, hidden on mobile via CSS) */}
+        <div className="hidden lg:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -89,52 +87,53 @@ export function Header({ user, notificationCount = 0, onSignOut }: HeaderProps) 
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => setSheetOpen(true)}
-            >
-              <UserIcon className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                <SheetHeader className="pb-2">
-                  <SheetTitle className="text-left">
-                    <div>
-                      <p className="text-sm font-medium">{user.full_name}</p>
-                      <p className="text-xs font-normal text-muted-foreground">{user.email}</p>
-                    </div>
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="grid gap-1">
-                  <Link
-                    href="/profile"
-                    onClick={() => setSheetOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted"
-                  >
-                    <Settings className="h-4 w-4" />
-                    ตั้งค่าโปรไฟล์
-                  </Link>
-                  <div className="my-1 h-px bg-border" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSheetOpen(false)
-                      onSignOut()
-                    }}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    ออกจากระบบ
-                  </button>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </>
-        )}
+        </div>
+
+        {/* Mobile: Sheet (always rendered, hidden on desktop via CSS) */}
+        <div className="lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full"
+            onClick={() => setSheetOpen(true)}
+          >
+            <UserIcon className="h-5 w-5 text-muted-foreground" />
+          </Button>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetContent side="bottom" className="rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <SheetHeader className="pb-2">
+                <SheetTitle className="text-left">
+                  <div>
+                    <p className="text-sm font-medium">{user.full_name}</p>
+                    <p className="text-xs font-normal text-muted-foreground">{user.email}</p>
+                  </div>
+                </SheetTitle>
+              </SheetHeader>
+              <div className="grid gap-1">
+                <Link
+                  href="/profile"
+                  onClick={() => setSheetOpen(false)}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-muted"
+                >
+                  <Settings className="h-4 w-4" />
+                  ตั้งค่าโปรไฟล์
+                </Link>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSheetOpen(false)
+                    onSignOut()
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                  ออกจากระบบ
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   )
