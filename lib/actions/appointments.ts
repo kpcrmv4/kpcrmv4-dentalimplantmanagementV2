@@ -30,6 +30,12 @@ export async function confirmAppointment(caseId: string, note?: string) {
 
   if (error) throw error
 
+  // If case_status was pending_appointment, re-evaluate based on materials
+  if (caseData.appointment_status === "pending" || caseData.appointment_status === "postponed") {
+    const { revalidateCaseReadyStatus } = await import("./cases")
+    await revalidateCaseReadyStatus(caseId)
+  }
+
   // Log the action
   await supabase.from("case_appointment_logs").insert({
     case_id: caseId,

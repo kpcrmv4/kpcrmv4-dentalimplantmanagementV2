@@ -703,7 +703,7 @@ export async function addMaterialToCase(
  * If all active reservations are prepared → ready
  * If any are still reserved → pending_preparation
  */
-async function revalidateCaseReadyStatus(caseId: string) {
+export async function revalidateCaseReadyStatus(caseId: string) {
   const supabase = await createClient()
 
   const { data: activeReservations } = await supabase
@@ -725,7 +725,7 @@ async function revalidateCaseReadyStatus(caseId: string) {
 
   if (!activeReservations || activeReservations.length === 0) {
     // No active reservations left
-    if (caseData.case_status === "ready" || caseData.case_status === "pending_preparation") {
+    if (["ready", "pending_preparation", "pending_appointment"].includes(caseData.case_status)) {
       newStatus = "pending_order" as CaseStatus
     }
   } else {
