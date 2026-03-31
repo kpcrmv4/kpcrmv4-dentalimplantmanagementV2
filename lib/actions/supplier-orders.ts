@@ -70,7 +70,8 @@ export async function createSupplierOrder(params: {
   const initialStatus = params.orderType === "borrow" ? "sent" : "pending_approval"
 
   // Create the borrow record
-  const { data: order, error: orderError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: order, error: orderError } = await (supabase as any)
     .from("inventory_borrows")
     .insert({
       borrow_number: generateBorrowNumber(),
@@ -100,7 +101,8 @@ export async function createSupplierOrder(params: {
   const productMap = new Map((products ?? []).map((p) => [p.id, p]))
 
   // Insert items
-  const { error: itemsError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: itemsError } = await (supabase as any)
     .from("inventory_borrow_items")
     .insert(
       params.items.map((item) => ({
@@ -180,7 +182,8 @@ export async function approveSupplierOrder(orderId: string) {
   if (currentUser?.role !== "admin") throw new Error("Admin only")
 
   // Get the order
-  const { data: order } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: order } = await (supabase as any)
     .from("inventory_borrows")
     .select("*, suppliers(name, line_id)")
     .eq("id", orderId)
@@ -191,7 +194,8 @@ export async function approveSupplierOrder(orderId: string) {
   if (order.status !== "pending_approval") throw new Error("ใบนี้ไม่ได้อยู่ในสถานะรออนุมัติ")
 
   // Update status
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("inventory_borrows")
     .update({
       status: "sent",
@@ -256,7 +260,8 @@ export async function markOrderReceived(orderId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from("inventory_borrows")
     .update({ status: "borrowed" })
     .eq("id", orderId)
@@ -272,13 +277,15 @@ export async function markOrderReceived(orderId: string) {
 export async function getSupplierOrdersForCase(caseId: string) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  // Use raw query to access new columns not yet in generated types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("inventory_borrows")
     .select(`
-      *,
+      id, borrow_number, source_type, source_name, status, borrow_date, notes,
+      order_type, case_id, approved_by, approved_at, line_sent_at,
+      converted_to_id, converted_from_id, created_at,
       suppliers(name, line_id),
-      requester:users!inventory_borrows_requested_by_fkey(full_name),
-      approver:users!inventory_borrows_approved_by_fkey(full_name),
       inventory_borrow_items(
         id, product_id, quantity, unit_price, status, lot_number,
         products(name, ref, brand, unit)
@@ -288,5 +295,5 @@ export async function getSupplierOrdersForCase(caseId: string) {
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as Array<Record<string, unknown>>
 }

@@ -63,11 +63,11 @@ export function CaseSupplierOrder({
   useEffect(() => {
     getSupplierOrdersForCase(caseId).then((orders) => {
       setExistingOrders(
-        orders.map((o) => ({
-          borrow_number: o.borrow_number as string,
-          order_type: (o.order_type as string) ?? "borrow",
-          status: o.status as string,
-          supplier_name: ((o.suppliers as Record<string, unknown>)?.name as string) ?? "-",
+        orders.map((o: Record<string, unknown>) => ({
+          borrow_number: String(o.borrow_number ?? ""),
+          order_type: String(o.order_type ?? "borrow"),
+          status: String(o.status ?? ""),
+          supplier_name: String((o.suppliers as Record<string, unknown>)?.name ?? "-"),
         }))
       )
     }).catch(() => {})
