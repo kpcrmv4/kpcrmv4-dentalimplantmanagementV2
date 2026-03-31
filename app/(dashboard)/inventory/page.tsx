@@ -209,6 +209,7 @@ export default async function InventoryPage({
             value={totalProducts}
             unit="รายการ"
             color="blue"
+            href="/inventory"
           />
           <SummaryCard
             icon={<Package className="h-4 w-4 text-green-600" />}
@@ -216,6 +217,7 @@ export default async function InventoryPage({
             value={totalStockQty}
             unit="ชิ้น"
             color="green"
+            href="/inventory"
           />
           <SummaryCard
             icon={<TrendingDown className="h-4 w-4 text-orange-600" />}
@@ -224,6 +226,7 @@ export default async function InventoryPage({
             unit="รายการ"
             color={lowStockCount > 0 ? "orange" : "green"}
             highlight={lowStockCount > 0}
+            href="/inventory?filter=low"
           />
           <SummaryCard
             icon={<Clock className="h-4 w-4 text-red-600" />}
@@ -231,6 +234,7 @@ export default async function InventoryPage({
             value="—"
             sublabel="ดูในโหมด LOT"
             color="gray"
+            href="/inventory?view=lot"
           />
         </div>
       )}
@@ -312,6 +316,7 @@ function SummaryCard({
   color,
   highlight,
   className,
+  href,
 }: {
   icon: React.ReactNode
   label: string
@@ -321,6 +326,7 @@ function SummaryCard({
   color: "blue" | "green" | "orange" | "red" | "gray"
   highlight?: boolean
   className?: string
+  href?: string
 }) {
   const bgMap = {
     blue: "bg-blue-50 dark:bg-blue-950/30",
@@ -337,9 +343,12 @@ function SummaryCard({
     gray: "text-muted-foreground",
   }
 
+  const Wrapper = href ? Link : "div"
+
   return (
-    <div
-      className={`rounded-xl border p-2.5 sm:p-3 ${bgMap[color]} ${
+    <Wrapper
+      href={href ?? ""}
+      className={`block rounded-xl border p-2.5 sm:p-3 transition-all ${href ? "cursor-pointer hover:shadow-md" : ""} ${bgMap[color]} ${
         highlight ? "ring-1 ring-orange-300 dark:ring-orange-700" : ""
       } ${className ?? ""}`}
     >
@@ -360,6 +369,6 @@ function SummaryCard({
       {sublabel && (
         <span className="text-[9px] sm:text-[10px] text-muted-foreground">{sublabel}</span>
       )}
-    </div>
+    </Wrapper>
   )
 }
