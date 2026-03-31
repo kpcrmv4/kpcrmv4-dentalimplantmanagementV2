@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Ban,
   CalendarClock,
+  CalendarX,
   Check,
   Loader2,
   Phone,
@@ -26,6 +27,7 @@ import {
 import {
   confirmAppointment,
   postponeAppointment,
+  unconfirmAppointment,
   cancelAppointment,
 } from "@/lib/actions/appointments"
 
@@ -36,21 +38,20 @@ const APPOINTMENT_STATUS_CONFIG: Record<
   pending: {
     label: "รอทำนัด",
     color:
-      "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
+      "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
   },
   confirmed: {
     label: "นัดแล้ว",
     color:
       "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
   },
-  postponed: {
-    label: "เลื่อนนัด",
-    color:
-      "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
-  },
   cancelled: {
     label: "ยกเลิกนัด",
     color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
+  },
+  completed: {
+    label: "เสร็จเคสแล้ว",
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
   },
 }
 
@@ -70,17 +71,22 @@ export function AppointmentActions({
   // Dialogs
   const [confirmDialog, setConfirmDialog] = useState(false)
   const [postponeDialog, setPostponeDialog] = useState(false)
+  const [unconfirmDialog, setUnconfirmDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
 
   // Form state
   const [confirmNote, setConfirmNote] = useState("")
   const [postponeDate, setPostponeDate] = useState("")
   const [postponeNote, setPostponeNote] = useState("")
+  const [unconfirmNote, setUnconfirmNote] = useState("")
   const [cancelNote, setCancelNote] = useState("")
 
   const isCaseClosed = ["completed", "cancelled"].includes(caseStatus)
+
+  // Show "เสร็จเคสแล้ว" if case is completed
+  const displayStatus = caseStatus === "completed" ? "completed" : appointmentStatus
   const statusConfig =
-    APPOINTMENT_STATUS_CONFIG[appointmentStatus] ??
+    APPOINTMENT_STATUS_CONFIG[displayStatus] ??
     APPOINTMENT_STATUS_CONFIG.pending
 
   function handleConfirm() {
@@ -119,6 +125,21 @@ export function AppointmentActions({
     })
   }
 
+  function handleUnconfirm() {
+    if (!unconfirmNote.trim()) return
+    setError(null)
+    startTransition(async () => {
+      try {
+        await unconfirmAppointment(caseId, unconfirmNote)
+        setUnconfirmDialog(false)
+        setUnconfirmNote("")
+        router.refresh()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+      }
+    })
+  }
+
   function handleCancel() {
     if (!cancelNote.trim()) return
     setError(null)
@@ -140,7 +161,7 @@ export function AppointmentActions({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">ยืนยันนัดหมาย</h2>
+            <h2 className="text-sm font-semibold">นัดหมาย</h2>
           </div>
           <span
             className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusConfig.color}`}
@@ -160,35 +181,53 @@ export function AppointmentActions({
         )}
 
         {!isCaseClosed && appointmentStatus !== "cancelled" && (
-          <div className="flex gap-2">
-            {appointmentStatus !== "confirmed" && (
+          <div className="space-y-2">
+            {/* Row 1: Primary actions based on current status */}
+            {appointmentStatus === "pending" && (
               <Button
                 size="sm"
-                className="flex-1 h-9 bg-green-600 hover:bg-green-700 text-white"
+                className="w-full h-9 bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => setConfirmDialog(true)}
               >
                 <Check className="mr-1.5 h-3.5 w-3.5" />
-                ยืนยัน
+                ยืนยันนัดหมาย
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 h-9"
-              onClick={() => setPostponeDialog(true)}
-            >
-              <CalendarClock className="mr-1.5 h-3.5 w-3.5" />
-              เลื่อนนัด
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 h-9 border-destructive/30 text-destructive hover:bg-destructive/10"
-              onClick={() => setCancelDialog(true)}
-            >
-              <Ban className="mr-1.5 h-3.5 w-3.5" />
-              ยกเลิก
-            </Button>
+
+            {/* Row 2: Postpone/Unconfirm/Cancel */}
+            <div className="flex gap-2">
+              {appointmentStatus === "confirmed" && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-9"
+                    onClick={() => setPostponeDialog(true)}
+                  >
+                    <CalendarClock className="mr-1.5 h-3.5 w-3.5" />
+                    เลื่อนนัด
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-9"
+                    onClick={() => setUnconfirmDialog(true)}
+                  >
+                    <CalendarX className="mr-1.5 h-3.5 w-3.5" />
+                    ยังไม่แน่นอน
+                  </Button>
+                </>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className={`${appointmentStatus === "confirmed" ? "" : "flex-1"} h-9 border-destructive/30 text-destructive hover:bg-destructive/10`}
+                onClick={() => setCancelDialog(true)}
+              >
+                <Ban className="mr-1.5 h-3.5 w-3.5" />
+                ยกเลิก
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -253,7 +292,7 @@ export function AppointmentActions({
         </DialogContent>
       </Dialog>
 
-      {/* ── Postpone Dialog ── */}
+      {/* ── Postpone Dialog (เลื่อนนัดระบุวัน → คง confirmed) ── */}
       <Dialog
         open={postponeDialog}
         onOpenChange={(open: boolean) => {
@@ -268,7 +307,7 @@ export function AppointmentActions({
           <DialogHeader>
             <DialogTitle>เลื่อนนัดหมาย</DialogTitle>
             <DialogDescription>
-              เลือกวันนัดใหม่และระบุเหตุผลการเลื่อน
+              เลือกวันนัดใหม่ สถานะจะยังคงเป็น &quot;นัดแล้ว&quot; และแจ้งเตือนแพทย์/สต๊อก
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -322,6 +361,67 @@ export function AppointmentActions({
                 setPostponeDialog(false)
                 setPostponeDate("")
                 setPostponeNote("")
+              }}
+            >
+              ยกเลิก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Unconfirm Dialog (ยังไม่แน่นอน → กลับเป็น pending) ── */}
+      <Dialog
+        open={unconfirmDialog}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setUnconfirmDialog(false)
+            setUnconfirmNote("")
+          }
+        }}
+      >
+        <DialogContent className="max-w-[calc(100vw-2rem)] rounded-xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>เลื่อนนัด — ยังไม่ระบุวัน</DialogTitle>
+            <DialogDescription>
+              สถานะนัดหมายจะกลับเป็น &quot;รอทำนัด&quot; วันนัดเดิมจะถูกล้าง
+              และแจ้งเตือนแพทย์/สต๊อก
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="unconfirm_note" className="text-sm">
+                เหตุผล
+              </Label>
+              <Textarea
+                id="unconfirm_note"
+                placeholder="เช่น คนไข้ขอเลื่อนไปก่อน ยังไม่แน่นอน"
+                value={unconfirmNote}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setUnconfirmNote(e.target.value)
+                }
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={handleUnconfirm}
+              disabled={isPending || !unconfirmNote.trim()}
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CalendarX className="mr-2 h-4 w-4" />
+              )}
+              {isPending ? "กำลังบันทึก..." : "ยืนยัน — กลับเป็นรอทำนัด"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setUnconfirmDialog(false)
+                setUnconfirmNote("")
               }}
             >
               ยกเลิก

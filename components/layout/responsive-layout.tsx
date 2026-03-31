@@ -28,7 +28,7 @@ export function ResponsiveLayout({ user, notificationCount = 0, children }: Resp
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <Sidebar user={user} onSignOut={handleSignOut} />
+      <Sidebar user={user} notificationCount={liveCount} onSignOut={handleSignOut} />
 
       {/* Main content */}
       <div className="lg:ml-56">

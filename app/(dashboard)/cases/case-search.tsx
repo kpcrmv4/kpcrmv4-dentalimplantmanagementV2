@@ -12,7 +12,6 @@ import { th } from "date-fns/locale"
 
 const STATUS_CHIPS = [
   { value: "all", label: "ทั้งหมด" },
-  { value: "pending_appointment", label: "รอทำนัด" },
   { value: "pending_order", label: "รอสั่งของ" },
   { value: "pending_preparation", label: "รอจัดของ" },
   { value: "ready", label: "พร้อม" },

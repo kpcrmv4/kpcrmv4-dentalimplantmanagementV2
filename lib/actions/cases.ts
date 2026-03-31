@@ -106,14 +106,51 @@ export async function createCase(formData: FormData) {
   if (error) throw error
   revalidatePath("/cases")
 
-  // Notify dentist about new case
+  // Notify dentist about new case with full details
   const dentistId = formData.get("dentist_id") as string
   if (dentistId) {
+    // Fetch patient info for the notification
+    const { data: patient } = await supabase
+      .from("patients")
+      .select("full_name, hn")
+      .eq("id", data.patient_id)
+      .single()
+
+    const patientName = patient?.full_name ?? "-"
+    const patientHN = patient?.hn ?? "-"
+    const procedure = data.procedure_type ?? "-"
+    const scheduledInfo = data.scheduled_date
+      ? `${data.scheduled_date}${data.scheduled_time ? ` ${data.scheduled_time}` : ""}`
+      : "ยังไม่ระบุ"
+
+    const STATUS_LABELS: Record<string, string> = {
+      pending_order: "รอสั่งของ",
+      pending_preparation: "รอจัดของ",
+      ready: "พร้อม",
+      completed: "เสร็จสิ้น",
+      cancelled: "ยกเลิก",
+    }
+    const statusLabel = STATUS_LABELS[data.case_status] ?? data.case_status
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "")
+
+    const detailMessage = [
+      `🦷 เคสใหม่ ${data.case_number}`,
+      ``,
+      `👤 คนไข้: ${patientName}`,
+      `🏥 HN: ${patientHN}`,
+      `🔧 หัตถการ: ${procedure}`,
+      `📅 วันนัดหมาย: ${scheduledInfo}`,
+      `📋 สถานะ: ${statusLabel}`,
+      ...(appUrl ? [``, `🔗 เข้าสู่ระบบ: ${appUrl}/login`] : []),
+    ].join("\n")
+
     const { smartNotify } = await import("./notifications")
     smartNotify({
       type: "case_assigned",
       title: "เคสใหม่",
-      message: `มีเคสใหม่ ${data.case_number} ถูกมอบหมายให้คุณ`,
+      message: detailMessage,
       data: { case_id: data.id, case_number: data.case_number },
     }).catch(() => {})
   }
@@ -666,7 +703,7 @@ export async function addMaterialToCase(
  * If all active reservations are prepared → ready
  * If any are still reserved → pending_preparation
  */
-async function revalidateCaseReadyStatus(caseId: string) {
+export async function revalidateCaseReadyStatus(caseId: string) {
   const supabase = await createClient()
 
   const { data: activeReservations } = await supabase
@@ -688,7 +725,7 @@ async function revalidateCaseReadyStatus(caseId: string) {
 
   if (!activeReservations || activeReservations.length === 0) {
     // No active reservations left
-    if (caseData.case_status === "ready" || caseData.case_status === "pending_preparation") {
+    if (["ready", "pending_preparation"].includes(caseData.case_status)) {
       newStatus = "pending_order" as CaseStatus
     }
   } else {

@@ -18,9 +18,8 @@ import type { LucideIcon } from "lucide-react"
 import { startOfMonth, endOfMonth, format } from "date-fns"
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending_appointment: { label: "รอทำนัด", color: "bg-purple-500" },
-  pending_order: { label: "รอสั่งของ", color: "bg-yellow-500" },
-  pending_preparation: { label: "รอจัดของ", color: "bg-orange-500" },
+  pending_order: { label: "รอสั่งของ", color: "bg-red-500" },
+  pending_preparation: { label: "รอจัดของ", color: "bg-yellow-500" },
   ready: { label: "พร้อม", color: "bg-green-500" },
   completed: { label: "เสร็จสิ้น", color: "bg-blue-500" },
   cancelled: { label: "ยกเลิก", color: "bg-red-500" },

@@ -1,187 +1,96 @@
 import Link from "next/link"
 import {
   Phone,
-  CheckCircle2,
   ShoppingCart,
   PackageOpen,
+  Truck,
 } from "lucide-react"
 import { getDashboardCases } from "@/lib/actions/dashboard"
-import { cn } from "@/lib/utils"
 
 export async function TrafficLightStats({ dentistId }: { dentistId?: string } = {}) {
   const now = new Date()
   const cases = await getDashboardCases(now.getFullYear(), now.getMonth() + 1, dentistId)
 
   const activeCases = cases.filter((c) => c.case_status !== "completed")
-  const active = activeCases.length
-  const pendingAppt = cases.filter(
-    (c) => c.appointment_status === "pending" && c.case_status !== "completed"
+
+  // Appointment
+  const pendingAppt = activeCases.filter(
+    (c) => c.appointment_status === "pending"
   ).length
 
-  // Material readiness
-  const ready = activeCases.filter((c) => c.trafficLight === "green").length
-  const ordered = activeCases.filter((c) => c.trafficLight === "yellow").length
-  const pendingOrder = activeCases.filter((c) => c.case_status === "pending_order").length
+  // Inventory: split pending_order into 2 groups
+  const pendingOrderCases = activeCases.filter((c) => c.case_status === "pending_order")
+  const waitingDoctor = pendingOrderCases.filter((c) => !c.hasReservations).length
+  const waitingSupplier = pendingOrderCases.filter((c) => c.hasReservations).length
   const pendingPrep = activeCases.filter((c) => c.case_status === "pending_preparation").length
 
+  const cards = [
+    {
+      label: "รอทำนัด",
+      value: pendingAppt,
+      href: "/cases?period=month&appt=pending",
+      icon: Phone,
+      bg: "bg-yellow-100 dark:bg-yellow-500/20",
+      iconColor: "text-yellow-600 dark:text-yellow-400",
+      valueColor: "text-yellow-700 dark:text-yellow-400",
+      alertBorder: pendingAppt > 0 ? "ring-2 ring-yellow-400/50" : "",
+    },
+    {
+      label: "รอหมอสั่งของ",
+      value: waitingDoctor,
+      href: "/cases?period=month&status=pending_order",
+      icon: ShoppingCart,
+      bg: "bg-red-100 dark:bg-red-500/20",
+      iconColor: "text-red-600 dark:text-red-400",
+      valueColor: "text-red-700 dark:text-red-400",
+      alertBorder: waitingDoctor > 0 ? "ring-2 ring-red-400/50" : "",
+    },
+    {
+      label: "รอสั่ง Supplier",
+      value: waitingSupplier,
+      href: "/cases?period=month&status=pending_order",
+      icon: Truck,
+      bg: "bg-red-100 dark:bg-red-500/20",
+      iconColor: "text-red-600 dark:text-red-400",
+      valueColor: "text-red-700 dark:text-red-400",
+      alertBorder: waitingSupplier > 0 ? "ring-2 ring-red-400/50" : "",
+    },
+    {
+      label: "รอจัดของ",
+      value: pendingPrep,
+      href: "/cases?period=month&status=pending_preparation",
+      icon: PackageOpen,
+      bg: "bg-yellow-100 dark:bg-yellow-500/20",
+      iconColor: "text-yellow-600 dark:text-yellow-400",
+      valueColor: "text-yellow-700 dark:text-yellow-400",
+      alertBorder: pendingPrep > 0 ? "ring-2 ring-yellow-400/50" : "",
+    },
+  ]
+
   return (
-    <div className="space-y-3">
-      {/* Row 1: Status boxes */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Link href="/cases?period=month&appt=pending">
-          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/20">
-              <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-amber-700 dark:text-amber-400">{pendingAppt}</p>
-              <p className="text-[10px] text-muted-foreground">รอทำนัด</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link href="/cases?period=month&status=pending_order">
-          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-500/20">
-              <ShoppingCart className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-red-700 dark:text-red-400">{pendingOrder}</p>
-              <p className="text-[10px] text-muted-foreground">รอสั่งของ</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link href="/cases?period=month&status=pending_preparation">
-          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-500/20">
-              <PackageOpen className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-orange-700 dark:text-orange-400">{pendingPrep}</p>
-              <p className="text-[10px] text-muted-foreground">รอจัดของ</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link href="/cases?period=month&status=ready">
-          <div className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-tight text-emerald-700 dark:text-emerald-400">{ready}</p>
-              <p className="text-[10px] text-muted-foreground">พร้อม</p>
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Row 2: Material status - single compact bar */}
-      <div className="rounded-xl border bg-card p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          สถานะวัสดุ
-        </p>
-
-        {/* Progress bar */}
-        {active > 0 && (
-          <div className="mb-2.5 flex h-2 overflow-hidden rounded-full bg-muted">
-            {ready > 0 && (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {cards.map((card) => {
+        const Icon = card.icon
+        return (
+          <Link key={card.label} href={card.href}>
+            <div
+              className={`group flex items-center gap-3 rounded-xl border bg-card p-3 transition-all hover:shadow-md ${card.value > 0 ? card.alertBorder : ""}`}
+            >
               <div
-                className="bg-green-500 transition-all"
-                style={{ width: `${(ready / active) * 100}%` }}
-              />
-            )}
-            {ordered > 0 && (
-              <div
-                className="bg-yellow-500 transition-all"
-                style={{ width: `${(ordered / active) * 100}%` }}
-              />
-            )}
-            {pendingPrep > 0 && (
-              <div
-                className="bg-orange-400 transition-all"
-                style={{ width: `${(pendingPrep / active) * 100}%` }}
-              />
-            )}
-            {pendingOrder > 0 && (
-              <div
-                className="bg-red-400 transition-all"
-                style={{ width: `${(pendingOrder / active) * 100}%` }}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Inline legend */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <StatusChip
-            color="green"
-            label="พร้อม"
-            value={ready}
-            href="/cases?period=month&status=ready"
-          />
-          <StatusChip
-            color="yellow"
-            label="สั่งแล้ว"
-            value={ordered}
-            href="/cases?period=month&material=ordered"
-          />
-          <StatusChip
-            color="orange"
-            label="รอจัดของ"
-            value={pendingPrep}
-            href="/cases?period=month&status=pending_preparation"
-          />
-          <StatusChip
-            color="red"
-            label="รอสั่งของ"
-            value={pendingOrder}
-            href="/cases?period=month&status=pending_order"
-          />
-        </div>
-      </div>
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${card.bg}`}
+              >
+                <Icon className={`h-4 w-4 ${card.iconColor}`} />
+              </div>
+              <div className="min-w-0">
+                <p className={`text-lg font-bold leading-tight ${card.value > 0 ? card.valueColor : "text-muted-foreground"}`}>
+                  {card.value}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{card.label}</p>
+              </div>
+            </div>
+          </Link>
+        )
+      })}
     </div>
-  )
-}
-
-function StatusChip({
-  color,
-  label,
-  value,
-  href,
-}: {
-  color: "green" | "yellow" | "orange" | "red"
-  label: string
-  value: number
-  href: string
-}) {
-  const dotColor = {
-    green: "bg-green-500",
-    yellow: "bg-yellow-500",
-    orange: "bg-orange-400",
-    red: "bg-red-400",
-  }[color]
-
-  const textColor = {
-    green: "text-green-700 dark:text-green-400",
-    yellow: "text-yellow-700 dark:text-yellow-400",
-    orange: "text-orange-700 dark:text-orange-400",
-    red: "text-red-700 dark:text-red-400",
-  }[color]
-
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-muted",
-      )}
-    >
-      <span className={cn("h-2 w-2 rounded-full", dotColor)} />
-      <span className={cn("text-sm font-bold tabular-nums", textColor)}>
-        {value}
-      </span>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-    </Link>
   )
 }

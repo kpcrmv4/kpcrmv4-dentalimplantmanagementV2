@@ -1,6 +1,6 @@
 import { getAppointmentLogs } from "@/lib/actions/appointments"
 import { formatDate } from "@/lib/utils"
-import { Check, CalendarClock, Ban, Clock } from "lucide-react"
+import { Check, CalendarClock, CalendarX, Ban } from "lucide-react"
 
 const ACTION_CONFIG: Record<
   string,
@@ -11,9 +11,9 @@ const ACTION_CONFIG: Record<
   }
 > = {
   pending: {
-    label: "สร้างเคส",
-    icon: Clock,
-    dotColor: "bg-gray-400",
+    label: "กลับเป็นรอทำนัด",
+    icon: CalendarX,
+    dotColor: "bg-amber-500",
   },
   confirmed: {
     label: "ยืนยันนัดหมาย",

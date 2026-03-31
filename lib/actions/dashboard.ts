@@ -18,11 +18,12 @@ export type DashboardCase = {
   dentist_name: string
   tooth_positions: number[] | null
   trafficLight: TrafficLight
+  hasReservations: boolean
 }
 
 function deriveTrafficLight(status: CaseStatus): TrafficLight {
   if (status === "ready") return "green"
-  if (status === "pending_preparation") return "orange"
+  if (status === "pending_preparation") return "yellow"
   if (status === "pending_order") return "red"
   return "neutral" // completed, cancelled
 }
@@ -58,6 +59,20 @@ export async function getDashboardCases(
 
   if (error) throw error
 
+  // Get reservation counts for all cases to distinguish "รอหมอสั่งของ" vs "รอสั่ง Supplier"
+  const caseIds = (data ?? []).map((c) => c.id)
+  const casesWithReservations = new Set<string>()
+  if (caseIds.length > 0) {
+    const { data: resCounts } = await supabase
+      .from("case_reservations")
+      .select("case_id")
+      .in("case_id", caseIds)
+      .neq("status", "returned")
+    for (const r of resCounts ?? []) {
+      casesWithReservations.add(r.case_id)
+    }
+  }
+
   const mapped = (data ?? []).map((c) => {
     const patient = c.patients as unknown as { hn: string; full_name: string } | null
     const dentist = c.users as unknown as { full_name: string } | null
@@ -74,6 +89,7 @@ export async function getDashboardCases(
       dentist_name: dentist?.full_name ?? "ไม่ระบุ",
       tooth_positions: c.tooth_positions,
       trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
+      hasReservations: casesWithReservations.has(c.id),
     }
   })
 
@@ -165,6 +181,7 @@ export async function getUnreadyCases(dentistId?: string): Promise<DashboardCase
       dentist_name: dentist?.full_name ?? "ไม่ระบุ",
       tooth_positions: c.tooth_positions,
       trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
+      hasReservations: false,
     }
   })
 }
@@ -270,6 +287,7 @@ export async function getEmergencyAlerts(dentistId?: string): Promise<EmergencyA
         dentist_name: dentist?.full_name ?? "ไม่ระบุ",
         tooth_positions: c.tooth_positions,
         trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
+        hasReservations: false,
         isOverdue,
       }
     })

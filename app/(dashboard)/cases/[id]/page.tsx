@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Calendar, User } from "lucide-react"
+import { ArrowLeft, Calendar, User, Package, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -13,14 +13,18 @@ import { AppointmentActions } from "./appointment-actions"
 import { AppointmentTimeline } from "./appointment-timeline"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending_appointment: { label: "รอทำนัด", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400" },
-  pending_order: { label: "รอสั่งของ", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
-  pending_preparation: { label: "รอจัดของ", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" },
+  pending_order: { label: "รอสั่งของ", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
+  pending_preparation: { label: "รอจัดของ", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
   ready: { label: "พร้อม", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
   completed: { label: "เสร็จสิ้น", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
 }
 
+const APPT_STATUS: Record<string, { label: string; color: string }> = {
+  pending: { label: "รอทำนัด", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
+  confirmed: { label: "นัดแล้ว", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },
+  cancelled: { label: "ยกเลิกนัด", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" },
+}
 
 export default async function CaseDetailPage({
   params,
@@ -56,11 +60,24 @@ export default async function CaseDetailPage({
           <Link href="/cases"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-lg font-semibold truncate">{caseData.case_number}</h1>
-            <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
+            <span className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
+              <Package className="h-2.5 w-2.5" />
               {status.label}
             </span>
+            {(() => {
+              const apptStatus = caseData.case_status === "completed" ? "completed" : (caseData as Record<string, unknown>).appointment_status as string
+              const appt = apptStatus === "completed"
+                ? { label: "เสร็จเคสแล้ว", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" }
+                : APPT_STATUS[apptStatus]
+              return appt ? (
+                <span className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${appt.color}`}>
+                  <Phone className="h-2.5 w-2.5" />
+                  {appt.label}
+                </span>
+              ) : null
+            })()}
           </div>
         </div>
       </div>

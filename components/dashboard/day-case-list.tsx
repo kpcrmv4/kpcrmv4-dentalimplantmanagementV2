@@ -20,7 +20,6 @@ import type { DashboardCase, TrafficLight } from "@/lib/actions/dashboard"
 import type { UserRole } from "@/types/database"
 
 const STATUS_LABELS: Record<string, string> = {
-  pending_appointment: "รอทำนัด",
   pending_order: "รอสั่งของ",
   pending_preparation: "รอจัดของ",
   ready: "พร้อม",
@@ -28,39 +27,20 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "ยกเลิก",
 }
 
-const APPT_STATUS: Record<string, { label: string; color: string }> = {
-  pending: {
-    label: "รอทำนัด",
-    color: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
-  },
-  confirmed: {
-    label: "นัดแล้ว",
-    color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
-  },
-  postponed: {
-    label: "เลื่อนนัด",
-    color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
-  },
-  cancelled: {
-    label: "ยกเลิกนัด",
-    color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
-  },
-}
-
 const TRAFFIC_BADGE: Record<TrafficLight, string> = {
   green: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
   yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
-  orange: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
+  orange: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
   red: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
-  neutral: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400",
+  neutral: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
 }
 
 const TRAFFIC_DOT: Record<TrafficLight, string> = {
   green: "bg-green-500",
   yellow: "bg-yellow-500",
-  orange: "bg-orange-500",
+  orange: "bg-yellow-500",
   red: "bg-red-500",
-  neutral: "bg-gray-400",
+  neutral: "bg-blue-500",
 }
 
 export function DayCaseList({
@@ -158,7 +138,6 @@ function DayCaseCard({
   variant: "timeline" | "list"
 }) {
   const isCs = role === "cs"
-  const apptConfig = APPT_STATUS[c.appointment_status] ?? APPT_STATUS.pending
 
   if (variant === "timeline") {
     return (
@@ -173,24 +152,16 @@ function DayCaseCard({
 
         <Link href={`/cases/${c.id}`}>
           <div className="rounded-lg border bg-card p-2.5 transition-colors group-hover:bg-muted/50">
-            {/* Time + Status badges */}
+            {/* Time + Status badge (inventory only) */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {c.scheduled_time && (
                 <span className="text-sm font-bold tabular-nums leading-tight">
                   {c.scheduled_time.slice(0, 5)}
                 </span>
               )}
-              {isCs ? (
-                /* CS: show appointment status prominently */
-                <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", apptConfig.color)}>
-                  {apptConfig.label}
-                </span>
-              ) : (
-                /* Others: show case status */
-                <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                  {STATUS_LABELS[c.case_status] ?? c.case_status}
-                </span>
-              )}
+              <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
+                {STATUS_LABELS[c.case_status] ?? c.case_status}
+              </span>
             </div>
 
             {/* Case info */}
@@ -252,21 +223,15 @@ function DayCaseCard({
                 <span className="text-xs font-bold tabular-nums leading-tight">
                   {c.scheduled_time.slice(0, 5)}
                 </span>
-                {isCs ? (
-                  <span className={cn("mt-0.5 inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", apptConfig.color)}>
-                    {apptConfig.label}
-                  </span>
-                ) : (
-                  <span className={cn("mt-0.5 inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                    {STATUS_LABELS[c.case_status] ?? c.case_status}
-                  </span>
-                )}
+                <span className={cn("mt-0.5 inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
+                  {STATUS_LABELS[c.case_status] ?? c.case_status}
+                </span>
               </>
             ) : (
               <>
                 <div className={cn("h-2 w-2 rounded-full", TRAFFIC_DOT[c.trafficLight])} />
                 <span className="mt-0.5 text-[9px] font-medium text-muted-foreground">
-                  {isCs ? apptConfig.label : (STATUS_LABELS[c.case_status] ?? c.case_status)}
+                  {STATUS_LABELS[c.case_status] ?? c.case_status}
                 </span>
               </>
             )}
