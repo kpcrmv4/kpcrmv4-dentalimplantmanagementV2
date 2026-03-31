@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { generateCaseNumber } from "@/lib/utils"
+import { generateCaseNumber, formatDate } from "@/lib/utils"
 import type { CaseStatus, ReservationStatus } from "@/types/database"
 import { createNotification } from "./notifications"
 
