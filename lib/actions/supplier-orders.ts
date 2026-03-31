@@ -237,7 +237,7 @@ export async function approveSupplierOrder(orderId: string) {
     const { data: caseData } = order.case_id
       ? await supabase
           .from("cases")
-          .select("case_number, scheduled_date, patients(full_name, hn), users!cases_dentist_id_fkey(full_name)")
+          .select("case_number, scheduled_date, scheduled_time, patients(full_name, hn), users!cases_dentist_id_fkey(full_name)")
           .eq("id", order.case_id)
           .single()
       : { data: null }
@@ -257,7 +257,7 @@ export async function approveSupplierOrder(orderId: string) {
       ``,
       patient ? `👤 คนไข้: ${patient.full_name} (HN: ${patient.hn})` : "",
       dentist ? `🦷 แพทย์: ${dentist.full_name}` : "",
-      caseData?.scheduled_date ? `📅 วันนัด: ${formatDate(String(caseData.scheduled_date))}` : "",
+      caseData?.scheduled_date ? `📅 วันนัด: ${formatDate(String(caseData.scheduled_date))}${caseData.scheduled_time ? ` ${String(caseData.scheduled_time).slice(0, 5)}` : ""}` : "",
       ``,
       `📦 รายการ:`,
       itemLines,

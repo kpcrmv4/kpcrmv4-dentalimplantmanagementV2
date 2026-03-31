@@ -120,7 +120,7 @@ export async function createCase(formData: FormData) {
     const patientHN = patient?.hn ?? "-"
     const procedure = data.procedure_type ?? "-"
     const scheduledInfo = data.scheduled_date
-      ? `${data.scheduled_date}${data.scheduled_time ? ` ${data.scheduled_time}` : ""}`
+      ? `${formatDate(String(data.scheduled_date))}${data.scheduled_time ? ` ${String(data.scheduled_time).slice(0, 5)}` : ""}`
       : "ยังไม่ระบุ"
 
     const STATUS_LABELS: Record<string, string> = {
@@ -635,7 +635,7 @@ export async function addMaterialToCase(
 
     let dateInfo = ""
     if (fullCase?.scheduled_date) {
-      dateInfo = ` นัด ${fullCase.scheduled_date}`
+      dateInfo = ` นัด ${formatDate(String(fullCase.scheduled_date))}`
       if (fullCase?.scheduled_time) {
         dateInfo += ` ${(fullCase.scheduled_time as string).slice(0, 5)}`
       }
@@ -764,7 +764,7 @@ export async function revalidateCaseReadyStatus(caseId: string) {
 
       let dateInfo = ""
       if (caseData.scheduled_date) {
-        dateInfo = ` นัด ${caseData.scheduled_date}`
+        dateInfo = ` นัด ${formatDate(String(caseData.scheduled_date))}`
         if (caseData.scheduled_time) {
           dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
         }

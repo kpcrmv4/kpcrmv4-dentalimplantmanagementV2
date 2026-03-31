@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { formatDate } from "@/lib/utils"
 import type { AppointmentStatus } from "@/types/database"
 import { cancelCase } from "./cases"
 
@@ -130,7 +131,7 @@ export async function postponeAppointment(
   await notifyCaseStakeholders(
     caseId,
     "เลื่อนนัดหมาย",
-    `เคส ${caseNumber} (${patientName}) เลื่อนนัดจาก ${oldDate ?? "-"} → ${newDate}\n${note}`,
+    `เคส ${caseNumber} (${patientName}) เลื่อนนัดจาก ${oldDate ? formatDate(oldDate) : "-"} → ${formatDate(newDate)}\n${note}`,
     user.id
   )
 
