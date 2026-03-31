@@ -395,7 +395,7 @@ export function CaseActions({
         </div>
       )}
 
-      {/* ─── Already consumed summary (completed cases viewed again) ─── */}
+      {/* ─── Already consumed summary + close case if not yet completed ─── */}
       {consumedItems.length > 0 && recordableItems.length === 0 && (
         <div className="rounded-xl border bg-card p-3">
           <div className="flex items-center gap-1.5 mb-2">
@@ -415,6 +415,34 @@ export function CaseActions({
               </div>
             ))}
           </div>
+
+          {/* Close case button if all consumed but case not yet completed */}
+          {reservedItems.length === 0 && preparedItems.length === 0 && caseStatus !== "completed" && (
+            <>
+              <Separator className="my-3" />
+              <Button
+                className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={isPending}
+                onClick={() => {
+                  startTransition(async () => {
+                    try {
+                      await closeCaseWithUsage(caseId, consumedItems.map((r) => ({
+                        reservationId: r.id,
+                        quantityUsed: r.quantityUsed ?? r.quantityReserved,
+                        photoUrl: r.photoUrl ?? null,
+                      })))
+                      router.refresh()
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+                    }
+                  })
+                }}
+              >
+                {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
+                ปิดเคส
+              </Button>
+            </>
+          )}
         </div>
       )}
 
