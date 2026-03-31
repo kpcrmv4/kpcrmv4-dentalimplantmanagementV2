@@ -58,8 +58,10 @@ const INVENTORY_STATUS: Record<string, { label: string; color: string; dot: stri
 
 function getInventoryStatus(caseStatus: string, reservations: unknown) {
   if (caseStatus === "pending_order") {
-    const hasReservations = Array.isArray(reservations) && reservations.length > 0
-    return hasReservations ? INVENTORY_STATUS.pending_order : INVENTORY_STATUS.waiting_doctor
+    const activeReservations = Array.isArray(reservations)
+      ? (reservations as Array<{ status?: string }>).filter((r) => !["returned", "consumed"].includes(r.status ?? ""))
+      : []
+    return activeReservations.length > 0 ? INVENTORY_STATUS.pending_order : INVENTORY_STATUS.waiting_doctor
   }
   return INVENTORY_STATUS[caseStatus] ?? INVENTORY_STATUS.pending_order
 }
@@ -138,7 +140,7 @@ async function getCases(
   const supabase = await createClient()
   let query = supabase
     .from("cases")
-    .select("*, patients(hn, full_name), users!cases_dentist_id_fkey(full_name), case_reservations(id)")
+    .select("*, patients(hn, full_name), users!cases_dentist_id_fkey(full_name), case_reservations(id, status)")
     .limit(100)
 
   if (status === "waiting_doctor") {
@@ -170,12 +172,19 @@ async function getCases(
   let results = data ?? []
 
   // Post-filter for virtual statuses
-  if (status === "waiting_doctor") {
-    // Only cases with NO reservations (doctor hasn't ordered materials yet)
-    results = results.filter((c) => !c.case_reservations || (c.case_reservations as unknown[]).length === 0)
-  } else if (status === "pending_order") {
-    // Only cases WITH reservations but out of stock
-    results = results.filter((c) => c.case_reservations && (c.case_reservations as unknown[]).length > 0)
+  if (status === "waiting_doctor" || status === "pending_order") {
+    // Filter by active reservations (exclude returned/consumed)
+    const withActive = results.map((c) => {
+      const active = Array.isArray(c.case_reservations)
+        ? (c.case_reservations as Array<{ status?: string }>).filter((r) => !["returned", "consumed"].includes(r.status ?? ""))
+        : []
+      return { ...c, _activeCount: active.length }
+    })
+    if (status === "waiting_doctor") {
+      results = withActive.filter((c) => c._activeCount === 0)
+    } else {
+      results = withActive.filter((c) => c._activeCount > 0)
+    }
   }
 
   return results
