@@ -59,8 +59,8 @@ export const roleMenus: Record<UserRole, NavItem[]> = {
   assistant: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
     { label: "ปฏิทิน", icon: Calendar, href: "/calendar" },
-    { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", isCenter: true },
-    { label: "เคส", icon: ClipboardList, href: "/cases" },
+    { label: "เคส", icon: ClipboardList, href: "/cases", isCenter: true },
+    { label: "คนไข้", icon: Users, href: "/patients" },
   ],
   cs: [
     { label: "หน้าแรก", icon: Home, href: "/dashboard" },
@@ -75,8 +75,7 @@ export const sidebarMenus: NavItem[] = [
   { label: "แดชบอร์ด", icon: LayoutDashboard, href: "/dashboard", group: "main" },
   { label: "ปฏิทิน", icon: Calendar, href: "/calendar", group: "main" },
   { label: "เคส", icon: ClipboardList, href: "/cases", group: "main" },
-  { label: "จัดเตรียม", icon: ClipboardCheck, href: "/preparation", roles: ["assistant"], group: "main" },
-  { label: "คนไข้", icon: Users, href: "/patients", roles: ["admin", "cs"], group: "main" },
+  { label: "คนไข้", icon: Users, href: "/patients", roles: ["admin", "cs", "assistant"], group: "main" },
 
   // Inventory group
   { label: "สต็อก", icon: Package, href: "/inventory", roles: ["admin", "stock_staff"], group: "inventory" },
