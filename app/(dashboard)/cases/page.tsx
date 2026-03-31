@@ -71,28 +71,30 @@ function getDateRange(
   period: string,
   customDate?: string
 ): { from: string; to: string } | null {
-  const now = new Date()
+  // Use ICT timezone to match Thai users
+  const nowUtc = new Date()
+  const ict = new Date(nowUtc.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }))
 
   switch (period) {
     case "today":
       return {
-        from: format(startOfDay(now), "yyyy-MM-dd"),
-        to: format(endOfDay(now), "yyyy-MM-dd"),
+        from: format(startOfDay(ict), "yyyy-MM-dd"),
+        to: format(endOfDay(ict), "yyyy-MM-dd"),
       }
     case "week":
       return {
-        from: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"),
-        to: format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+        from: format(startOfWeek(ict, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+        to: format(endOfWeek(ict, { weekStartsOn: 1 }), "yyyy-MM-dd"),
       }
     case "month":
       return {
-        from: format(startOfMonth(now), "yyyy-MM-dd"),
-        to: format(endOfMonth(now), "yyyy-MM-dd"),
+        from: format(startOfMonth(ict), "yyyy-MM-dd"),
+        to: format(endOfMonth(ict), "yyyy-MM-dd"),
       }
     case "year":
       return {
-        from: format(startOfYear(now), "yyyy-MM-dd"),
-        to: format(endOfYear(now), "yyyy-MM-dd"),
+        from: format(startOfYear(ict), "yyyy-MM-dd"),
+        to: format(endOfYear(ict), "yyyy-MM-dd"),
       }
     case "custom":
       if (customDate) {

@@ -58,9 +58,9 @@ async function getDentistId() {
 
 async function CalendarSection() {
   const dentistId = await getDentistId()
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1
+  const nowIct = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }))
+  const year = nowIct.getFullYear()
+  const month = nowIct.getMonth() + 1
   const cases = await getDashboardCases(year, month, dentistId)
 
   return (
