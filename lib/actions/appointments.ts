@@ -35,7 +35,7 @@ async function notifyCaseStakeholders(
   if (excludeUserId) userIds.delete(excludeUserId)
 
   const { createNotification } = await import("./notifications")
-  for (const userId of userIds) {
+  for (const userId of Array.from(userIds)) {
     createNotification({
       user_id: userId,
       type: "case_assigned",
