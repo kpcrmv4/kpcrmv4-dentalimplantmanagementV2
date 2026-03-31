@@ -22,7 +22,7 @@ export type DashboardCase = {
 
 function deriveTrafficLight(status: CaseStatus): TrafficLight {
   if (status === "ready") return "green"
-  if (status === "pending_preparation") return "orange"
+  if (status === "pending_preparation") return "yellow"
   if (status === "pending_order") return "red"
   return "neutral" // completed, cancelled
 }

@@ -22,16 +22,17 @@ import {
 } from "date-fns"
 import { th } from "date-fns/locale"
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+// Inventory status — traffic light colors (red → yellow → green → blue)
+const INVENTORY_STATUS: Record<string, { label: string; color: string; dot: string }> = {
   pending_order: {
     label: "รอสั่งของ",
-    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
-    dot: "bg-yellow-500",
+    color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
+    dot: "bg-red-500",
   },
   pending_preparation: {
     label: "รอจัดของ",
-    color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
-    dot: "bg-orange-500",
+    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
+    dot: "bg-yellow-500",
   },
   ready: {
     label: "พร้อม",
@@ -47,6 +48,22 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
     label: "ยกเลิก",
     color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
     dot: "bg-red-500",
+  },
+}
+
+// Appointment status — traffic light colors
+const APPT_STATUS: Record<string, { label: string; color: string }> = {
+  pending: {
+    label: "รอทำนัด",
+    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
+  },
+  confirmed: {
+    label: "นัดแล้ว",
+    color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
+  },
+  cancelled: {
+    label: "ยกเลิกนัด",
+    color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
   },
 }
 
@@ -247,8 +264,8 @@ export default async function CasesPage({
                     const patient = c.patients as Record<string, string> | null
                     const dentist = c.users as Record<string, string> | null
                     const st =
-                      STATUS_CONFIG[c.case_status as string] ??
-                      STATUS_CONFIG.pending_order
+                      INVENTORY_STATUS[c.case_status as string] ??
+                      INVENTORY_STATUS.pending_order
                     const time = c.scheduled_time as string | null
 
                     return (
@@ -272,6 +289,14 @@ export default async function CasesPage({
                               >
                                 {st.label}
                               </span>
+                              {(() => {
+                                const appt = APPT_STATUS[c.appointment_status as string]
+                                return appt ? (
+                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${appt.color}`}>
+                                    {appt.label}
+                                  </span>
+                                ) : null
+                              })()}
                             </div>
 
                             {/* Case info */}
@@ -361,8 +386,8 @@ export default async function CasesPage({
                     const patient = c.patients as Record<string, string> | null
                     const dentist = c.users as Record<string, string> | null
                     const st =
-                      STATUS_CONFIG[c.case_status as string] ??
-                      STATUS_CONFIG.pending_order
+                      INVENTORY_STATUS[c.case_status as string] ??
+                      INVENTORY_STATUS.pending_order
                     const time = c.scheduled_time as string | null
 
                     return (
@@ -371,32 +396,31 @@ export default async function CasesPage({
                           {/* Status dot + Time */}
                           <div className="flex w-14 shrink-0 flex-col items-center">
                             {time ? (
-                              <>
-                                <span className="text-sm font-bold tabular-nums leading-tight">
-                                  {time.slice(0, 5)}
-                                </span>
-                                <span
-                                  className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.color}`}
-                                >
-                                  {st.label}
-                                </span>
-                              </>
+                              <span className="text-sm font-bold tabular-nums leading-tight">
+                                {time.slice(0, 5)}
+                              </span>
                             ) : (
-                              <>
-                                <div className={`h-2.5 w-2.5 rounded-full ${st.dot}`} />
-                                <span className="mt-0.5 text-[9px] font-medium text-muted-foreground">
-                                  {st.label}
-                                </span>
-                              </>
+                              <div className={`h-2.5 w-2.5 rounded-full ${st.dot}`} />
                             )}
                           </div>
 
                           {/* Main content */}
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-sm font-semibold">
                                 {c.case_number as string}
                               </span>
+                              <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${st.color}`}>
+                                {st.label}
+                              </span>
+                              {(() => {
+                                const appt = APPT_STATUS[c.appointment_status as string]
+                                return appt ? (
+                                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${appt.color}`}>
+                                    {appt.label}
+                                  </span>
+                                ) : null
+                              })()}
                             </div>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {String(patient?.full_name ?? "ไม่ระบุคนไข้")} ({String(patient?.hn ?? "-")})

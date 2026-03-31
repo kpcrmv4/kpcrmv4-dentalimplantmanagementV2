@@ -25,9 +25,9 @@ const WEEKDAYS_FULL = ["จันทร์", "อังคาร", "พุธ", 
 const DOT_COLORS: Record<TrafficLight, string> = {
   green: "bg-green-500",
   yellow: "bg-yellow-500",
-  orange: "bg-orange-500",
+  orange: "bg-yellow-500",
   red: "bg-red-500",
-  neutral: "bg-gray-400",
+  neutral: "bg-blue-500",
 }
 
 export function CalendarGrid({
@@ -206,34 +206,18 @@ export function CalendarGrid({
 
         {/* Legend */}
         <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 border-t pt-3">
-          {isCs ? (
-            <>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-amber-500" /> รอทำนัด
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="font-semibold">3</span> จำนวนเคส
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-gray-400" /> รอทำนัด
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-green-500" /> พร้อม
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-yellow-500" /> สั่งแล้ว
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-orange-500" /> รอของ
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-red-500" /> ขาด
-              </span>
-            </>
-          )}
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-red-500" /> รอสั่งของ
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-yellow-500" /> รอจัดของ
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-green-500" /> พร้อม
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-blue-500" /> เสร็จ
+          </span>
         </div>
       </div>
     </div>

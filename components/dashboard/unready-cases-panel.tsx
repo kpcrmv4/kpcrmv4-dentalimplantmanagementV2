@@ -15,7 +15,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 const TRAFFIC_DOT: Record<string, string> = {
   red: "bg-red-500",
-  orange: "bg-orange-500",
+  yellow: "bg-yellow-500",
+  orange: "bg-yellow-500",
 }
 
 export async function UnreadyCasesPanel({ dentistId }: { dentistId?: string } = {}) {

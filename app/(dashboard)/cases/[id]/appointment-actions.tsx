@@ -38,7 +38,7 @@ const APPOINTMENT_STATUS_CONFIG: Record<
   pending: {
     label: "รอทำนัด",
     color:
-      "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
+      "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
   },
   confirmed: {
     label: "นัดแล้ว",
