@@ -13,7 +13,6 @@ import { AppointmentActions } from "./appointment-actions"
 import { AppointmentTimeline } from "./appointment-timeline"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending_appointment: { label: "รอทำนัด", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400" },
   pending_order: { label: "รอสั่งของ", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
   pending_preparation: { label: "รอจัดของ", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" },
   ready: { label: "พร้อม", color: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400" },

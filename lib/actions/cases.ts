@@ -725,7 +725,7 @@ export async function revalidateCaseReadyStatus(caseId: string) {
 
   if (!activeReservations || activeReservations.length === 0) {
     // No active reservations left
-    if (["ready", "pending_preparation", "pending_appointment"].includes(caseData.case_status)) {
+    if (["ready", "pending_preparation"].includes(caseData.case_status)) {
       newStatus = "pending_order" as CaseStatus
     }
   } else {
