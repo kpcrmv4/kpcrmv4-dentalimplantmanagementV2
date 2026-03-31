@@ -5,6 +5,19 @@ import { createClient } from "@/lib/supabase/server"
 import { sendLineMessage } from "./line"
 import { formatDate } from "@/lib/utils"
 
+/** Build a detailed product spec line for LINE messages */
+function formatProductLine(p: Record<string, unknown>, qty: number): string {
+  const parts = [
+    p.ref ? `REF: ${p.ref}` : null,
+    p.name,
+    p.model ? `รุ่น ${p.model}` : null,
+    p.diameter != null ? `Ø${p.diameter}` : null,
+    p.length != null ? `${p.length}mm` : null,
+  ].filter(Boolean).join(" / ")
+  const unit = String(p.unit ?? "ชิ้น")
+  return `  - ${parts} × ${qty} ${unit}`
+}
+
 function generateBorrowNumber(): string {
   const now = new Date()
   const year = now.getFullYear()
@@ -95,7 +108,7 @@ export async function createSupplierOrder(params: {
   const productIds = params.items.map((i) => i.productId)
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, ref, brand, unit")
+    .select("id, name, ref, brand, unit, model, diameter, length")
     .in("id", productIds)
 
   const productMap = new Map((products ?? []).map((p) => [p.id, p]))
@@ -123,16 +136,18 @@ export async function createSupplierOrder(params: {
     const dentist = caseData?.users as unknown as { full_name: string } | null
 
     const itemLines = params.items.map((item) => {
-      const p = productMap.get(item.productId)
-      return `  - ${p?.name ?? "สินค้า"} ${p?.brand ? `(${p.brand})` : ""} × ${item.quantity} ${p?.unit ?? "ชิ้น"}`
+      const p = productMap.get(item.productId) as Record<string, unknown> | undefined
+      return p ? formatProductLine(p, item.quantity) : `  - สินค้า × ${item.quantity}`
     }).join("\n")
 
     const scheduledInfo = caseData?.scheduled_date
       ? `📅 วันนัด: ${formatDate(String(caseData.scheduled_date))}${caseData.scheduled_time ? ` ${String(caseData.scheduled_time).slice(0, 5)}` : ""}`
       : ""
 
+    const caseNumber = caseData?.case_number ?? ""
     const message = [
       `📋 ขอยืมวัสดุ — ${order.borrow_number}`,
+      caseNumber ? `🔖 เคส: ${caseNumber}` : "",
       ``,
       `👤 คนไข้: ${patient?.full_name ?? "-"} (HN: ${patient?.hn ?? "-"})`,
       `🦷 แพทย์: ${dentist?.full_name ?? "-"}`,
@@ -214,7 +229,7 @@ export async function approveSupplierOrder(orderId: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: items } = await (supabase as any)
       .from("inventory_borrow_items")
-      .select("quantity, unit_price, products(name, brand, unit)")
+      .select("quantity, unit_price, products(name, ref, brand, unit, model, diameter, length)")
       .eq("borrow_id", orderId)
 
     const { data: caseData } = order.case_id
@@ -229,12 +244,14 @@ export async function approveSupplierOrder(orderId: string) {
     const dentist = caseData?.users as unknown as { full_name: string } | null
 
     const itemLines = ((items ?? []) as Array<Record<string, unknown>>).map((item) => {
-      const p = item.products as { name: string; brand: string | null; unit: string } | null
-      return `  - ${p?.name ?? "สินค้า"} ${p?.brand ? `(${p.brand})` : ""} × ${item.quantity} ${p?.unit ?? "ชิ้น"}`
+      const p = item.products as Record<string, unknown> | null
+      return p ? formatProductLine(p, Number(item.quantity)) : `  - สินค้า × ${item.quantity}`
     }).join("\n")
 
+    const caseNumber = caseData?.case_number ?? ""
     const message = [
       `🛒 ใบสั่งซื้อ — ${order.borrow_number}`,
+      caseNumber ? `🔖 เคส: ${caseNumber}` : "",
       ``,
       patient ? `👤 คนไข้: ${patient.full_name} (HN: ${patient.hn})` : "",
       dentist ? `🦷 แพทย์: ${dentist.full_name}` : "",
