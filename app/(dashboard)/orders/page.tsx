@@ -58,31 +58,33 @@ export default async function OrdersPage({
             const itemCount = (po.purchase_order_items as unknown[])?.length ?? 0
 
             return (
-              <Card key={po.id as string}>
-                <CardContent className="p-3">
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{String(po.po_number)}</p>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
-                          {status.label}
-                        </span>
+              <Link key={po.id as string} href={`/orders/${po.id}`}>
+                <Card className="transition-colors hover:bg-muted/50">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{String(po.po_number)}</p>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {supplier?.name ?? "-"} · {itemCount} รายการ
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          โดย {requester?.full_name ?? "-"} · {formatDate(String(po.created_at))}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {supplier?.name ?? "-"} · {itemCount} รายการ
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        โดย {requester?.full_name ?? "-"} · {formatDate(String(po.created_at))}
-                      </p>
+                      {po.total_amount ? (
+                        <p className="text-sm font-medium">
+                          {formatCurrency(Number(po.total_amount))}
+                        </p>
+                      ) : null}
                     </div>
-                    {po.total_amount ? (
-                      <p className="text-sm font-medium">
-                        {formatCurrency(Number(po.total_amount))}
-                      </p>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             )
           })}
         </div>
