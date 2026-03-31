@@ -43,14 +43,15 @@ export default async function CaseDetailPage({
   const caseData = caseResult
 
   const userRole = currentUser?.role ?? "assistant"
-  const isDentist = userRole === "dentist"
+  const canManageAppointment = ["admin", "cs"].includes(userRole)
+  const canManageStock = ["admin", "stock_staff", "assistant"].includes(userRole)
 
   const status = STATUS_CONFIG[caseData.case_status] ?? STATUS_CONFIG.pending_order
   const patient = caseData.patients as Record<string, unknown> | null
   const dentist = caseData.dentist as Record<string, unknown> | null
   const assistant = caseData.assistant as Record<string, unknown> | null
   const reservations = caseData.reservations as Array<Record<string, unknown>>
-  const canCancel = !isDentist && !["completed", "cancelled"].includes(caseData.case_status)
+  const canCancel = canManageStock && !["completed", "cancelled"].includes(caseData.case_status)
   const isActive = !["completed", "cancelled"].includes(caseData.case_status)
 
   return (
@@ -145,8 +146,8 @@ export default async function CaseDetailPage({
         )}
       </div>
 
-      {/* Appointment Confirmation - hidden for dentists */}
-      {!isDentist && (
+      {/* Appointment - only for admin/cs */}
+      {canManageAppointment && (
         <AppointmentActions
           caseId={id}
           appointmentStatus={(caseData as Record<string, unknown>).appointment_status as string ?? "pending"}
@@ -154,13 +155,13 @@ export default async function CaseDetailPage({
         />
       )}
 
-      {/* Appointment Timeline - hidden for dentists */}
-      {!isDentist && <AppointmentTimeline caseId={id} />}
+      {/* Appointment Timeline - only for admin/cs */}
+      {canManageAppointment && <AppointmentTimeline caseId={id} />}
 
-      {/* Materials / Reservations (editable) */}
+      {/* Materials / Reservations */}
       <CaseMaterialsEditor
         caseId={id}
-        caseStatus={caseData.case_status}
+        caseStatus={canManageStock ? caseData.case_status : "completed"}
         reservations={reservations.map((r) => {
           const product = r.products as Record<string, unknown> | null
           const inventory = r.inventory as Record<string, unknown> | null
@@ -202,8 +203,8 @@ export default async function CaseDetailPage({
         />
       )}
 
-      {/* Action Sections (client component) - hidden for dentists */}
-      {isActive && !isDentist && (
+      {/* Action Sections - only for stock management roles */}
+      {isActive && canManageStock && (
         <CaseActions
           caseId={id}
           caseStatus={caseData.case_status}

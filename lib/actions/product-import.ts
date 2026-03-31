@@ -20,6 +20,11 @@ export type ImportProductRow = {
   selling_price: number | null
   diameter: number | null
   length: number | null
+  volume: string
+  weight: string
+  dimension: string
+  abutment_height: number | null
+  gingival_height: number | null
   // Inventory fields
   lot_number: string
   quantity: number
@@ -166,6 +171,11 @@ export async function bulkCreateProducts(rows: ImportProductRow[]) {
         selling_price: firstRow.selling_price,
         diameter: firstRow.diameter,
         length: firstRow.length,
+        volume: firstRow.volume?.trim() || null,
+        weight: firstRow.weight?.trim() || null,
+        dimension: firstRow.dimension?.trim() || null,
+        abutment_height: firstRow.abutment_height,
+        gingival_height: firstRow.gingival_height,
       }
     })
 

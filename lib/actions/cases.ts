@@ -52,7 +52,7 @@ export async function getCaseById(id: string) {
       .from("case_reservations")
       .select(`
         *,
-        products(id, ref, name, brand, category, unit, supplier_id, suppliers(id, name, line_id)),
+        products(id, ref, name, brand, category, unit, model, diameter, length, volume, weight, dimension, abutment_height, gingival_height, supplier_id, suppliers(id, name, line_id)),
         inventory(id, lot_number, expiry_date)
       `)
       .eq("case_id", id)
@@ -120,7 +120,7 @@ export async function createCase(formData: FormData) {
     const patientHN = patient?.hn ?? "-"
     const procedure = data.procedure_type ?? "-"
     const scheduledInfo = data.scheduled_date
-      ? `${data.scheduled_date}${data.scheduled_time ? ` ${data.scheduled_time}` : ""}`
+      ? `${formatDate(String(data.scheduled_date))}${data.scheduled_time ? ` ${String(data.scheduled_time).slice(0, 5)}` : ""}`
       : "ยังไม่ระบุ"
 
     const STATUS_LABELS: Record<string, string> = {
@@ -580,13 +580,11 @@ export async function addMaterialToCase(
     .order("expiry_date", { ascending: true, nullsFirst: false })
     .order("received_date", { ascending: true })
 
-  let bestLotId: string | null = null
   let hasStock = false
 
   for (const lot of lotRows ?? []) {
     const available = lot.quantity - lot.reserved_quantity
     if (available >= quantity) {
-      bestLotId = lot.id
       hasStock = true
       break
     }
@@ -609,25 +607,9 @@ export async function addMaterialToCase(
 
   if (error) throw error
 
-  // Step 2: If stock available AND case is NOT already "ready", auto-prepare.
-  // When case is "ready", keep new materials as "reserved" so staff must re-prepare.
-  const wasReady = caseData.case_status === "ready"
-  if (hasStock && bestLotId && !wasReady) {
-    const { error: updateErr } = await supabase
-      .from("case_reservations")
-      .update({
-        inventory_id: bestLotId,
-        lot_specified: true,
-        prepared_by: user.id,
-        prepared_at: new Date().toISOString(),
-        status: "prepared" as ReservationStatus,
-      })
-      .eq("id", newReservation.id)
-
-    if (updateErr) throw updateErr
-  }
-
+  // All reservations stay as "reserved" - stock staff must assign LOT and prepare
   // Re-evaluate case status
+  const wasReady = caseData.case_status === "ready"
   await revalidateCaseReadyStatus(caseId)
 
   // Notify stock_staff/admin when material is out of stock
@@ -651,7 +633,7 @@ export async function addMaterialToCase(
 
     let dateInfo = ""
     if (fullCase?.scheduled_date) {
-      dateInfo = ` นัด ${fullCase.scheduled_date}`
+      dateInfo = ` นัด ${formatDate(String(fullCase.scheduled_date))}`
       if (fullCase?.scheduled_time) {
         dateInfo += ` ${(fullCase.scheduled_time as string).slice(0, 5)}`
       }
@@ -780,7 +762,7 @@ export async function revalidateCaseReadyStatus(caseId: string) {
 
       let dateInfo = ""
       if (caseData.scheduled_date) {
-        dateInfo = ` นัด ${caseData.scheduled_date}`
+        dateInfo = ` นัด ${formatDate(String(caseData.scheduled_date))}`
         if (caseData.scheduled_time) {
           dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
         }
