@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { sendLineMessage } from "./line"
+import { sendDiscordWebhook } from "./webhooks"
 import { formatDate } from "@/lib/utils"
 
 /** Build a detailed product spec line for LINE messages */
@@ -160,6 +161,7 @@ export async function createSupplierOrder(params: {
     ].filter(Boolean).join("\n")
 
     await sendLineMessage(supplier.line_id, message)
+    sendDiscordWebhook("ขอยืมวัสดุ", message).catch(() => {})
   }
 
   // Notify admin for purchase orders
@@ -264,6 +266,7 @@ export async function approveSupplierOrder(orderId: string) {
     ].filter(Boolean).join("\n")
 
     await sendLineMessage(supplier.line_id, message)
+    sendDiscordWebhook("ใบสั่งซื้อ — อนุมัติแล้ว", message).catch(() => {})
   }
 
   revalidatePath("/inventory/borrows")

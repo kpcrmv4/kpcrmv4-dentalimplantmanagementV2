@@ -35,18 +35,23 @@ import type { ImportProductRow } from "@/lib/actions/product-import"
 // ─── Excel Template Column Definitions ─────────────────────────────
 
 const TEMPLATE_COLUMNS = [
-  { key: "ref", header: "รหัสสินค้า", example: "IMP-001", width: 15 },
-  { key: "name", header: "ชื่อสินค้า", example: "Implant Fixture 4.0x10mm", width: 30 },
+  { key: "ref", header: "REF (รหัสสินค้า)", example: "IMP-STR-001", width: 18 },
+  { key: "name", header: "ชื่อสินค้า", example: "BLX Implant 4.0x12mm", width: 30 },
   { key: "category", header: "หมวดหมู่ (slug)", example: "implant", width: 18 },
   { key: "brand", header: "ยี่ห้อ", example: "Straumann", width: 18 },
-  { key: "model", header: "รุ่น", example: "BLT", width: 15 },
+  { key: "model", header: "รุ่น", example: "BLX", width: 15 },
   { key: "description", header: "รายละเอียด", example: "Implant fixture titanium", width: 30 },
   { key: "unit", header: "หน่วย", example: "ชิ้น", width: 10 },
   { key: "min_stock_level", header: "จำนวนขั้นต่ำ", example: "5", width: 14 },
   { key: "cost_price", header: "ราคาทุน", example: "15000", width: 12 },
   { key: "selling_price", header: "ราคาขาย", example: "25000", width: 12 },
   { key: "diameter", header: "เส้นผ่านศูนย์กลาง (mm)", example: "4.0", width: 20 },
-  { key: "length", header: "ความยาว (mm)", example: "10.0", width: 15 },
+  { key: "length", header: "ความยาว (mm)", example: "12.0", width: 15 },
+  { key: "volume", header: "ปริมาณ (cc)", example: "", width: 12 },
+  { key: "weight", header: "น้ำหนัก (g)", example: "", width: 12 },
+  { key: "dimension", header: "ขนาด (เช่น 20x25mm)", example: "", width: 18 },
+  { key: "abutment_height", header: "AH ความสูง (mm)", example: "", width: 16 },
+  { key: "gingival_height", header: "GH ความสูงเหงือก (mm)", example: "", width: 20 },
   { key: "lot_number", header: "เลข Lot", example: "LOT-2025-001", width: 18 },
   { key: "quantity", header: "จำนวนสต็อก", example: "10", width: 14 },
   { key: "expiry_date", header: "วันหมดอายุ (YYYY-MM-DD)", example: "2027-12-31", width: 24 },
@@ -225,7 +230,9 @@ async function parseExcelFile(file: File): Promise<ImportProductRow[]> {
     const sellingPriceStr = getValue(10)
     const diameterStr = getValue(11)
     const lengthStr = getValue(12)
-    const quantityStr = getValue(14)
+    const ahStr = getValue(16)
+    const ghStr = getValue(17)
+    const quantityStr = getValue(19)
 
     rows.push({
       rowIndex: rowNumber,
@@ -241,9 +248,14 @@ async function parseExcelFile(file: File): Promise<ImportProductRow[]> {
       selling_price: sellingPriceStr ? parseFloat(sellingPriceStr) : null,
       diameter: diameterStr ? parseFloat(diameterStr) : null,
       length: lengthStr ? parseFloat(lengthStr) : null,
-      lot_number: getValue(13),
+      volume: getValue(13),
+      weight: getValue(14),
+      dimension: getValue(15),
+      abutment_height: ahStr ? parseFloat(ahStr) : null,
+      gingival_height: ghStr ? parseFloat(ghStr) : null,
+      lot_number: getValue(18),
       quantity: quantityStr ? parseInt(quantityStr) : 0,
-      expiry_date: parseDateValue(row.getCell(15)),
+      expiry_date: parseDateValue(row.getCell(20)),
       errors: [],
     })
   })
@@ -413,7 +425,7 @@ export default function ProductImportCard() {
 
       if (field === "min_stock_level" || field === "quantity") {
         row[field] = parseInt(value as string) || 0
-      } else if (field === "cost_price" || field === "selling_price" || field === "diameter" || field === "length") {
+      } else if (field === "cost_price" || field === "selling_price" || field === "diameter" || field === "length" || field === "abutment_height" || field === "gingival_height") {
         row[field] = value ? parseFloat(value as string) : null
       } else if (field !== "rowIndex" && field !== "errors") {
         ;(row as Record<string, unknown>)[field] = value
