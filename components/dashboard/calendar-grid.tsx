@@ -37,7 +37,6 @@ export function CalendarGrid({
   onDateSelect,
   onPrevMonth,
   onNextMonth,
-  role,
 }: {
   cases: DashboardCase[]
   currentMonth: Date
@@ -47,13 +46,20 @@ export function CalendarGrid({
   onNextMonth: () => void
   role?: UserRole
 }) {
-  const isCs = role === "cs"
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
   // weekStartsOn: 1 = Monday
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 })
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
   const days = eachDayOfInterval({ start: calStart, end: calEnd })
+
+  // Count cases only in the current month for the legend
+  const monthCases = cases.filter((c) => {
+    if (!c.scheduled_date) return false
+    const d = new Date(c.scheduled_date)
+    return isSameMonth(d, currentMonth)
+  })
+  const activeCases = monthCases.filter((c) => c.case_status !== "completed" && c.case_status !== "cancelled")
 
   // Group cases by date string
   const casesByDate = new Map<string, DashboardCase[]>()
@@ -64,6 +70,12 @@ export function CalendarGrid({
     existing.push(c)
     casesByDate.set(key, existing)
   }
+
+  // Counts for legend
+  const countReady = activeCases.filter((c) => c.trafficLight === "green").length
+  const countPendingPrep = activeCases.filter((c) => c.case_status === "pending_preparation").length
+  const countPendingOrder = activeCases.filter((c) => c.case_status === "pending_order").length
+  const countCompleted = monthCases.filter((c) => c.case_status === "completed").length
 
   return (
     <div>
@@ -113,8 +125,19 @@ export function CalendarGrid({
         <div className="grid grid-cols-7 gap-1">
           {days.map((day) => {
             const dateStr = format(day, "yyyy-MM-dd")
-            const dayCases = casesByDate.get(dateStr) ?? []
             const inMonth = isSameMonth(day, currentMonth)
+
+            // Only show content for days in current month
+            if (!inMonth) {
+              return (
+                <div
+                  key={dateStr}
+                  className="relative flex flex-col items-center justify-center rounded-lg py-3 min-h-[3rem]"
+                />
+              )
+            }
+
+            const dayCases = casesByDate.get(dateStr) ?? []
             const selected = selectedDate && isSameDay(day, selectedDate)
             const today = isToday(day)
             const hasCases = dayCases.length > 0
@@ -126,26 +149,16 @@ export function CalendarGrid({
               new Set(dayCases.map((c) => c.trafficLight))
             ) as TrafficLight[]
 
-            // CS: count unconfirmed appointments
-            const pendingAppts = isCs
-              ? dayCases.filter(
-                  (c) =>
-                    c.appointment_status === "pending" &&
-                    !["completed", "cancelled"].includes(c.case_status)
-                ).length
-              : 0
-
             return (
               <button
                 key={dateStr}
                 onClick={() => onDateSelect(day)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center rounded-lg py-2.5 text-sm transition-all",
-                  "min-h-[2.75rem]",
-                  !inMonth && "text-muted-foreground/25",
-                  inMonth && !selected && "hover:bg-accent",
-                  inMonth && isWeekend && !selected && "bg-red-50/50 dark:bg-red-500/5",
-                  hasCases && inMonth && !selected && !isWeekend && "bg-primary/5 dark:bg-primary/10",
+                  "relative flex flex-col items-center justify-center rounded-lg py-3 transition-all",
+                  "min-h-[3rem]",
+                  !selected && "hover:bg-accent",
+                  isWeekend && !selected && "bg-red-50/50 dark:bg-red-500/5",
+                  hasCases && !selected && !isWeekend && "bg-primary/5 dark:bg-primary/10",
                   selected &&
                     "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20",
                   today && !selected && "font-bold"
@@ -153,52 +166,39 @@ export function CalendarGrid({
               >
                 <span
                   className={cn(
-                    "text-xs leading-none",
+                    "text-sm leading-none",
                     today &&
                       !selected &&
-                      "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold"
+                      "flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold"
                   )}
                 >
                   {format(day, "d")}
                 </span>
 
-                {/* Case indicators */}
-                <div className="mt-0.5 flex h-2 items-center gap-px">
-                  {isCs && hasCases ? (
-                    <>
-                      <span
-                        className={cn(
-                          "text-[7px] leading-none font-bold",
-                          selected
-                            ? "text-primary-foreground/70"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {dayCases.length}
-                      </span>
-                      {pendingAppts > 0 && (
-                        <span
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            selected
-                              ? "bg-primary-foreground/60"
-                              : "bg-amber-500"
-                          )}
-                        />
+                {/* Case count + dots */}
+                {hasCases && (
+                  <div className="mt-1 flex items-center gap-0.5">
+                    <span
+                      className={cn(
+                        "text-[9px] leading-none font-bold",
+                        selected
+                          ? "text-primary-foreground/70"
+                          : "text-muted-foreground"
                       )}
-                    </>
-                  ) : lights.length > 0 ? (
-                    lights.slice(0, 3).map((l) => (
+                    >
+                      {dayCases.length}
+                    </span>
+                    {lights.slice(0, 3).map((l) => (
                       <span
                         key={l}
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full",
+                          "h-2 w-2 rounded-full",
                           selected ? "bg-primary-foreground/60" : DOT_COLORS[l]
                         )}
                       />
-                    ))
-                  ) : null}
-                </div>
+                    ))}
+                  </div>
+                )}
               </button>
             )
           })}
@@ -206,17 +206,21 @@ export function CalendarGrid({
 
         {/* Legend */}
         <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 border-t pt-3">
-          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-red-500" /> รอสั่งของ
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="font-bold text-red-600 dark:text-red-400">{countPendingOrder}</span> รอสั่งของ
           </span>
-          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-yellow-500" /> รอจัดของ
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
+            <span className="font-bold text-yellow-600 dark:text-yellow-400">{countPendingPrep}</span> รอจัดของ
           </span>
-          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-green-500" /> พร้อม
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+            <span className="font-bold text-green-600 dark:text-green-400">{countReady}</span> พร้อม
           </span>
-          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-blue-500" /> เสร็จ
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+            <span className="font-bold text-blue-600 dark:text-blue-400">{countCompleted}</span> เสร็จ
           </span>
         </div>
       </div>
