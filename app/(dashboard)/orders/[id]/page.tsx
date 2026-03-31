@@ -70,9 +70,9 @@ export default async function PODetailPage({
         <div className="flex items-center gap-2">
           <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-sm font-medium">{String(supplier?.name ?? "-")}</span>
-          {supplier?.code && (
+          {supplier?.code ? (
             <span className="text-xs text-muted-foreground">({String(supplier.code)})</span>
-          )}
+          ) : null}
         </div>
 
         <Separator />
