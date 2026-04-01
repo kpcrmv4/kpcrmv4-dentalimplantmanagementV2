@@ -11,12 +11,17 @@ import {
   GripVertical,
   Loader2,
   MessageCircle,
+  Truck,
+  Package,
+  ShoppingCart,
+  AlertTriangle,
+  Monitor,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -31,7 +36,65 @@ import {
   updateNotificationSetting,
   updateLineSettings,
   getLineSettings,
+  updateSupplierLineSettings,
 } from "@/lib/actions/settings"
+
+// ─── Constants ──────────────────────────────────────────────────────
+
+const ALL_ROLES = [
+  { key: "admin", label: "Admin" },
+  { key: "dentist", label: "ทันตแพทย์" },
+  { key: "stock_staff", label: "สต๊อก" },
+  { key: "assistant", label: "ผู้ช่วย" },
+  { key: "cs", label: "CS" },
+] as const
+
+type NotifSetting = Record<string, unknown>
+
+// Category definitions for grouping notification events
+const CATEGORIES: Array<{
+  key: string
+  label: string
+  description: string
+  icon: React.ReactNode
+  eventTypes: string[]
+}> = [
+  {
+    key: "case",
+    label: "เคส & นัดหมาย",
+    description: "แจ้งเตือนเกี่ยวกับเคสใหม่ วัสดุพร้อม เลื่อนนัด",
+    icon: <Users className="h-4 w-4" />,
+    eventTypes: ["case_assigned", "material_prepared", "material_lock_request"],
+  },
+  {
+    key: "stock",
+    label: "สต๊อก & วัสดุ",
+    description: "แจ้งเตือนสินค้าหมด ใกล้หมด ใกล้หมดอายุ",
+    icon: <Package className="h-4 w-4" />,
+    eventTypes: ["low_stock", "out_of_stock", "expiring_soon"],
+  },
+  {
+    key: "po",
+    label: "ใบสั่งซื้อ",
+    description: "แจ้งเตือนเมื่อสร้าง/อนุมัติใบสั่งซื้อ",
+    icon: <ShoppingCart className="h-4 w-4" />,
+    eventTypes: ["po_created", "po_approved"],
+  },
+  {
+    key: "emergency",
+    label: "เคสด่วน",
+    description: "แจ้งเตือนเคสที่นัดภายใน 48 ชม. แต่วัสดุยังไม่พร้อม",
+    icon: <AlertTriangle className="h-4 w-4" />,
+    eventTypes: ["emergency_case"],
+  },
+  {
+    key: "system",
+    label: "ระบบ",
+    description: "การแจ้งเตือนระบบทั่วไป",
+    icon: <Monitor className="h-4 w-4" />,
+    eventTypes: ["system"],
+  },
+]
 
 // ─── Editable List ──────────────────────────────────────────────────
 
@@ -178,6 +241,164 @@ function EditableListSection({
   )
 }
 
+// ─── Notification Event Row ─────────────────────────────────────────
+
+function NotificationEventRow({
+  setting,
+  onUpdate,
+}: {
+  setting: NotifSetting
+  onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
+}) {
+  const [isPending, startTransition] = useTransition()
+  const targetRoles = (setting.target_roles as string[]) ?? []
+
+  function toggleRole(role: string) {
+    const newRoles = targetRoles.includes(role)
+      ? targetRoles.filter((r) => r !== role)
+      : [...targetRoles, role]
+    startTransition(async () => {
+      await onUpdate(setting.id as string, { target_roles: newRoles })
+    })
+  }
+
+  function toggleChannel(channel: string, value: boolean) {
+    startTransition(async () => {
+      await onUpdate(setting.id as string, { [channel]: value })
+    })
+  }
+
+  const isActive = setting.is_active as boolean
+
+  return (
+    <div className={`rounded-lg border p-3 space-y-3 transition-colors ${!isActive ? "opacity-50" : "hover:bg-muted/30"}`}>
+      {/* Row 1: Event info + active toggle */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">{setting.event_label as string}</p>
+            <Badge variant={isActive ? "default" : "secondary"} className="text-[10px] shrink-0">
+              {isActive ? "เปิด" : "ปิด"}
+            </Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+            {setting.description as string}
+          </p>
+        </div>
+        <Switch
+          checked={isActive}
+          disabled={isPending}
+          onCheckedChange={(val) => {
+            startTransition(async () => {
+              await onUpdate(setting.id as string, { is_active: val })
+            })
+          }}
+        />
+      </div>
+
+      {isActive && (
+        <>
+          {/* Row 2: Channels */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-[11px] font-medium text-muted-foreground w-16 shrink-0">ช่องทาง:</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Switch
+                className="scale-75"
+                checked={setting.default_in_app as boolean}
+                disabled={isPending}
+                onCheckedChange={(val) => toggleChannel("default_in_app", val)}
+              />
+              <span className="text-xs">In-App</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Switch
+                className="scale-75"
+                checked={setting.default_line as boolean}
+                disabled={isPending}
+                onCheckedChange={(val) => toggleChannel("default_line", val)}
+              />
+              <span className="text-xs">LINE</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Switch
+                className="scale-75"
+                checked={setting.default_discord as boolean}
+                disabled={isPending}
+                onCheckedChange={(val) => toggleChannel("default_discord", val)}
+              />
+              <span className="text-xs">Discord</span>
+            </label>
+          </div>
+
+          {/* Row 3: Target Roles */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-[11px] font-medium text-muted-foreground w-16 shrink-0">ส่งถึง:</span>
+            {ALL_ROLES.map((role) => {
+              const isSelected = targetRoles.includes(role.key)
+              return (
+                <button
+                  key={role.key}
+                  disabled={isPending}
+                  onClick={() => toggleRole(role.key)}
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted/50 text-muted-foreground border-transparent hover:border-border"
+                  }`}
+                >
+                  {role.label}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {isPending && (
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>กำลังบันทึก...</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Notification Category Section ──────────────────────────────────
+
+function NotificationCategorySection({
+  category,
+  settings,
+  onUpdate,
+}: {
+  category: (typeof CATEGORIES)[number]
+  settings: NotifSetting[]
+  onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
+}) {
+  const categorySettings = settings.filter((s) =>
+    category.eventTypes.includes(s.event_type as string)
+  )
+
+  if (categorySettings.length === 0) return null
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          {category.icon}
+          {category.label}
+        </CardTitle>
+        <p className="text-[11px] text-muted-foreground">{category.description}</p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {categorySettings.map((ns) => (
+          <NotificationEventRow key={ns.id as string} setting={ns} onUpdate={onUpdate} />
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
 // ─── Settings Page (Admin only) ─────────────────────────────────────
 
 type ProcedureType = { id: string; name: string; sort_order: number; is_active: boolean }
@@ -195,13 +416,17 @@ export default function SettingsPage() {
   // Admin: System
   const [procedureTypes, setProcedureTypes] = useState<ProcedureType[]>([])
   const [systemLoading, setSystemLoading] = useState(true)
-  const [notifSettings, setNotifSettings] = useState<Array<Record<string, unknown>>>([])
+  const [notifSettings, setNotifSettings] = useState<Array<NotifSetting>>([])
 
   // Admin: LINE
   const [lineToken, setLineToken] = useState("")
   const [lineEnabled, setLineEnabled] = useState(false)
   const [savingLine, setSavingLine] = useState(false)
   const [lineMessage, setLineMessage] = useState<string | null>(null)
+
+  // Admin: Supplier LINE
+  const [supplierBorrowEnabled, setSupplierBorrowEnabled] = useState(true)
+  const [supplierPurchaseEnabled, setSupplierPurchaseEnabled] = useState(true)
 
   useEffect(() => {
     async function load() {
@@ -218,7 +443,6 @@ export default function SettingsPage() {
         setRole(userRole)
 
         if (userRole !== "admin") {
-          // Non-admin users shouldn't access this page, redirect to profile
           router.replace("/profile")
           return
         }
@@ -237,7 +461,9 @@ export default function SettingsPage() {
           setNotifSettings(ns)
           if (lineCfg) {
             setLineToken(lineCfg.line_channel_access_token ?? "")
-setLineEnabled(lineCfg.line_notify_enabled ?? false)
+            setLineEnabled(lineCfg.line_notify_enabled ?? false)
+            setSupplierBorrowEnabled(lineCfg.supplier_line_borrow_enabled ?? true)
+            setSupplierPurchaseEnabled(lineCfg.supplier_line_purchase_enabled ?? true)
           }
         } catch {
           // ignore
@@ -249,6 +475,11 @@ setLineEnabled(lineCfg.line_notify_enabled ?? false)
     }
     load()
   }, [router])
+
+  async function reloadNotifSettings() {
+    const ns = await getNotificationSettings()
+    setNotifSettings(ns)
+  }
 
   async function reloadSystemSettings() {
     const [pt, ns] = await Promise.all([
@@ -285,6 +516,26 @@ setLineEnabled(lineCfg.line_notify_enabled ?? false)
     } finally {
       setSavingLine(false)
     }
+  }
+
+  async function handleUpdateNotif(id: string, data: Record<string, unknown>) {
+    await updateNotificationSetting(id, data as {
+      default_in_app?: boolean
+      default_line?: boolean
+      default_discord?: boolean
+      is_active?: boolean
+      target_roles?: string[]
+    })
+    await reloadNotifSettings()
+  }
+
+  async function handleSupplierLineToggle(
+    field: "supplier_line_borrow_enabled" | "supplier_line_purchase_enabled",
+    value: boolean
+  ) {
+    if (field === "supplier_line_borrow_enabled") setSupplierBorrowEnabled(value)
+    else setSupplierPurchaseEnabled(value)
+    await updateSupplierLineSettings({ [field]: value })
   }
 
   if (loading || !role) {
@@ -425,74 +676,81 @@ setLineEnabled(lineCfg.line_notify_enabled ?? false)
 
         {/* Tab: แจ้งเตือน */}
         <TabsContent value="notifications">
-          <div className="mx-auto max-w-3xl">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Bell className="h-4 w-4" />
-                  ตั้งค่าการแจ้งเตือน
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">กำหนดค่าเริ่มต้นว่าจะแจ้งเตือนผ่านช่องทางไหนบ้าง</p>
-              </CardHeader>
-              <CardContent>
-                {systemLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : notifSettings.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">ยังไม่มีการตั้งค่าแจ้งเตือน</p>
-                ) : (
-                  <div className="space-y-2">
-                    {/* Table header */}
-                    <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      <span>เหตุการณ์</span>
-                      <span className="text-center">In-App</span>
-                      <span className="text-center">LINE</span>
-                      <span className="text-center">Discord</span>
-                    </div>
-                    <Separator />
-                    {notifSettings.map((ns) => (
-                      <div
-                        key={ns.id as string}
-                        className="grid grid-cols-[1fr_60px_60px_60px] gap-2 items-center rounded-lg border px-3 py-2.5 hover:bg-muted/30 transition-colors"
-                      >
+          <div className="mx-auto max-w-3xl space-y-4">
+            {/* Info banner */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20 px-4 py-3">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                ตั้งค่าแจ้งเตือนแต่ละเหตุการณ์: เลือกช่องทาง (In-App / LINE / Discord) และ Role ที่จะได้รับแจ้งเตือน
+              </p>
+            </div>
+
+            {systemLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                {/* Internal notification categories */}
+                {CATEGORIES.map((category) => (
+                  <NotificationCategorySection
+                    key={category.key}
+                    category={category}
+                    settings={notifSettings}
+                    onUpdate={handleUpdateNotif}
+                  />
+                ))}
+
+                {/* Supplier Direct LINE */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Truck className="h-4 w-4" />
+                      LINE ถึง Supplier (Direct Message)
+                    </CardTitle>
+                    <p className="text-[11px] text-muted-foreground">
+                      ส่งข้อความ LINE ตรงถึง Supplier (ใช้ LINE User ID ของ Supplier)
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {/* Borrow */}
+                    <div className="rounded-lg border p-3 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-xs font-medium">{ns.event_label as string}</p>
-                          <p className="text-[10px] text-muted-foreground leading-relaxed">{ns.description as string}</p>
+                          <p className="text-sm font-medium">ขอยืมวัสดุ</p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                            ส่ง LINE แจ้ง Supplier ทันทีเมื่อสร้างใบยืมวัสดุ พร้อมรายละเอียดเคส/รายการสินค้า
+                          </p>
                         </div>
-                        <div className="flex justify-center">
-                          <Switch
-                            checked={ns.default_in_app as boolean}
-                            onCheckedChange={async (val: boolean) => {
-                              await updateNotificationSetting(ns.id as string, { default_in_app: val })
-                              await reloadSystemSettings()
-                            }}
-                          />
-                        </div>
-                        <div className="flex justify-center">
-                          <Switch
-                            checked={ns.default_line as boolean}
-                            onCheckedChange={async (val: boolean) => {
-                              await updateNotificationSetting(ns.id as string, { default_line: val })
-                              await reloadSystemSettings()
-                            }}
-                          />
-                        </div>
-                        <div className="flex justify-center">
-                          <Switch
-                            checked={ns.default_discord as boolean}
-                            onCheckedChange={async (val: boolean) => {
-                              await updateNotificationSetting(ns.id as string, { default_discord: val })
-                              await reloadSystemSettings()
-                            }}
-                          />
-                        </div>
+                        <Switch
+                          checked={supplierBorrowEnabled}
+                          onCheckedChange={(val) => handleSupplierLineToggle("supplier_line_borrow_enabled", val)}
+                        />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+
+                    {/* Purchase approved */}
+                    <div className="rounded-lg border p-3 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">อนุมัติใบสั่งซื้อ</p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                            ส่ง LINE แจ้ง Supplier เมื่อ Admin อนุมัติใบสั่งซื้อ พร้อมรายละเอียดสินค้าที่สั่ง
+                          </p>
+                        </div>
+                        <Switch
+                          checked={supplierPurchaseEnabled}
+                          onCheckedChange={(val) => handleSupplierLineToggle("supplier_line_purchase_enabled", val)}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-muted-foreground pt-1">
+                      * Supplier ต้องมี LINE User ID ในข้อมูล Supplier จึงจะส่ง LINE ได้
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </TabsContent>
       </Tabs>

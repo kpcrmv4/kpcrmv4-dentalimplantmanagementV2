@@ -132,7 +132,16 @@ export async function createSupplierOrder(params: {
   if (itemsError) throw itemsError
 
   // Send LINE to supplier (for borrow: immediately, for purchase: after approval)
-  if (params.orderType === "borrow" && supplier.line_id) {
+  // Check supplier LINE borrow setting
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: supplierLineSettings } = await (supabase as any)
+    .from("app_settings")
+    .select("supplier_line_borrow_enabled")
+    .limit(1)
+    .single()
+  const borrowLineEnabled = supplierLineSettings?.supplier_line_borrow_enabled ?? true
+
+  if (params.orderType === "borrow" && supplier.line_id && borrowLineEnabled) {
     const patient = caseData?.patients as unknown as { full_name: string; hn: string } | null
     const dentist = caseData?.users as unknown as { full_name: string } | null
 
@@ -224,9 +233,17 @@ export async function approveSupplierOrder(orderId: string) {
 
   if (error) throw error
 
-  // Send LINE to supplier
+  // Send LINE to supplier (check setting first)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: purchaseLineSettings } = await (supabase as any)
+    .from("app_settings")
+    .select("supplier_line_purchase_enabled")
+    .limit(1)
+    .single()
+  const purchaseLineEnabled = purchaseLineSettings?.supplier_line_purchase_enabled ?? true
+
   const supplier = order.suppliers as unknown as { name: string; line_id: string | null } | null
-  if (supplier?.line_id) {
+  if (supplier?.line_id && purchaseLineEnabled) {
     // Get items and case info
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: items } = await (supabase as any)

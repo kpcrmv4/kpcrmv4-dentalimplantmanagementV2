@@ -917,7 +917,7 @@ export async function revalidateCaseReadyStatus(caseId: string) {
           title: "กรุณาเลื่อนนัด — วัสดุไม่พร้อม",
           message: `เคส ${caseNumber} (${patientName})${dateInfo} มีการเพิ่มวัสดุที่ไม่มีในสต๊อก ต้องสั่งของเพิ่ม กรุณาเลื่อนนัดลูกค้า`,
           data: { case_id: caseId, case_number: caseNumber },
-          overrides: { in_app: true, line: true },
+          // Respects notification_settings defaults for in_app/line/discord
         }).catch(() => {})
       }
     }

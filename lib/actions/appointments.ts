@@ -43,7 +43,7 @@ async function notifyCaseStakeholders(
       title,
       message,
       data: { case_id: caseId, case_number: caseData.case_number },
-      overrides: { in_app: true, line: true },
+      // Respects notification_settings defaults for in_app/line/discord
     }).catch(() => {})
   }
 }
