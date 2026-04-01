@@ -345,9 +345,31 @@ export async function getLineSettings() {
   const supabase = await db()
   const { data } = await supabase
     .from("app_settings")
-    .select("line_channel_access_token, line_channel_secret, line_notify_enabled")
+    .select("line_channel_access_token, line_channel_secret, line_notify_enabled, supplier_line_borrow_enabled, supplier_line_purchase_enabled")
     .limit(1)
     .single()
 
   return data
+}
+
+// ─── Supplier LINE Settings ────────────────────────────────────────
+
+export async function updateSupplierLineSettings(data: {
+  supplier_line_borrow_enabled?: boolean
+  supplier_line_purchase_enabled?: boolean
+}) {
+  const supabase = await db()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  const { error } = await supabase
+    .from("app_settings")
+    .update({
+      ...data,
+      updated_at: new Date().toISOString(),
+    })
+    .not("id", "is", null)
+
+  if (error) throw error
+  revalidatePath("/settings")
 }
