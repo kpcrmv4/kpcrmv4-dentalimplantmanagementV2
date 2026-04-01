@@ -298,35 +298,35 @@ function NotificationEventRow({
 
       {isActive && (
         <>
-          {/* Row 2: Channels */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-[11px] font-medium text-muted-foreground w-16 shrink-0">ช่องทาง:</span>
-            <label className="flex items-center gap-1.5 cursor-pointer">
+          {/* Row 2: Channels — always single row */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <span className="text-[11px] font-medium text-muted-foreground shrink-0">ช่องทาง:</span>
+            <label className="flex items-center gap-1 cursor-pointer shrink-0">
               <Switch
-                className="scale-75"
+                className="scale-[0.65] sm:scale-75"
                 checked={setting.default_in_app as boolean}
                 disabled={isPending}
                 onCheckedChange={(val) => toggleChannel("default_in_app", val)}
               />
-              <span className="text-xs">In-App</span>
+              <span className="text-[11px] sm:text-xs">In-App</span>
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
+            <label className="flex items-center gap-1 cursor-pointer shrink-0">
               <Switch
-                className="scale-75"
+                className="scale-[0.65] sm:scale-75"
                 checked={setting.default_line as boolean}
                 disabled={isPending}
                 onCheckedChange={(val) => toggleChannel("default_line", val)}
               />
-              <span className="text-xs">LINE</span>
+              <span className="text-[11px] sm:text-xs">LINE</span>
             </label>
-            <label className="flex items-center gap-1.5 cursor-pointer">
+            <label className="flex items-center gap-1 cursor-pointer shrink-0">
               <Switch
-                className="scale-75"
+                className="scale-[0.65] sm:scale-75"
                 checked={setting.default_discord as boolean}
                 disabled={isPending}
                 onCheckedChange={(val) => toggleChannel("default_discord", val)}
               />
-              <span className="text-xs">Discord</span>
+              <span className="text-[11px] sm:text-xs">Discord</span>
             </label>
           </div>
 
