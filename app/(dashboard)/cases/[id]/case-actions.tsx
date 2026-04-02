@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   AlertCircle,
@@ -13,6 +13,8 @@ import {
   ClipboardCheck,
   Loader2,
   Package,
+  Plus,
+  Search,
   ShieldCheck,
   X,
 } from "lucide-react"
@@ -28,8 +30,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { assignLot, cancelCase, markCaseReady, closeCaseWithUsage } from "@/lib/actions/cases"
+import { assignLot, cancelCase, markCaseReady, closeCaseWithUsage, addAndConsumeOnSite } from "@/lib/actions/cases"
 import { suggestLotFEFO } from "@/lib/actions/inventory"
+import { getProducts } from "@/lib/actions/products"
 import { PhotoUpload } from "@/components/photo-upload"
 
 interface Reservation {
@@ -99,6 +102,22 @@ export function CaseActions({
 
   // === Cancel dialog ===
   const [cancelDialog, setCancelDialog] = useState(false)
+
+  // === Add on-site material dialog ===
+  type AddOnSiteStep = "search" | "lot" | "confirm"
+  const [addOnSiteDialog, setAddOnSiteDialog] = useState(false)
+  const [addOnSiteStep, setAddOnSiteStep] = useState<AddOnSiteStep>("search")
+  const [addSearchQuery, setAddSearchQuery] = useState("")
+  const [addSearchResults, setAddSearchResults] = useState<Array<{ id: string; name: string; brand: string | null; ref: string; unit: string }>>([])
+  const [addSearchLoading, setAddSearchLoading] = useState(false)
+  const [addSelectedProduct, setAddSelectedProduct] = useState<{ id: string; name: string; brand: string | null; ref: string; unit: string } | null>(null)
+  const [addLots, setAddLots] = useState<LotOption[]>([])
+  const [addLotsLoading, setAddLotsLoading] = useState(false)
+  const [addSelectedLot, setAddSelectedLot] = useState("")
+  const [addQty, setAddQty] = useState("1")
+  const [addOnSiteError, setAddOnSiteError] = useState<string | null>(null)
+  const [addOnSiteLoading, setAddOnSiteLoading] = useState(false)
+  const addSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const reservedItems = reservations.filter((r) => r.status === "reserved")
   const preparedItems = reservations.filter((r) => r.status === "prepared")
@@ -243,6 +262,69 @@ export function CaseActions({
     })
   }
 
+  // === Add On-Site Material Handlers ===
+  function openAddOnSite() {
+    setAddOnSiteDialog(true)
+    setAddOnSiteStep("search")
+    setAddSearchQuery("")
+    setAddSearchResults([])
+    setAddSelectedProduct(null)
+    setAddLots([])
+    setAddSelectedLot("")
+    setAddQty("1")
+    setAddOnSiteError(null)
+  }
+
+  const handleAddSearch = useCallback((query: string) => {
+    setAddSearchQuery(query)
+    if (addSearchTimer.current) clearTimeout(addSearchTimer.current)
+    if (query.length < 2) { setAddSearchResults([]); return }
+    addSearchTimer.current = setTimeout(async () => {
+      setAddSearchLoading(true)
+      try {
+        const products = await getProducts({ search: query })
+        setAddSearchResults(products.map((p) => ({
+          id: p.id, name: p.name, brand: p.brand, ref: p.ref, unit: p.unit,
+        })))
+      } catch { setAddSearchResults([]) }
+      finally { setAddSearchLoading(false) }
+    }, 300)
+  }, [])
+
+  async function handleAddSelectProduct(product: typeof addSelectedProduct) {
+    setAddSelectedProduct(product)
+    if (!product) return
+    setAddOnSiteStep("lot")
+    setAddLotsLoading(true)
+    try {
+      const data = await suggestLotFEFO(product.id, 1)
+      setAddLots(data)
+    } catch { setAddLots([]) }
+    finally { setAddLotsLoading(false) }
+  }
+
+  async function handleConfirmAddOnSite() {
+    if (!addSelectedLot) return
+    const qty = parseInt(addQty, 10)
+    if (isNaN(qty) || qty <= 0) return
+
+    setAddOnSiteLoading(true)
+    setAddOnSiteError(null)
+    try {
+      const result = await addAndConsumeOnSite(caseId, addSelectedLot, qty)
+      if (!result.success) {
+        setAddOnSiteError(result.error ?? "เกิดข้อผิดพลาด")
+        return
+      }
+      setAddOnSiteDialog(false)
+      router.refresh()
+    } catch (err) {
+      setAddOnSiteError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
+    } finally {
+      setAddOnSiteLoading(false)
+    }
+  }
+
   // Build close case summary data
   function buildCloseSummary() {
     return recordableItems.map((r) => {
@@ -379,6 +461,14 @@ export function CaseActions({
             })}
           </div>
 
+          {/* ─── Add on-site material button ─── */}
+          <button
+            onClick={openAddOnSite}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-500/40 p-2.5 mt-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+          >
+            <Plus className="h-4 w-4" /> เพิ่มวัสดุที่ใช้
+          </button>
+
           {/* ─── Pending LOT warning ─── */}
           {hasPendingLot && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-500/10 p-3 mt-3">
@@ -437,6 +527,16 @@ export function CaseActions({
               </div>
             ))}
           </div>
+
+          {/* Add on-site material */}
+          {caseStatus !== "completed" && (
+            <button
+              onClick={openAddOnSite}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 p-2.5 mt-2 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            >
+              <Plus className="h-4 w-4" /> เพิ่มวัสดุที่ใช้
+            </button>
+          )}
 
           {/* Close case button if all consumed but case not yet completed */}
           {reservedItems.length === 0 && preparedItems.length === 0 && caseStatus !== "completed" && (
@@ -738,6 +838,173 @@ export function CaseActions({
               {isPending ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}
             </Button>
             <Button variant="outline" className="w-full" onClick={() => setCancelDialog(false)}>ไม่ยกเลิก</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add On-Site Material Dialog ── */}
+      <Dialog open={addOnSiteDialog} onOpenChange={(open: boolean) => { if (!open) setAddOnSiteDialog(false) }}>
+        <DialogContent className="max-w-[calc(100vw-2rem)] rounded-xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {addOnSiteStep === "search" && "เพิ่มวัสดุที่ใช้"}
+              {addOnSiteStep === "lot" && `เลือก LOT: ${addSelectedProduct?.name ?? ""}`}
+              {addOnSiteStep === "confirm" && "ยืนยันการบันทึก"}
+            </DialogTitle>
+            <DialogDescription>
+              {addOnSiteStep === "search" && "ค้นหาวัสดุที่หยิบมาใช้จริงหน้างาน"}
+              {addOnSiteStep === "lot" && `${addSelectedProduct?.brand ?? ""} · REF: ${addSelectedProduct?.ref ?? ""}`}
+              {addOnSiteStep === "confirm" && "ตรวจสอบข้อมูลก่อนบันทึก — ระบบจะตัดสต๊อกทันที"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {addOnSiteError && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+              <p className="text-xs text-destructive">{addOnSiteError}</p>
+            </div>
+          )}
+
+          {/* Step 1: Search */}
+          {addOnSiteStep === "search" && (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="ค้นหาชื่อ, REF, แบรนด์..."
+                  className="pl-8 h-10"
+                  value={addSearchQuery}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleAddSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {addSearchLoading && (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {!addSearchLoading && addSearchQuery.length >= 2 && addSearchResults.length === 0 && (
+                  <p className="py-4 text-center text-sm text-muted-foreground">ไม่พบสินค้า</p>
+                )}
+                {addSearchResults.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleAddSelectProduct(p)}
+                    className="flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-sm hover:bg-muted transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-tight">{p.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{p.brand ?? ""} · REF: {p.ref}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground ml-2" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Select LOT */}
+          {addOnSiteStep === "lot" && (
+            <div className="space-y-3">
+              {addLotsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : addLots.length === 0 ? (
+                <p className="py-4 text-center text-sm text-destructive">ไม่มี LOT ที่พร้อมใช้</p>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                  {addLots.map((lot: LotOption) => (
+                    <button
+                      key={lot.id}
+                      type="button"
+                      onClick={() => setAddSelectedLot(lot.id)}
+                      className={`flex items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors ${
+                        addSelectedLot === lot.id
+                          ? "border-primary bg-primary/10 ring-1 ring-primary"
+                          : "border-border hover:bg-muted"
+                      }`}
+                    >
+                      <div>
+                        <div className="font-medium">{lot.lot_number || "(ไม่มีเลข LOT)"}</div>
+                        <div className="text-muted-foreground text-xs">
+                          เหลือ {lot.available} ชิ้น
+                          {lot.expiry_date ? ` · Exp: ${lot.expiry_date}` : ""}
+                        </div>
+                      </div>
+                      {addSelectedLot === lot.id && <Check className="h-4 w-4 text-primary shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">จำนวนที่ใช้</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={addQty}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddQty(e.target.value)}
+                  className="h-10 text-center"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Confirm */}
+          {addOnSiteStep === "confirm" && (
+            <div className="rounded-lg border p-3 space-y-1 bg-green-50 dark:bg-green-500/10 border-green-300">
+              <p className="text-sm font-medium">{addSelectedProduct?.name}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {addSelectedProduct?.brand} · REF: {addSelectedProduct?.ref}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                LOT: {addLots.find((l) => l.id === addSelectedLot)?.lot_number || "(ไม่มีเลข)"}
+              </p>
+              <p className="text-sm font-medium text-green-700 dark:text-green-400 mt-1">
+                ใช้จริง: {addQty} {addSelectedProduct?.unit ?? "ชิ้น"}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            {addOnSiteStep === "lot" && (
+              <>
+                <Button
+                  className="w-full h-11"
+                  disabled={!addSelectedLot || !addQty || parseInt(addQty, 10) <= 0}
+                  onClick={() => setAddOnSiteStep("confirm")}
+                >
+                  ถัดไป
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => { setAddOnSiteStep("search"); setAddSelectedProduct(null) }}>
+                  ย้อนกลับ
+                </Button>
+              </>
+            )}
+            {addOnSiteStep === "confirm" && (
+              <>
+                <Button
+                  className="w-full h-11 bg-green-600 hover:bg-green-700 text-white"
+                  disabled={addOnSiteLoading}
+                  onClick={handleConfirmAddOnSite}
+                >
+                  {addOnSiteLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> กำลังบันทึก...</>
+                  ) : (
+                    <><CheckCircle2 className="mr-2 h-4 w-4" /> บันทึกการใช้วัสดุ</>
+                  )}
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setAddOnSiteStep("lot")} disabled={addOnSiteLoading}>
+                  ย้อนกลับ
+                </Button>
+              </>
+            )}
+            {addOnSiteStep === "search" && (
+              <Button variant="outline" className="w-full" onClick={() => setAddOnSiteDialog(false)}>ปิด</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

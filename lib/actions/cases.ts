@@ -561,10 +561,95 @@ export async function returnReservation(reservationId: string) {
 }
 
 /**
- * Add a new material to an existing case (ready/pending_preparation).
- * Checks stock and tries to auto-assign LOT via FEFO.
- * Returns { hasStock, reservationId }.
+ * Add a material and immediately record it as consumed (used on-site).
+ * For when assistant picks a different LOT than what was prepared,
+ * or uses an unplanned material during a procedure.
+ * Creates reservation as "consumed" directly — trigger deducts inventory.
  */
+export async function addAndConsumeOnSite(
+  caseId: string,
+  inventoryId: string,
+  quantityUsed: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Unauthorized" }
+
+    // Validate case
+    const { data: caseData } = await supabase
+      .from("cases")
+      .select("case_status")
+      .eq("id", caseId)
+      .single()
+
+    if (!caseData) return { success: false, error: "ไม่พบเคส" }
+    if (["completed", "cancelled"].includes(caseData.case_status)) {
+      return { success: false, error: "ไม่สามารถเพิ่มวัสดุในเคสที่ปิดแล้ว" }
+    }
+
+    // Get inventory item details
+    const { data: inv } = await supabase
+      .from("inventory")
+      .select("id, product_id, quantity, reserved_quantity")
+      .eq("id", inventoryId)
+      .single()
+
+    if (!inv) return { success: false, error: "ไม่พบรายการสต็อก" }
+
+    const available = inv.quantity - inv.reserved_quantity
+    if (available < quantityUsed) {
+      return { success: false, error: `สต็อกไม่พอ (เหลือ ${available} ชิ้น)` }
+    }
+
+    // The inventory trigger only fires on UPDATE, not INSERT.
+    // Step 1: Insert as "prepared" and manually reserve inventory
+    const { data: newRes, error: insertErr } = await supabase
+      .from("case_reservations")
+      .insert({
+        case_id: caseId,
+        product_id: inv.product_id,
+        inventory_id: inventoryId,
+        quantity_reserved: quantityUsed,
+        status: "prepared" as ReservationStatus,
+        reserved_by: user.id,
+        reserved_at: new Date().toISOString(),
+        prepared_by: user.id,
+        prepared_at: new Date().toISOString(),
+        lot_specified: true,
+      })
+      .select("id")
+      .single()
+
+    if (insertErr || !newRes) return { success: false, error: insertErr?.message ?? "สร้างรายการไม่สำเร็จ" }
+
+    // Manually add reserved_quantity (INSERT doesn't trigger status change)
+    const { error: reserveErr } = await supabase
+      .from("inventory")
+      .update({ reserved_quantity: inv.reserved_quantity + quantityUsed })
+      .eq("id", inventoryId)
+
+    if (reserveErr) return { success: false, error: reserveErr.message }
+
+    // Step 2: Update to "consumed" (trigger deducts quantity + releases reserved_quantity)
+    const { error: consumeErr } = await supabase
+      .from("case_reservations")
+      .update({
+        quantity_used: quantityUsed,
+        status: "consumed" as ReservationStatus,
+      })
+      .eq("id", newRes.id)
+
+    if (consumeErr) return { success: false, error: consumeErr.message }
+
+    revalidatePath("/cases")
+    revalidatePath(`/cases/${caseId}`)
+    revalidatePath("/inventory")
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "เกิดข้อผิดพลาด" }
+  }
+}
 /**
  * Batch save materials for a case (draft mode).
  * - Creates new reservations for added items
