@@ -180,6 +180,7 @@ export default async function CaseDetailPage({
             productRef: String(product?.ref ?? ""),
             productUnit: String(product?.unit ?? "ชิ้น"),
             quantityReserved: Number(r.quantity_reserved),
+            quantityUsed: r.quantity_used != null ? Number(r.quantity_used) : null,
             lotNumber: inventory ? String(inventory.lot_number) : null,
             expiryDate: inventory?.expiry_date ? String(inventory.expiry_date) : null,
           }

@@ -46,6 +46,7 @@ interface ReservationItem {
   productRef: string
   productUnit: string
   quantityReserved: number
+  quantityUsed: number | null
   lotNumber: string | null
   expiryDate: string | null
 }
@@ -116,7 +117,10 @@ export function CaseMaterialsEditor({
   const [allFilteredProducts, setAllFilteredProducts] = useState<ProductOption[]>([])
 
   const canEdit = ["ready", "pending_preparation", "pending_order"].includes(caseStatus)
-  const activeReservations = reservations.filter((r) => !["returned", "consumed"].includes(r.status))
+  const isClosed = ["completed", "cancelled"].includes(caseStatus)
+  const activeReservations = isClosed
+    ? reservations // Show all reservations for completed/cancelled cases (history)
+    : reservations.filter((r) => !["returned", "consumed"].includes(r.status))
 
   // Items currently shown = existing active reservations (minus removed) + draft items
   const displayedExisting = activeReservations.filter((r) => !removedIds.includes(r.id))
@@ -349,7 +353,17 @@ export function CaseMaterialsEditor({
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {r.productBrand} · REF: {r.productRef}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">จำนวน: {r.quantityReserved} {r.productUnit}</p>
+                    {r.status === "consumed" && r.quantityUsed != null ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        จอง: {r.quantityReserved} → ใช้จริง: {r.quantityUsed} {r.productUnit}
+                      </p>
+                    ) : r.status === "returned" ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        จำนวน: {r.quantityReserved} {r.productUnit} (คืนคลัง)
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">จำนวน: {r.quantityReserved} {r.productUnit}</p>
+                    )}
                     {r.lotNumber && (
                       <p className="text-[11px] text-muted-foreground">
                         LOT: {r.lotNumber}{r.expiryDate ? ` · Exp: ${formatDate(r.expiryDate)}` : ""}

@@ -185,7 +185,7 @@ export async function markCaseReady(caseId: string) {
   // Verify case exists and is in the correct status
   const { data: caseData } = await supabase
     .from("cases")
-    .select("case_status")
+    .select("case_status, case_number")
     .eq("id", caseId)
     .single()
 
@@ -233,7 +233,7 @@ export async function markCaseReady(caseId: string) {
   smartNotify({
     type: "material_prepared",
     title: "วัสดุพร้อมแล้ว",
-    message: `เคส ${caseId} วัสดุถูกจัดเตรียมเรียบร้อยแล้ว`,
+    message: `เคส ${caseData.case_number} วัสดุถูกจัดเตรียมเรียบร้อยแล้ว`,
     data: { case_id: caseId },
   }).catch(() => {})
 
@@ -451,6 +451,18 @@ export async function closeCaseWithUsage(
   if (!caseData) throw new Error("ไม่พบเคส")
   if (["completed", "cancelled"].includes(caseData.case_status)) {
     throw new Error("เคสนี้ปิดแล้ว")
+  }
+
+  // Block if there are still reserved items (no LOT assigned)
+  const { data: pendingLotItems } = await supabase
+    .from("case_reservations")
+    .select("id, product_id, products(name)")
+    .eq("case_id", caseId)
+    .eq("status", "reserved")
+
+  if (pendingLotItems && pendingLotItems.length > 0) {
+    const names = pendingLotItems.map((r) => (r.products as Record<string, unknown>)?.name ?? "").filter(Boolean).join(", ")
+    throw new Error(`ยังมีวัสดุที่ไม่ได้จัด LOT: ${names} — กรุณาจัด LOT หรือลบออกก่อนปิดเคส`)
   }
 
   // Process each usage record

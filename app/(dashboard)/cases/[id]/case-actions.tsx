@@ -114,6 +114,8 @@ export function CaseActions({
 
   // All recordable items have been recorded locally
   const allRecorded = recordableItems.length > 0 && recordableItems.every((r) => usageRecords.has(r.id))
+  const hasPendingLot = reservedItems.length > 0
+  const canCloseCase = allRecorded && !hasPendingLot
 
   // === Usage Dialog Handlers ===
   function openUsageDialog(r: Reservation) {
@@ -377,19 +379,39 @@ export function CaseActions({
             })}
           </div>
 
+          {/* ─── Pending LOT warning ─── */}
+          {hasPendingLot && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-400 bg-amber-50 dark:bg-amber-500/10 p-3 mt-3">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                  ยังมีวัสดุ {reservedItems.length} รายการที่ยังไม่จัด LOT
+                </p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                  {reservedItems.map((r) => r.productName).join(", ")} — กรุณาจัด LOT หรือลบรายการออกก่อนปิดเคส
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ─── Close Case Button ─── */}
           <Separator className="my-3" />
           <Button
             className="w-full h-12 text-base bg-blue-600 hover:bg-blue-700 text-white"
-            disabled={!allRecorded}
+            disabled={!canCloseCase}
             onClick={() => setCloseCaseDialog(true)}
           >
             <CheckCircle2 className="mr-2 h-5 w-5" />
             ปิดเคส
           </Button>
-          {!allRecorded && (
+          {!canCloseCase && !hasPendingLot && (
             <p className="text-center text-[11px] text-muted-foreground mt-1.5">
               กรุณาบันทึกการใช้วัสดุให้ครบทุกรายการก่อนปิดเคส
+            </p>
+          )}
+          {hasPendingLot && (
+            <p className="text-center text-[11px] text-muted-foreground mt-1.5">
+              กรุณาจัด LOT หรือลบวัสดุที่ไม่ใช้ออกก่อนปิดเคส
             </p>
           )}
         </div>
@@ -518,11 +540,19 @@ export function CaseActions({
             <Button
               className="w-full h-11"
               onClick={confirmUsage}
-              disabled={!editQty || parseInt(editQty, 10) < 0}
+              disabled={editQty === "" || isNaN(parseInt(editQty, 10)) || parseInt(editQty, 10) < 0}
             >
               {overuseConfirm ? "ยืนยันใช้เกินจำนวน" : "บันทึก"}
             </Button>
-            <Button variant="outline" className="w-full" onClick={() => { setUsageDialog(null); setOveruseConfirm(false) }}>
+            <Button
+              variant="outline"
+              className="w-full text-muted-foreground"
+              onClick={() => { setEditQty("0"); setOveruseConfirm(false) }}
+            >
+              <Ban className="mr-2 h-4 w-4" />
+              ไม่ได้ใช้ (จำนวน 0)
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => { setUsageDialog(null); setOveruseConfirm(false) }}>
               ยกเลิก
             </Button>
           </DialogFooter>
