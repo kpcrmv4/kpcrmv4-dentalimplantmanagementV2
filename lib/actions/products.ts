@@ -150,6 +150,11 @@ export async function createProduct(formData: FormData) {
     model: (formData.get("model") as string | null)?.trim() || null,
     diameter: formData.get("diameter") ? parseFloat(formData.get("diameter") as string) : null,
     length: formData.get("length") ? parseFloat(formData.get("length") as string) : null,
+    volume: (formData.get("volume") as string | null)?.trim() || null,
+    weight: (formData.get("weight") as string | null)?.trim() || null,
+    dimension: (formData.get("dimension") as string | null)?.trim() || null,
+    abutment_height: formData.get("abutment_height") ? parseFloat(formData.get("abutment_height") as string) : null,
+    gingival_height: formData.get("gingival_height") ? parseFloat(formData.get("gingival_height") as string) : null,
   }
 
   const { data, error } = await supabase
@@ -207,6 +212,11 @@ export async function updateProduct(id: string, formData: FormData) {
     model: (formData.get("model") as string | null)?.trim() || null,
     diameter: formData.get("diameter") ? parseFloat(formData.get("diameter") as string) : null,
     length: formData.get("length") ? parseFloat(formData.get("length") as string) : null,
+    volume: (formData.get("volume") as string | null)?.trim() || null,
+    weight: (formData.get("weight") as string | null)?.trim() || null,
+    dimension: (formData.get("dimension") as string | null)?.trim() || null,
+    abutment_height: formData.get("abutment_height") ? parseFloat(formData.get("abutment_height") as string) : null,
+    gingival_height: formData.get("gingival_height") ? parseFloat(formData.get("gingival_height") as string) : null,
   }
 
   const { data, error } = await supabase

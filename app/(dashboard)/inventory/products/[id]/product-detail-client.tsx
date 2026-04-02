@@ -384,6 +384,11 @@ export function ProductDetailClient({
                 <p><span className="text-muted-foreground">รุ่น:</span> {product.model ?? "-"}</p>
                 <p><span className="text-muted-foreground">Diameter (mm):</span> {product.diameter ?? "-"}</p>
                 <p><span className="text-muted-foreground">Length (mm):</span> {product.length ?? "-"}</p>
+                <p><span className="text-muted-foreground">ปริมาณ (Volume):</span> {product.volume ?? "-"}</p>
+                <p><span className="text-muted-foreground">น้ำหนัก (Grams):</span> {product.weight ?? "-"}</p>
+                <p><span className="text-muted-foreground">ขนาดพื้นที่ (Dimension):</span> {product.dimension ?? "-"}</p>
+                <p><span className="text-muted-foreground">Abutment Height (AH):</span> {product.abutment_height ?? "-"}</p>
+                <p><span className="text-muted-foreground">Gingival Height (GH):</span> {product.gingival_height ?? "-"}</p>
                 <p><span className="text-muted-foreground">หมวดหมู่:</span> {product.category ? (categories.find((c) => c.value === product.category)?.label ?? product.category) : "-"}</p>
                 <p><span className="text-muted-foreground">หน่วย:</span> {product.unit ?? "-"}</p>
                 <p><span className="text-muted-foreground">สต็อกขั้นต่ำ:</span> {product.min_stock_level}</p>
@@ -674,6 +679,40 @@ export function ProductDetailClient({
                   step="0.01"
                   min={0}
                   defaultValue={product.length ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-volume">ปริมาณ (Volume)</Label>
+                <Input id="edit-volume" name="volume" defaultValue={product.volume ?? ""} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-weight">น้ำหนัก (Grams)</Label>
+                <Input id="edit-weight" name="weight" defaultValue={product.weight ?? ""} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-dimension">ขนาดพื้นที่ (Dimension)</Label>
+                <Input id="edit-dimension" name="dimension" defaultValue={product.dimension ?? ""} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-ah">Abutment Height (AH, mm)</Label>
+                <Input
+                  id="edit-ah"
+                  name="abutment_height"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  defaultValue={product.abutment_height ?? ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-gh">Gingival Height (GH, mm)</Label>
+                <Input
+                  id="edit-gh"
+                  name="gingival_height"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  defaultValue={product.gingival_height ?? ""}
                 />
               </div>
               <div className="space-y-2">

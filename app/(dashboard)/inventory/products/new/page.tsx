@@ -389,6 +389,26 @@ export default function NewProductPage() {
                   <Input id="new-length" name="length" type="number" step="0.01" min={0} placeholder="0.00" />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="new-volume">ปริมาณ (Volume)</Label>
+                  <Input id="new-volume" name="volume" placeholder="เช่น 0.5cc" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-weight">น้ำหนัก (Grams)</Label>
+                  <Input id="new-weight" name="weight" placeholder="เช่น 0.5g" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-dimension">ขนาดพื้นที่ (Dimension)</Label>
+                  <Input id="new-dimension" name="dimension" placeholder="เช่น 20x25 mm" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-ah">Abutment Height (AH, mm)</Label>
+                  <Input id="new-ah" name="abutment_height" type="number" step="0.01" min={0} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-gh">Gingival Height (GH, mm)</Label>
+                  <Input id="new-gh" name="gingival_height" type="number" step="0.01" min={0} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="new-category">หมวดหมู่</Label>
                   <Select name="category">
                     <SelectTrigger id="new-category">
