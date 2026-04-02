@@ -109,15 +109,15 @@ export async function createCase(formData: FormData) {
   // Notify dentist about new case with full details
   const dentistId = formData.get("dentist_id") as string
   if (dentistId) {
-    // Fetch patient info for the notification
-    const { data: patient } = await supabase
-      .from("patients")
-      .select("full_name, hn")
-      .eq("id", data.patient_id)
-      .single()
+    // Fetch patient and dentist info for the notification
+    const [{ data: patient }, { data: dentist }] = await Promise.all([
+      supabase.from("patients").select("full_name, hn").eq("id", data.patient_id).single(),
+      supabase.from("users").select("full_name").eq("id", dentistId).single(),
+    ])
 
     const patientName = patient?.full_name ?? "-"
     const patientHN = patient?.hn ?? "-"
+    const dentistName = dentist?.full_name ?? "-"
     const procedure = data.procedure_type ?? "-"
     const scheduledInfo = data.scheduled_date
       ? `${formatDate(String(data.scheduled_date))}${data.scheduled_time ? ` ${String(data.scheduled_time).slice(0, 5)}` : ""}`
@@ -140,6 +140,7 @@ export async function createCase(formData: FormData) {
       ``,
       `👤 คนไข้: ${patientName}`,
       `🏥 HN: ${patientHN}`,
+      `👨‍⚕️ ทันตแพทย์: ${dentistName}`,
       `🔧 หัตถการ: ${procedure}`,
       `📅 วันนัดหมาย: ${scheduledInfo}`,
       `📋 สถานะ: ${statusLabel}`,
@@ -185,7 +186,7 @@ export async function markCaseReady(caseId: string) {
   // Verify case exists and is in the correct status
   const { data: caseData } = await supabase
     .from("cases")
-    .select("case_status")
+    .select("case_status, case_number, dentist:users!cases_dentist_id_fkey(full_name)")
     .eq("id", caseId)
     .single()
 
@@ -233,7 +234,7 @@ export async function markCaseReady(caseId: string) {
   smartNotify({
     type: "material_prepared",
     title: "วัสดุพร้อมแล้ว",
-    message: `เคส ${caseId} วัสดุถูกจัดเตรียมเรียบร้อยแล้ว`,
+    message: `เคส ${caseData.case_number} ทพ.${(caseData.dentist as Record<string, unknown>)?.full_name ?? "-"} วัสดุถูกจัดเตรียมเรียบร้อยแล้ว`,
     data: { case_id: caseId },
   }).catch(() => {})
 
@@ -276,11 +277,13 @@ export async function createReservationsBatch(
     // Some items have no stock — get case info for notification
     const { data: fullCase } = await supabase
       .from("cases")
-      .select("case_number, scheduled_date")
+      .select("case_number, scheduled_date, dentist:users!cases_dentist_id_fkey(full_name)")
       .eq("id", caseId)
       .single()
 
     const caseNumber = fullCase?.case_number ?? caseId
+    const dentistName = (fullCase?.dentist as Record<string, unknown>)?.full_name as string ?? ""
+    const dentistLabel = dentistName ? ` ทพ.${dentistName}` : ""
     const outOfStockNames = reservedItems
       .map((r) => (r.products as unknown as { name: string } | null)?.name ?? "สินค้า")
 
@@ -295,14 +298,14 @@ export async function createReservationsBatch(
       smartNotify({
         type: "emergency_case",
         title: "ด่วน — ของขาดสต๊อก",
-        message: `เคส ${caseNumber} นัดภายใน 48 ชม. แต่ของขาด: ${outOfStockNames.join(", ")}`,
+        message: `เคส ${caseNumber}${dentistLabel} นัดภายใน 48 ชม. แต่ของขาด: ${outOfStockNames.join(", ")}`,
         data: { case_id: caseId, case_number: caseNumber },
       }).catch(() => {})
     } else {
       smartNotify({
         type: "out_of_stock",
         title: "สินค้าหมด — ต้องสั่งเพิ่ม",
-        message: `เคส ${caseNumber} ต้องการ: ${outOfStockNames.join(", ")} แต่ไม่มีในสต๊อก`,
+        message: `เคส ${caseNumber}${dentistLabel} ต้องการ: ${outOfStockNames.join(", ")} แต่ไม่มีในสต๊อก`,
         data: { case_id: caseId, case_number: caseNumber },
       }).catch(() => {})
     }
@@ -451,6 +454,18 @@ export async function closeCaseWithUsage(
   if (!caseData) throw new Error("ไม่พบเคส")
   if (["completed", "cancelled"].includes(caseData.case_status)) {
     throw new Error("เคสนี้ปิดแล้ว")
+  }
+
+  // Block if there are still reserved items (no LOT assigned)
+  const { data: pendingLotItems } = await supabase
+    .from("case_reservations")
+    .select("id, product_id, products(name)")
+    .eq("case_id", caseId)
+    .eq("status", "reserved")
+
+  if (pendingLotItems && pendingLotItems.length > 0) {
+    const names = pendingLotItems.map((r) => (r.products as Record<string, unknown>)?.name ?? "").filter(Boolean).join(", ")
+    throw new Error(`ยังมีวัสดุที่ไม่ได้จัด LOT: ${names} — กรุณาจัด LOT หรือลบออกก่อนปิดเคส`)
   }
 
   // Process each usage record

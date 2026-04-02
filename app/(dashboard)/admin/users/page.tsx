@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useTransition } from "react"
-import { Shield, Plus, Pencil, Key, Trash2, Loader2, X } from "lucide-react"
+import { Shield, Plus, Pencil, Key, Trash2, Loader2, X, MessageCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { getUsers, updateUserRole, toggleUserActive, createUser, updateUserProfile, resetUserPassword, deleteUser } from "@/lib/actions/users"
+import { testLineConnection } from "@/lib/actions/line"
 import type { UserRole } from "@/types/database"
 
 const ROLE_LABELS: Record<string, string> = {
@@ -42,6 +43,7 @@ type UserRow = {
   role: string
   is_active: boolean
   phone: string | null
+  line_user_id: string | null
   created_at: string
 }
 
@@ -69,6 +71,9 @@ export default function AdminUsersPage() {
   // Edit form
   const [editName, setEditName] = useState("")
   const [editPhone, setEditPhone] = useState("")
+  const [editLineUserId, setEditLineUserId] = useState("")
+  const [testingLine, setTestingLine] = useState(false)
+  const [lineTestMessage, setLineTestMessage] = useState<{ text: string; success: boolean } | null>(null)
 
   // Reset password form
   const [resetPw, setResetPw] = useState("")
@@ -129,6 +134,8 @@ export default function AdminUsersPage() {
   function openEdit(user: UserRow) {
     setEditName(user.full_name)
     setEditPhone(user.phone ?? "")
+    setEditLineUserId(user.line_user_id ?? "")
+    setLineTestMessage(null)
     setFormError(null)
     setModal({ type: "edit", user })
   }
@@ -170,7 +177,7 @@ export default function AdminUsersPage() {
     setFormLoading(true)
     setFormError(null)
     try {
-      const result = await updateUserProfile(modal.user.id, { full_name: editName, phone: editPhone })
+      const result = await updateUserProfile(modal.user.id, { full_name: editName, phone: editPhone, line_user_id: editLineUserId })
       if (!result.success) {
         setFormError(result.error ?? "แก้ไขไม่สำเร็จ")
         return
@@ -261,6 +268,7 @@ export default function AdminUsersPage() {
                 <TableRow>
                   <TableHead>ชื่อ</TableHead>
                   <TableHead>อีเมล</TableHead>
+                  <TableHead>LINE</TableHead>
                   <TableHead>บทบาท</TableHead>
                   <TableHead>สถานะ</TableHead>
                   <TableHead>จัดการ</TableHead>
@@ -274,6 +282,16 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {u.email}
+                    </TableCell>
+                    <TableCell>
+                      {u.line_user_id ? (
+                        <Badge variant="secondary" className="gap-1 text-[10px]">
+                          <MessageCircle className="h-3 w-3" />
+                          เชื่อมแล้ว
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select
@@ -390,6 +408,50 @@ export default function AdminUsersPage() {
                 <div>
                   <Label className="text-xs">เบอร์โทร</Label>
                   <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="08x-xxx-xxxx" className="mt-1" />
+                </div>
+                <div>
+                  <Label className="flex items-center gap-1.5 text-xs">
+                    <MessageCircle className="h-3 w-3" />
+                    LINE User ID
+                  </Label>
+                  <Input
+                    value={editLineUserId}
+                    onChange={(e) => { setEditLineUserId(e.target.value); setLineTestMessage(null) }}
+                    placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="mt-1"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    ใช้สำหรับรับการแจ้งเตือนผ่าน LINE (ดูได้จาก LINE Official Account)
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1.5"
+                    disabled={testingLine || !editLineUserId.trim()}
+                    onClick={async () => {
+                      setTestingLine(true)
+                      setLineTestMessage(null)
+                      try {
+                        await testLineConnection(editLineUserId.trim())
+                        setLineTestMessage({ text: "ส่งข้อความทดสอบสำเร็จ", success: true })
+                      } catch {
+                        setLineTestMessage({ text: "ส่งไม่สำเร็จ ตรวจสอบ LINE User ID", success: false })
+                      } finally {
+                        setTestingLine(false)
+                      }
+                    }}
+                  >
+                    {testingLine ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> ทดสอบ...</> : "ทดสอบแจ้งเตือน LINE"}
+                  </Button>
+                  {lineTestMessage && (
+                    <p className={`text-xs rounded-md px-2.5 py-1.5 mt-1.5 ${
+                      lineTestMessage.success
+                        ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
+                        : "bg-destructive/10 text-destructive"
+                    }`}>
+                      {lineTestMessage.text}
+                    </p>
+                  )}
                 </div>
                 <Button className="w-full" onClick={handleEdit} disabled={formLoading}>
                   {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

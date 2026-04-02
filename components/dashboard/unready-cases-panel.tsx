@@ -17,6 +17,7 @@ const TRAFFIC_DOT: Record<string, string> = {
   red: "bg-red-500",
   yellow: "bg-yellow-500",
   orange: "bg-yellow-500",
+  purple: "bg-purple-500",
 }
 
 export async function UnreadyCasesPanel({ dentistId }: { dentistId?: string } = {}) {

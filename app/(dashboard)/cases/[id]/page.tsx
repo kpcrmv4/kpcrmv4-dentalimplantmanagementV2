@@ -46,6 +46,7 @@ export default async function CaseDetailPage({
   const userRole = currentUser?.role ?? "assistant"
   const canManageAppointment = ["admin", "cs"].includes(userRole)
   const canManageStock = ["admin", "stock_staff", "assistant"].includes(userRole)
+  const canEditMaterials = canManageStock || userRole === "dentist"
 
   const patient = caseData.patients as Record<string, unknown> | null
   const dentist = caseData.dentist as Record<string, unknown> | null
@@ -167,7 +168,7 @@ export default async function CaseDetailPage({
       {/* Materials / Reservations */}
       <CaseMaterialsEditor
         caseId={id}
-        caseStatus={canManageStock ? caseData.case_status : "completed"}
+        caseStatus={canEditMaterials ? caseData.case_status : "completed"}
         reservations={reservations.map((r) => {
           const product = r.products as Record<string, unknown> | null
           const inventory = r.inventory as Record<string, unknown> | null
@@ -180,6 +181,7 @@ export default async function CaseDetailPage({
             productRef: String(product?.ref ?? ""),
             productUnit: String(product?.unit ?? "ชิ้น"),
             quantityReserved: Number(r.quantity_reserved),
+            quantityUsed: r.quantity_used != null ? Number(r.quantity_used) : null,
             lotNumber: inventory ? String(inventory.lot_number) : null,
             expiryDate: inventory?.expiry_date ? String(inventory.expiry_date) : null,
           }

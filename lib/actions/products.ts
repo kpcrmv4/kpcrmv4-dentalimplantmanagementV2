@@ -392,7 +392,7 @@ export async function getProductUsageHistory(productId: string) {
       cases!inner(
         case_number,
         scheduled_date,
-        patients(first_name, last_name)
+        patients(full_name)
       )
     `
     )
@@ -408,14 +408,12 @@ export async function getProductUsageHistory(productId: string) {
     const caseData = item.cases as unknown as {
       case_number: string
       scheduled_date: string | null
-      patients: { first_name: string; last_name: string } | null
+      patients: { full_name: string } | null
     }
     const patient = caseData.patients
     return {
       case_number: caseData.case_number,
-      patient_name: patient
-        ? `${patient.first_name} ${patient.last_name}`.trim()
-        : null,
+      patient_name: patient?.full_name ?? null,
       quantity_reserved: item.quantity_reserved,
       quantity_used: item.quantity_used,
       status: item.status,

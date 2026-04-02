@@ -27,11 +27,17 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "ยกเลิก",
 }
 
+function getStatusLabel(c: DashboardCase): string {
+  if (c.trafficLight === "purple") return "รอหมอสั่งของ"
+  return STATUS_LABELS[c.case_status] ?? c.case_status
+}
+
 const TRAFFIC_BADGE: Record<TrafficLight, string> = {
   green: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400",
   yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
   orange: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400",
   red: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
+  purple: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400",
   neutral: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
 }
 
@@ -40,6 +46,7 @@ const TRAFFIC_DOT: Record<TrafficLight, string> = {
   yellow: "bg-yellow-500",
   orange: "bg-yellow-500",
   red: "bg-red-500",
+  purple: "bg-purple-500",
   neutral: "bg-blue-500",
 }
 
@@ -160,7 +167,7 @@ function DayCaseCard({
                 </span>
               )}
               <span className={cn("inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                {STATUS_LABELS[c.case_status] ?? c.case_status}
+                {getStatusLabel(c)}
               </span>
             </div>
 
@@ -224,14 +231,14 @@ function DayCaseCard({
                   {c.scheduled_time.slice(0, 5)}
                 </span>
                 <span className={cn("mt-0.5 inline-flex rounded-full px-1 py-0.5 text-[9px] font-medium", TRAFFIC_BADGE[c.trafficLight])}>
-                  {STATUS_LABELS[c.case_status] ?? c.case_status}
+                  {getStatusLabel(c)}
                 </span>
               </>
             ) : (
               <>
                 <div className={cn("h-2 w-2 rounded-full", TRAFFIC_DOT[c.trafficLight])} />
                 <span className="mt-0.5 text-[9px] font-medium text-muted-foreground">
-                  {STATUS_LABELS[c.case_status] ?? c.case_status}
+                  {getStatusLabel(c)}
                 </span>
               </>
             )}
