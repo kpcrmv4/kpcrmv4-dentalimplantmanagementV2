@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const { data: rawCases, error } = await supabase
       .from("cases")
       .select(
-        "id, case_number, scheduled_date, scheduled_time, case_status, patients(full_name), users!cases_dentist_id_fkey(full_name)"
+        "id, case_number, scheduled_date, scheduled_time, case_status, procedure_type, patients(hn, full_name), users!cases_dentist_id_fkey(full_name)"
       )
       .gte("scheduled_date", todayStr)
       .lte("scheduled_date", futureStr)
@@ -66,10 +66,23 @@ export async function GET(request: Request) {
     }
 
     // Build summary message
+    const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+    const formatDate = (dateStr: string | null) => {
+      if (!dateStr) return "ไม่ระบุ"
+      const [y, m, d] = dateStr.split("-")
+      return `${d} - ${thaiMonths[parseInt(m, 10) - 1]} - ${y}`
+    }
+
     const caseLines = cases.map((c) => {
-      const patient = c.patients as unknown as { full_name: string } | null
+      const patient = c.patients as unknown as { hn: string; full_name: string } | null
+      const dentist = c.users as unknown as { full_name: string } | null
       const statusLabel = c.case_status === "pending_order" ? "รอสั่งของ" : "รอจัดของ"
-      return `• ${c.case_number} — ${patient?.full_name ?? "ไม่ระบุ"} (${c.scheduled_date} ${c.scheduled_time ?? ""}) [${statusLabel}]`
+      const hn = patient?.hn ?? "-"
+      const patientName = patient?.full_name ?? "ไม่ระบุ"
+      const dentistName = dentist?.full_name ?? "-"
+      const work = c.procedure_type ?? "-"
+      const dateFormatted = formatDate(c.scheduled_date)
+      return `• ${hn} | ${patientName} | ${dentistName} | ${work}\n  📅 ${dateFormatted} ${c.scheduled_time ?? ""} [${statusLabel}]`
     })
 
     const title = `🚨 เคสด่วนภายใน 48 ชม. — ${cases.length} เคส`
