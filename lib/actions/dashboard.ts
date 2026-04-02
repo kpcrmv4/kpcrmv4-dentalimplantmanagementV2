@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import type { CaseStatus, AppointmentStatus } from "@/types/database"
 
-export type TrafficLight = "green" | "yellow" | "orange" | "red" | "neutral"
+export type TrafficLight = "green" | "yellow" | "orange" | "red" | "purple" | "neutral"
 
 export type DashboardCase = {
   id: string
@@ -88,7 +88,9 @@ export async function getDashboardCases(
       patient_hn: patient?.hn ?? "-",
       dentist_name: dentist?.full_name ?? "ไม่ระบุ",
       tooth_positions: c.tooth_positions,
-      trafficLight: deriveTrafficLight(c.case_status as CaseStatus),
+      trafficLight: c.case_status === "pending_order" && !casesWithReservations.has(c.id)
+        ? "purple" as TrafficLight  // waiting_doctor
+        : deriveTrafficLight(c.case_status as CaseStatus),
       hasReservations: casesWithReservations.has(c.id),
     }
   })

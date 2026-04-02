@@ -27,6 +27,7 @@ const DOT_COLORS: Record<TrafficLight, string> = {
   yellow: "bg-yellow-500",
   orange: "bg-yellow-500",
   red: "bg-red-500",
+  purple: "bg-purple-500",
   neutral: "bg-blue-500",
 }
 
@@ -72,9 +73,10 @@ export function CalendarGrid({
   }
 
   // Counts for legend
-  const countReady = activeCases.filter((c) => c.trafficLight === "green").length
+  const countWaitingDoctor = activeCases.filter((c) => c.trafficLight === "purple").length
+  const countPendingOrder = activeCases.filter((c) => c.case_status === "pending_order" && c.trafficLight === "red").length
   const countPendingPrep = activeCases.filter((c) => c.case_status === "pending_preparation").length
-  const countPendingOrder = activeCases.filter((c) => c.case_status === "pending_order").length
+  const countReady = activeCases.filter((c) => c.trafficLight === "green").length
   const countCompleted = monthCases.filter((c) => c.case_status === "completed").length
 
   return (
@@ -205,21 +207,28 @@ export function CalendarGrid({
         </div>
 
         {/* Legend */}
-        <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 border-t pt-3">
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-            <span className="font-bold text-red-600 dark:text-red-400">{countPendingOrder}</span> รอสั่งของ
+        <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 border-t pt-3">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-purple-500" />
+            <span className="font-bold text-purple-600 dark:text-purple-400">{countWaitingDoctor}</span>
+            <span className="hidden sm:inline">รอหมอสั่ง</span><span className="sm:hidden">รอหมอ</span>
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-            <span className="font-bold text-yellow-600 dark:text-yellow-400">{countPendingPrep}</span> รอจัดของ
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
+            <span className="font-bold text-red-600 dark:text-red-400">{countPendingOrder}</span>
+            <span className="hidden sm:inline">รอสั่งของ</span><span className="sm:hidden">รอสั่ง</span>
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-yellow-500" />
+            <span className="font-bold text-yellow-600 dark:text-yellow-400">{countPendingPrep}</span>
+            <span className="hidden sm:inline">รอจัดของ</span><span className="sm:hidden">รอจัด</span>
+          </span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-green-500" />
             <span className="font-bold text-green-600 dark:text-green-400">{countReady}</span> พร้อม
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500" />
             <span className="font-bold text-blue-600 dark:text-blue-400">{countCompleted}</span> เสร็จ
           </span>
         </div>

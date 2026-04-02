@@ -38,12 +38,12 @@ export async function TrafficLightStats({ dentistId }: { dentistId?: string } = 
     {
       label: "รอหมอสั่งของ",
       value: waitingDoctor,
-      href: "/cases?period=month&status=pending_order",
+      href: "/cases?period=month&status=waiting_doctor",
       icon: ShoppingCart,
-      bg: "bg-red-100 dark:bg-red-500/20",
-      iconColor: "text-red-600 dark:text-red-400",
-      valueColor: "text-red-700 dark:text-red-400",
-      alertBorder: waitingDoctor > 0 ? "ring-2 ring-red-400/50" : "",
+      bg: "bg-purple-100 dark:bg-purple-500/20",
+      iconColor: "text-purple-600 dark:text-purple-400",
+      valueColor: "text-purple-700 dark:text-purple-400",
+      alertBorder: waitingDoctor > 0 ? "ring-2 ring-purple-400/50" : "",
     },
     {
       label: "รอสั่ง Supplier",
