@@ -20,7 +20,7 @@ export async function getUsers() {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, email, full_name, role, is_active, phone, created_at")
+    .select("id, email, full_name, role, is_active, phone, line_user_id, created_at")
     .order("full_name")
 
   if (error) throw error
@@ -144,7 +144,7 @@ export async function createUser(email: string, password: string, fullName: stri
   }
 }
 
-export async function updateUserProfile(userId: string, data: { full_name?: string; phone?: string; email?: string }): Promise<{ success: boolean; error?: string }> {
+export async function updateUserProfile(userId: string, data: { full_name?: string; phone?: string; email?: string; line_user_id?: string }): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -160,6 +160,7 @@ export async function updateUserProfile(userId: string, data: { full_name?: stri
     const updateData: Record<string, unknown> = {}
     if (data.full_name !== undefined) updateData.full_name = data.full_name
     if (data.phone !== undefined) updateData.phone = data.phone || null
+    if (data.line_user_id !== undefined) updateData.line_user_id = data.line_user_id || null
 
     const { error } = await supabase
       .from("users")
