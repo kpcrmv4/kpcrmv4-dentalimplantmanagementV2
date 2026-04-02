@@ -140,7 +140,7 @@ async function getCases(
   const supabase = await createClient()
   let query = supabase
     .from("cases")
-    .select("*, patients(hn, full_name), users!cases_dentist_id_fkey(full_name), case_reservations(id, status)")
+    .select("*, patients!inner(hn, full_name), users!cases_dentist_id_fkey(full_name), case_reservations(id, status)")
     .limit(100)
 
   if (status === "waiting_doctor") {
@@ -153,7 +153,7 @@ async function getCases(
     query = query.eq("appointment_status", appt as "pending" | "confirmed" | "cancelled")
   }
   if (search) {
-    query = query.or(`case_number.ilike.%${search}%`)
+    query = query.or(`case_number.ilike.%${search}%,patients.full_name.ilike.%${search}%,patients.hn.ilike.%${search}%`)
   }
 
   // Apply date range filter

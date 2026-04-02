@@ -25,7 +25,7 @@ export async function getCases(filters?: {
   }
   if (filters?.search) {
     query = query.or(
-      `case_number.ilike.%${filters.search}%,patients.full_name.ilike.%${filters.search}%`
+      `case_number.ilike.%${filters.search}%,patients.full_name.ilike.%${filters.search}%,patients.hn.ilike.%${filters.search}%`
     )
   }
 
