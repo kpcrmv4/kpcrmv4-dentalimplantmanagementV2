@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Loader2, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,16 @@ import { createPatient } from "@/lib/actions/patients"
 import { generateHN } from "@/lib/utils"
 
 export default function NewPatientPage() {
+  return (
+    <Suspense>
+      <NewPatientForm />
+    </Suspense>
+  )
+}
+
+function NewPatientForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,6 +41,25 @@ export default function NewPatientPage() {
   const [imedOpen, setImedOpen] = useState(false)
   const [imedText, setImedText] = useState("")
   const [parseError, setParseError] = useState<string | null>(null)
+
+  // Auto-fill form from URL parameters (e.g. ?NameFL=...&PatNum=...&PatientGenderMF=M&Birthdate_yyyyMMdd=19820126)
+  useEffect(() => {
+    const nameFL = searchParams.get("NameFL")
+    const patNum = searchParams.get("PatNum")
+    const genderMF = searchParams.get("PatientGenderMF")
+    const birthdate = searchParams.get("Birthdate_yyyyMMdd")
+
+    if (nameFL) setFullName(nameFL)
+    if (patNum) setHn(patNum)
+    if (genderMF === "M" || genderMF === "F") {
+      setGender(genderMF)
+    } else if (genderMF) {
+      setGender("none")
+    }
+    if (birthdate && birthdate.length === 8) {
+      setDateOfBirth(`${birthdate.slice(0, 4)}-${birthdate.slice(4, 6)}-${birthdate.slice(6, 8)}`)
+    }
+  }, [searchParams])
 
   function handleParse() {
     setParseError(null)
