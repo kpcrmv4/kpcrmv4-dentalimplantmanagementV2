@@ -21,6 +21,7 @@ export async function getBorrows(filters?: {
   let query = (supabase as any)
     .from("inventory_borrows")
     .select("*, users!inventory_borrows_requested_by_fkey(full_name), inventory_borrow_items(id)")
+    .eq("order_type", "borrow")
     .order("created_at", { ascending: false })
     .limit(50)
 

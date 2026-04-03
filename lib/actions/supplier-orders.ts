@@ -131,6 +131,20 @@ export async function createSupplierOrder(params: {
 
   if (itemsError) throw itemsError
 
+  // Update case status: if case was pending_order, move to pending_preparation (items are being sourced)
+  const { data: currentCase } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", params.caseId)
+    .single()
+
+  if (currentCase?.case_status === "pending_order") {
+    await supabase
+      .from("cases")
+      .update({ case_status: "pending_preparation" })
+      .eq("id", params.caseId)
+  }
+
   // Send LINE to supplier (for borrow: immediately, for purchase: after approval)
   // Check supplier LINE borrow setting
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

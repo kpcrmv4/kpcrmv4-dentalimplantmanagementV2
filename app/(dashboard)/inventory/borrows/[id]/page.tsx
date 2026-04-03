@@ -13,6 +13,9 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   exchanged: { label: "แลกแล้ว", variant: "secondary" },
   paid: { label: "ชำระแล้ว", variant: "secondary" },
   partially_returned: { label: "คืนบางส่วน", variant: "outline" },
+  sent: { label: "ส่งแล้ว", variant: "secondary" },
+  pending_approval: { label: "รออนุมัติ", variant: "outline" },
+  closed: { label: "ปิดแล้ว", variant: "default" },
 }
 
 export default async function BorrowDetailPage({

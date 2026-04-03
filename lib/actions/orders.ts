@@ -40,6 +40,30 @@ export async function getPurchaseOrders(filters?: {
   return data ?? []
 }
 
+export async function getSupplierPurchaseOrders(filters?: { search?: string }) {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any)
+    .from("inventory_borrows")
+    .select(`
+      id, borrow_number, status, created_at, notes,
+      suppliers(name),
+      requester:users!inventory_borrows_requested_by_fkey(full_name),
+      inventory_borrow_items(id)
+    `)
+    .eq("order_type", "purchase")
+    .order("created_at", { ascending: false })
+    .limit(50)
+
+  if (filters?.search) {
+    query = query.ilike("borrow_number", `%${filters.search}%`)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []) as Array<Record<string, unknown>>
+}
+
 export async function getPurchaseOrderById(id: string) {
   const supabase = await createClient()
 

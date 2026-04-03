@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Plus, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { getPurchaseOrders } from "@/lib/actions/orders"
+import { getPurchaseOrders, getSupplierPurchaseOrders } from "@/lib/actions/orders"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { OrderSearch } from "./order-search"
 
@@ -22,10 +22,10 @@ export default async function OrdersPage({
   searchParams: Promise<{ status?: string; q?: string }>
 }) {
   const params = await searchParams
-  const orders = await getPurchaseOrders({
-    status: params.status as never,
-    search: params.q,
-  })
+  const [orders, supplierOrders] = await Promise.all([
+    getPurchaseOrders({ status: params.status as never, search: params.q }),
+    getSupplierPurchaseOrders({ search: params.q }),
+  ])
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
@@ -44,13 +44,55 @@ export default async function OrdersPage({
         currentStatus={params.status ?? ""}
       />
 
-      {orders.length === 0 ? (
+      {/* Supplier purchase orders from cases (inventory_borrows) */}
+      {supplierOrders.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">สั่งซื้อจากเคส</p>
+          {supplierOrders.map((so) => {
+            const status = STATUS_CONFIG[so.status as string] ?? { label: String(so.status), color: "bg-gray-100 text-gray-700" }
+            const supplier = so.suppliers as unknown as { name: string } | null
+            const requester = so.requester as unknown as { full_name: string } | null
+            const itemCount = (so.inventory_borrow_items as unknown[])?.length ?? 0
+
+            return (
+              <Link key={so.id as string} href={`/inventory/borrows/${so.id}`}>
+                <Card className="transition-colors hover:bg-muted/50">
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{String(so.borrow_number)}</p>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {supplier?.name ?? "-"} · {itemCount} รายการ
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          โดย {requester?.full_name ?? "-"} · {formatDate(String(so.created_at))}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Manual purchase orders */}
+      {orders.length === 0 && supplierOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <FileText className="mb-2 h-10 w-10" />
           <p className="text-sm">ไม่พบใบสั่งซื้อ</p>
         </div>
-      ) : (
+      ) : orders.length > 0 ? (
         <div className="space-y-2">
+          {supplierOrders.length > 0 && (
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">PO ทั่วไป</p>
+          )}
           {orders.map((po) => {
             const status = STATUS_CONFIG[po.status as string] ?? STATUS_CONFIG.draft
             const supplier = po.suppliers as unknown as { name: string } | null
@@ -88,7 +130,7 @@ export default async function OrdersPage({
             )
           })}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
