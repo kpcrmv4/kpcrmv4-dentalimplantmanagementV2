@@ -154,7 +154,7 @@ export default async function BorrowDetailPage({
 
                           <div className="grid gap-1 text-xs text-muted-foreground">
                             {/* Payment amount */}
-                            {settlementType === "payment" && item.settlement_amount && (
+                            {settlementType === "payment" && Number(item.settlement_amount) > 0 && (
                               <div className="flex items-center gap-1">
                                 <span>จำนวนเงิน:</span>
                                 <span className="font-medium text-foreground">{formatCurrency(Number(item.settlement_amount))}</span>
