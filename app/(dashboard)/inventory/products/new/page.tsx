@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { createProduct, getCategories } from "@/lib/actions/products"
 import { getSuppliers, receiveGoods } from "@/lib/actions/inventory"
 import { getBrands } from "@/lib/actions/settings"
@@ -436,6 +437,13 @@ export default function NewProductPage() {
                     min={0}
                     defaultValue={0}
                   />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="new-track-stock-alert" className="text-sm font-medium">แจ้งเตือนสต๊อกต่ำ</Label>
+                    <p className="text-xs text-muted-foreground">เปิดเพื่อแจ้งเตือนเมื่อสินค้าหมดหรือใกล้หมด</p>
+                  </div>
+                  <Switch id="new-track-stock-alert" name="track_stock_alert" value="true" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-cost">ราคาต้นทุน (฿)</Label>
