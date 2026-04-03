@@ -78,20 +78,29 @@ export async function getBorrowById(id: string) {
   // Fetch product details separately to avoid ambiguous FK
   // (inventory_borrow_items has two FKs to products: product_id and settlement_product_id)
   const items = itemsResult.data ?? []
-  const productIds = Array.from(new Set(items.map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
+
+  // Collect both product_id and settlement_product_id
+  const allProductIds = Array.from(new Set(
+    items.flatMap((i: Record<string, unknown>) =>
+      [i.product_id, i.settlement_product_id].filter(Boolean)
+    )
+  )) as string[]
 
   let productMap = new Map<string, Record<string, unknown>>()
-  if (productIds.length > 0) {
+  if (allProductIds.length > 0) {
     const { data: products } = await supabase
       .from("products")
       .select("id, name, ref, brand, unit")
-      .in("id", productIds)
+      .in("id", allProductIds)
     productMap = new Map((products ?? []).map((p: Record<string, unknown>) => [p.id as string, p]))
   }
 
   const itemsWithProducts = items.map((item: Record<string, unknown>) => ({
     ...item,
     products: productMap.get(item.product_id as string) ?? null,
+    settlement_product: item.settlement_product_id
+      ? productMap.get(item.settlement_product_id as string) ?? null
+      : null,
   }))
 
   return {

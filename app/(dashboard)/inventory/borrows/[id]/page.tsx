@@ -1,10 +1,12 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Package, Calendar, User, Image as ImageIcon } from "lucide-react"
+import { ArrowLeft, Package, Calendar, User, Image as ImageIcon, Check, ArrowLeftRight, DollarSign, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { getBorrowById } from "@/lib/actions/borrows"
+import { formatCurrency } from "@/lib/utils"
 import { SettleButton, PhotoUploadButton } from "./settle-button"
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -103,36 +105,96 @@ export default async function BorrowDetailPage({
                 const product = item.products as Record<string, string> | null
                 const itemSt = STATUS_LABELS[item.status as string] ?? { label: item.status as string, variant: "outline" as const }
                 const caseData = item.cases as Record<string, string> | null
+                const settlementProduct = item.settlement_product as Record<string, string> | null
+                const isSettled = !!item.settlement_type
+                const settlementType = item.settlement_type as string | null
+
                 return (
-                  <div key={item.id as string} className="flex items-center gap-3 rounded-lg border p-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{product?.name ?? "ไม่ทราบ"}</span>
-                        <Badge variant={itemSt.variant} className="text-[10px]">{itemSt.label}</Badge>
+                  <div key={item.id as string} className="rounded-lg border overflow-hidden">
+                    {/* Item header */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{product?.name ?? "ไม่ทราบ"}</span>
+                          <Badge variant={itemSt.variant} className="text-[10px]">{itemSt.label}</Badge>
+                        </div>
+                        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          <span>จำนวน: {item.quantity as number} {product?.unit ?? "ชิ้น"}</span>
+                          {Number(item.unit_price) > 0 && (
+                            <span>ราคา: {formatCurrency(Number(item.unit_price))}/{product?.unit ?? "ชิ้น"}</span>
+                          )}
+                          {caseData?.case_number && <span>เคส: {caseData.case_number}</span>}
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        จำนวน: {item.quantity as number} {product?.unit ?? "ชิ้น"}
-                        {caseData?.case_number && <span className="ml-2">เคส: {caseData.case_number}</span>}
-                        {(item.settlement_type as string) && (
-                          <>
-                            <span className="ml-2">
-                              ชำระ: {(item.settlement_type as string) === "return" ? "คืนของ" : (item.settlement_type as string) === "exchange" ? "แลกสินค้า" : "ชำระเงิน"}
-                              {item.settlement_amount ? ` ฿${Number(item.settlement_amount).toLocaleString()}` : null}
-                            </span>
-                            {item.settlement_note && (
-                              <span className="ml-2 italic">({item.settlement_note as string})</span>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      {(item.status as string) === "borrowed" && (
+                        <SettleButton
+                          itemId={item.id as string}
+                          productName={product?.name}
+                          quantity={item.quantity as number}
+                          unitPrice={item.unit_price ? Number(item.unit_price) : undefined}
+                        />
+                      )}
                     </div>
-                    {(item.status as string) === "borrowed" && (
-                      <SettleButton
-                        itemId={item.id as string}
-                        productName={product?.name}
-                        quantity={item.quantity as number}
-                        unitPrice={item.unit_price ? Number(item.unit_price) : undefined}
-                      />
+
+                    {/* Settlement details */}
+                    {isSettled && (
+                      <>
+                        <Separator />
+                        <div className="bg-muted/30 px-3 py-2.5 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-medium">
+                            {settlementType === "return" && <Check className="h-3.5 w-3.5 text-green-600" />}
+                            {settlementType === "exchange" && <ArrowLeftRight className="h-3.5 w-3.5 text-blue-600" />}
+                            {settlementType === "payment" && <DollarSign className="h-3.5 w-3.5 text-amber-600" />}
+                            <span>
+                              {settlementType === "return" ? "คืนของให้ Supplier" :
+                               settlementType === "exchange" ? "แลกสินค้า" :
+                               "ชำระเงิน"}
+                            </span>
+                          </div>
+
+                          <div className="grid gap-1 text-xs text-muted-foreground">
+                            {/* Payment amount */}
+                            {settlementType === "payment" && item.settlement_amount && (
+                              <div className="flex items-center gap-1">
+                                <span>จำนวนเงิน:</span>
+                                <span className="font-medium text-foreground">{formatCurrency(Number(item.settlement_amount))}</span>
+                                {Number(item.unit_price) > 0 && (
+                                  <span className="text-[10px]">
+                                    (อ้างอิง: {formatCurrency(Number(item.unit_price) * Number(item.quantity))})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Exchange product */}
+                            {settlementType === "exchange" && settlementProduct && (
+                              <div className="flex items-center gap-1">
+                                <span>สินค้าที่แลก:</span>
+                                <span className="font-medium text-foreground">
+                                  {settlementProduct.name}
+                                  {settlementProduct.ref ? ` (${settlementProduct.ref})` : ""}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Settlement date */}
+                            {item.settled_at && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>วันที่ชำระ: {new Date(item.settled_at as string).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                              </div>
+                            )}
+
+                            {/* Settlement note */}
+                            {item.settlement_note && (
+                              <div className="mt-0.5">
+                                <span>หมายเหตุ: </span>
+                                <span className="italic">{item.settlement_note as string}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )
