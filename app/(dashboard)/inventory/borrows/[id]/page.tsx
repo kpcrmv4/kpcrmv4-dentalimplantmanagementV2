@@ -114,15 +114,25 @@ export default async function BorrowDetailPage({
                         จำนวน: {item.quantity as number} {product?.unit ?? "ชิ้น"}
                         {caseData?.case_number && <span className="ml-2">เคส: {caseData.case_number}</span>}
                         {(item.settlement_type as string) && (
-                          <span className="ml-2">
-                            ชำระ: {(item.settlement_type as string) === "return" ? "คืนของ" : (item.settlement_type as string) === "exchange" ? "แลกสินค้า" : "ชำระเงิน"}
-                            {item.settlement_amount ? ` ฿${Number(item.settlement_amount).toLocaleString()}` : null}
-                          </span>
+                          <>
+                            <span className="ml-2">
+                              ชำระ: {(item.settlement_type as string) === "return" ? "คืนของ" : (item.settlement_type as string) === "exchange" ? "แลกสินค้า" : "ชำระเงิน"}
+                              {item.settlement_amount ? ` ฿${Number(item.settlement_amount).toLocaleString()}` : null}
+                            </span>
+                            {item.settlement_note && (
+                              <span className="ml-2 italic">({item.settlement_note as string})</span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
                     {(item.status as string) === "borrowed" && (
-                      <SettleButton itemId={item.id as string} />
+                      <SettleButton
+                        itemId={item.id as string}
+                        productName={product?.name}
+                        quantity={item.quantity as number}
+                        unitPrice={item.unit_price ? Number(item.unit_price) : undefined}
+                      />
                     )}
                   </div>
                 )

@@ -184,16 +184,101 @@ export async function settleBorrowItem(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Unauthorized")
 
-  const statusMap = { return: "returned", exchange: "exchanged", payment: "paid" }
+  // ── Validate ──────────────────────────────────────────
+  if (settlement.type === "payment") {
+    if (!settlement.amount || settlement.amount <= 0) {
+      throw new Error("กรุณาระบุจำนวนเงินที่ต้องชำระ")
+    }
+  }
+  if (settlement.type === "exchange" && !settlement.product_id) {
+    throw new Error("กรุณาเลือกสินค้าที่ต้องการแลก")
+  }
 
+  // ── Fetch item + borrow + product details ─────────────
   const { data: item, error: fetchError } = await supabase
     .from("inventory_borrow_items")
-    .select("borrow_id")
+    .select("id, borrow_id, product_id, inventory_id, quantity, status")
     .eq("id", itemId)
     .single()
 
   if (fetchError) throw fetchError
+  if (item.status !== "borrowed") throw new Error("รายการนี้ถูกชำระแล้ว")
 
+  // Get borrow record for context
+  const { data: borrow } = await supabase
+    .from("inventory_borrows")
+    .select("borrow_number, supplier_id, source_name")
+    .eq("id", item.borrow_id)
+    .single()
+
+  // Get product name for notifications
+  const { data: product } = await supabase
+    .from("products")
+    .select("name, ref, unit")
+    .eq("id", item.product_id)
+    .single()
+
+  const statusMap = { return: "returned", exchange: "exchanged", payment: "paid" }
+
+  // ── Inventory stock adjustments ───────────────────────
+  if (settlement.type === "return") {
+    // คืนของ → ตัดสต็อกออก (คืน supplier = สินค้าออกจากคลัง)
+    // Find inventory lots for this product (FEFO) and deduct
+    const { data: lots } = await supabase
+      .from("inventory")
+      .select("id, lot_number, quantity, reserved_quantity")
+      .eq("product_id", item.product_id)
+      .gt("quantity", 0)
+      .order("expiry_date", { ascending: true, nullsFirst: false })
+      .order("received_date", { ascending: true })
+
+    let remainingQty = item.quantity
+    for (const lot of (lots ?? [])) {
+      if (remainingQty <= 0) break
+      const available = lot.quantity - lot.reserved_quantity
+      if (available <= 0) continue
+
+      const deduct = Math.min(available, remainingQty)
+      await supabase
+        .from("inventory")
+        .update({ quantity: lot.quantity - deduct })
+        .eq("id", lot.id)
+      remainingQty -= deduct
+    }
+    // If not enough stock, still proceed but note it
+    if (remainingQty > 0 && settlement.note) {
+      settlement.note += ` (สต็อกไม่พอตัด ${remainingQty} ${product?.unit ?? "ชิ้น"})`
+    } else if (remainingQty > 0) {
+      settlement.note = `สต็อกไม่พอตัด ${remainingQty} ${product?.unit ?? "ชิ้น"}`
+    }
+  } else if (settlement.type === "exchange") {
+    // แลกสินค้า → ตัดสต็อกสินค้าเดิมออก (เหมือน return)
+    const { data: lots } = await supabase
+      .from("inventory")
+      .select("id, lot_number, quantity, reserved_quantity")
+      .eq("product_id", item.product_id)
+      .gt("quantity", 0)
+      .order("expiry_date", { ascending: true, nullsFirst: false })
+      .order("received_date", { ascending: true })
+
+    let remainingQty = item.quantity
+    for (const lot of (lots ?? [])) {
+      if (remainingQty <= 0) break
+      const available = lot.quantity - lot.reserved_quantity
+      if (available <= 0) continue
+
+      const deduct = Math.min(available, remainingQty)
+      await supabase
+        .from("inventory")
+        .update({ quantity: lot.quantity - deduct })
+        .eq("id", lot.id)
+      remainingQty -= deduct
+    }
+    // สินค้าใหม่จะเข้าสต็อกเมื่อรับของจริง (ผ่านหน้ารับของเข้า)
+  }
+  // payment → ไม่ต้องปรับสต็อก (สินค้าอยู่ในคลังอยู่แล้ว แค่จ่ายเงิน)
+
+  // ── Update settlement on item ─────────────────────────
   const { error } = await supabase
     .from("inventory_borrow_items")
     .update({
@@ -208,6 +293,7 @@ export async function settleBorrowItem(
 
   if (error) throw error
 
+  // ── Check if all items settled → close the borrow ─────
   const { data: remaining } = await supabase
     .from("inventory_borrow_items")
     .select("id")
@@ -215,15 +301,86 @@ export async function settleBorrowItem(
     .eq("status", "borrowed")
     .limit(1)
 
-  if (!remaining || remaining.length === 0) {
+  const allSettled = !remaining || remaining.length === 0
+  if (allSettled) {
     await supabase
       .from("inventory_borrows")
       .update({ status: "returned", returned_at: new Date().toISOString() })
       .eq("id", item.borrow_id)
   }
 
+  // ── Notifications ─────────────────────────────────────
+  const typeLabel = { return: "คืนของ", exchange: "แลกสินค้า", payment: "ชำระเงิน" }
+  const productName = product?.name ?? "สินค้า"
+  const borrowNumber = borrow?.borrow_number ?? ""
+
+  const { smartNotify } = await import("./notifications")
+  smartNotify({
+    type: "system",
+    title: `ชำระรายการยืม — ${typeLabel[settlement.type]}`,
+    message: [
+      `ใบยืม: ${borrowNumber}`,
+      `สินค้า: ${productName}${product?.ref ? ` (${product.ref})` : ""} × ${item.quantity} ${product?.unit ?? "ชิ้น"}`,
+      `วิธีชำระ: ${typeLabel[settlement.type]}`,
+      settlement.type === "payment" && settlement.amount ? `จำนวนเงิน: ฿${Number(settlement.amount).toLocaleString()}` : "",
+      settlement.note ? `หมายเหตุ: ${settlement.note}` : "",
+      allSettled ? `✅ ครบทุกรายการแล้ว — ปิดใบยืม` : "",
+    ].filter(Boolean).join("\n"),
+    data: {
+      borrow_id: item.borrow_id,
+      borrow_number: borrowNumber,
+      settlement_type: settlement.type,
+    },
+  }).catch(() => {})
+
+  // ── Revalidate ────────────────────────────────────────
   revalidatePath("/inventory/borrows")
   revalidatePath(`/inventory/borrows/${item.borrow_id}`)
+  revalidatePath("/inventory")
+}
+
+/**
+ * Get item details for settlement UI (product info, reference price, available stock)
+ */
+export async function getBorrowItemSettlementInfo(itemId: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createClient()) as any
+
+  const { data: item, error } = await supabase
+    .from("inventory_borrow_items")
+    .select("id, product_id, quantity, unit_price, status")
+    .eq("id", itemId)
+    .single()
+
+  if (error) throw error
+
+  // Get product details
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, name, ref, brand, unit, category")
+    .eq("id", item.product_id)
+    .single()
+
+  // Get available stock for this product
+  const { data: stockRows } = await supabase
+    .from("inventory")
+    .select("quantity, reserved_quantity")
+    .eq("product_id", item.product_id)
+    .gt("quantity", 0)
+
+  const availableStock = (stockRows ?? []).reduce(
+    (sum: number, r: { quantity: number; reserved_quantity: number }) =>
+      sum + r.quantity - r.reserved_quantity,
+    0
+  )
+
+  return {
+    ...item,
+    product,
+    available_stock: availableStock,
+    reference_price: item.unit_price ? Number(item.unit_price) * Number(item.quantity) : null,
+    unit_price: item.unit_price ? Number(item.unit_price) : null,
+  }
 }
 
 export async function uploadBorrowPhoto(borrowId: string, photoUrl: string, description?: string) {
