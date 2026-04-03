@@ -999,22 +999,32 @@ export async function revalidateCaseReadyStatus(caseId: string) {
       .update({ case_status: newStatus })
       .eq("id", caseId)
 
+    const patient = caseData.patients as unknown as { full_name: string } | null
+    const caseNumber = caseData.case_number ?? caseId
+    const patientName = patient?.full_name ?? "ไม่ระบุ"
+
+    let dateInfo = ""
+    if (caseData.scheduled_date) {
+      dateInfo = ` นัด ${formatDate(String(caseData.scheduled_date))}`
+      if (caseData.scheduled_time) {
+        dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
+      }
+    }
+
+    const { createNotification, smartNotify } = await import("./notifications")
+
+    // Notify stock_staff when items are now available to prepare
+    if (newStatus === "pending_preparation") {
+      smartNotify({
+        type: "stock_received" as Parameters<typeof smartNotify>[0]["type"],
+        title: "ของมาถึงแล้ว — พร้อมจัดเตรียม",
+        message: `เคส ${caseNumber} (${patientName})${dateInfo} วัสดุครบแล้ว กรุณาจัดเตรียมสำหรับเคส`,
+        data: { case_id: caseId, case_number: caseNumber },
+      }).catch(() => {})
+    }
+
     // Notify CS to reschedule if appointment is confirmed but now pending_order
     if (newStatus === "pending_order" && caseData.appointment_status === "confirmed") {
-      const patient = caseData.patients as unknown as { full_name: string } | null
-      const caseNumber = caseData.case_number ?? caseId
-      const patientName = patient?.full_name ?? "ไม่ระบุ"
-
-      let dateInfo = ""
-      if (caseData.scheduled_date) {
-        dateInfo = ` นัด ${formatDate(String(caseData.scheduled_date))}`
-        if (caseData.scheduled_time) {
-          dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
-        }
-      }
-
-      const { createNotification } = await import("./notifications")
-
       // Send to all CS users
       const { data: csUsers } = await supabase
         .from("users")
@@ -1029,7 +1039,6 @@ export async function revalidateCaseReadyStatus(caseId: string) {
           title: "กรุณาเลื่อนนัด — วัสดุไม่พร้อม",
           message: `เคส ${caseNumber} (${patientName})${dateInfo} มีการเพิ่มวัสดุที่ไม่มีในสต๊อก ต้องสั่งของเพิ่ม กรุณาเลื่อนนัดลูกค้า`,
           data: { case_id: caseId, case_number: caseNumber },
-          // Respects notification_settings defaults for in_app/line/discord
         }).catch(() => {})
       }
     }

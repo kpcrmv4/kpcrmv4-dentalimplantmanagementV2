@@ -64,7 +64,7 @@ const CATEGORIES: Array<{
     label: "เคส & นัดหมาย",
     description: "แจ้งเตือนเกี่ยวกับเคสใหม่ วัสดุพร้อม เลื่อนนัด",
     icon: <Users className="h-4 w-4" />,
-    eventTypes: ["case_assigned", "material_prepared", "material_lock_request"],
+    eventTypes: ["case_assigned", "stock_received", "material_prepared", "material_lock_request"],
   },
   {
     key: "stock",
