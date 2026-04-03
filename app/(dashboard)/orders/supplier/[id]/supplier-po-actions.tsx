@@ -35,6 +35,9 @@ const STATUS_ACTIONS: Record<string, ActionConfig[]> = {
     { label: "อนุมัติ", action: "approve", icon: Check, variant: "default", color: "bg-green-600 hover:bg-green-700 text-white", adminOnly: true },
     { label: "ยกเลิก PO", action: "cancel", icon: Ban, variant: "destructive", confirm: "ต้องการยกเลิกใบสั่งซื้อนี้?" },
   ],
+  sent: [
+    { label: "ยกเลิก PO", action: "cancel", icon: Ban, variant: "destructive", confirm: "ใบสั่งซื้อนี้ส่งไปยัง Supplier แล้ว ต้องการยกเลิกจริงหรือไม่?", adminOnly: true },
+  ],
 }
 
 export function SupplierPOActions({
