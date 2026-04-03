@@ -24,9 +24,21 @@ export async function getCases(filters?: {
     query = query.eq("dentist_id", filters.dentist_id)
   }
   if (filters?.search) {
-    query = query.or(
-      `case_number.ilike.%${filters.search}%,patients.full_name.ilike.%${filters.search}%,patients.hn.ilike.%${filters.search}%`
-    )
+    // Find patient IDs that match name or HN, then OR with case_number
+    const { data: matchingPatients } = await supabase
+      .from("patients")
+      .select("id")
+      .or(`full_name.ilike.%${filters.search}%,hn.ilike.%${filters.search}%`)
+
+    const patientIds = (matchingPatients ?? []).map((p) => p.id)
+
+    if (patientIds.length > 0) {
+      query = query.or(
+        `case_number.ilike.%${filters.search}%,patient_id.in.(${patientIds.join(",")})`
+      )
+    } else {
+      query = query.ilike("case_number", `%${filters.search}%`)
+    }
   }
 
   const { data, error } = await query.limit(50)
@@ -987,22 +999,32 @@ export async function revalidateCaseReadyStatus(caseId: string) {
       .update({ case_status: newStatus })
       .eq("id", caseId)
 
+    const patient = caseData.patients as unknown as { full_name: string } | null
+    const caseNumber = caseData.case_number ?? caseId
+    const patientName = patient?.full_name ?? "ไม่ระบุ"
+
+    let dateInfo = ""
+    if (caseData.scheduled_date) {
+      dateInfo = ` นัด ${formatDate(String(caseData.scheduled_date))}`
+      if (caseData.scheduled_time) {
+        dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
+      }
+    }
+
+    const { createNotification, smartNotify } = await import("./notifications")
+
+    // Notify stock_staff when items are now available to prepare
+    if (newStatus === "pending_preparation") {
+      smartNotify({
+        type: "stock_received" as Parameters<typeof smartNotify>[0]["type"],
+        title: "ของมาถึงแล้ว — พร้อมจัดเตรียม",
+        message: `เคส ${caseNumber} (${patientName})${dateInfo} วัสดุครบแล้ว กรุณาจัดเตรียมสำหรับเคส`,
+        data: { case_id: caseId, case_number: caseNumber },
+      }).catch(() => {})
+    }
+
     // Notify CS to reschedule if appointment is confirmed but now pending_order
     if (newStatus === "pending_order" && caseData.appointment_status === "confirmed") {
-      const patient = caseData.patients as unknown as { full_name: string } | null
-      const caseNumber = caseData.case_number ?? caseId
-      const patientName = patient?.full_name ?? "ไม่ระบุ"
-
-      let dateInfo = ""
-      if (caseData.scheduled_date) {
-        dateInfo = ` นัด ${formatDate(String(caseData.scheduled_date))}`
-        if (caseData.scheduled_time) {
-          dateInfo += ` ${(caseData.scheduled_time as string).slice(0, 5)}`
-        }
-      }
-
-      const { createNotification } = await import("./notifications")
-
       // Send to all CS users
       const { data: csUsers } = await supabase
         .from("users")
@@ -1017,7 +1039,6 @@ export async function revalidateCaseReadyStatus(caseId: string) {
           title: "กรุณาเลื่อนนัด — วัสดุไม่พร้อม",
           message: `เคส ${caseNumber} (${patientName})${dateInfo} มีการเพิ่มวัสดุที่ไม่มีในสต๊อก ต้องสั่งของเพิ่ม กรุณาเลื่อนนัดลูกค้า`,
           data: { case_id: caseId, case_number: caseNumber },
-          // Respects notification_settings defaults for in_app/line/discord
         }).catch(() => {})
       }
     }

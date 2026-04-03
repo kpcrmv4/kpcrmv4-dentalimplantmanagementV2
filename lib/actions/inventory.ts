@@ -49,6 +49,10 @@ export type StockSummaryItem = {
   model: string | null
   diameter: number | null
   length: number | null
+  weight: string | null
+  dimension: string | null
+  abutment_height: number | null
+  gingival_height: number | null
   totalStock: number
   isLowStock: boolean
   isOutOfStock: boolean
@@ -64,7 +68,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, supplier_id,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -90,6 +94,10 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
       model: p.model ?? null,
       diameter: p.diameter ?? null,
       length: p.length ?? null,
+      weight: p.weight ?? null,
+      dimension: p.dimension ?? null,
+      abutment_height: p.abutment_height ?? null,
+      gingival_height: p.gingival_height ?? null,
       totalStock,
       isLowStock,
       isOutOfStock,
@@ -106,7 +114,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, supplier_id,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -132,6 +140,10 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
       model: p.model ?? null,
       diameter: p.diameter ?? null,
       length: p.length ?? null,
+      weight: p.weight ?? null,
+      dimension: p.dimension ?? null,
+      abutment_height: p.abutment_height ?? null,
+      gingival_height: p.gingival_height ?? null,
       totalStock,
       isLowStock,
       isOutOfStock,
@@ -277,6 +289,113 @@ export async function receiveGoods(
   }
 
   revalidatePath("/inventory")
+  revalidatePath("/dashboard")
+}
+
+export async function getPendingBorrows() {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("inventory_borrows")
+    .select("id, borrow_number, borrow_date, case_id, suppliers(name), inventory_borrow_items(id)")
+    .eq("order_type", "borrow")
+    .eq("status", "sent")
+    .order("created_at", { ascending: false })
+
+  if (error) throw error
+
+  return (data ?? []).map((b: Record<string, unknown>) => ({
+    id: b.id as string,
+    borrow_number: b.borrow_number as string,
+    borrow_date: b.borrow_date as string,
+    case_id: b.case_id as string | null,
+    supplier_name: (b.suppliers as { name: string } | null)?.name ?? "-",
+    item_count: (b.inventory_borrow_items as Array<{ id: string }>)?.length ?? 0,
+  }))
+}
+
+export async function getBorrowItems(borrowId: string) {
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from("inventory_borrow_items")
+    .select("id, product_id, quantity, products(name, ref, brand, category, unit)")
+    .eq("borrow_id", borrowId)
+
+  if (error) throw error
+
+  return (data ?? []).map((item: Record<string, unknown>) => {
+    const product = item.products as { name: string; ref: string; brand: string | null; category: string; unit: string } | null
+    return {
+      id: item.id as string,
+      product_id: item.product_id as string,
+      quantity_ordered: item.quantity as number,
+      product_name: product?.name ?? "-",
+      product_ref: product?.ref ?? "-",
+      product_brand: product?.brand ?? null,
+      product_category: product?.category ?? "-",
+      product_unit: product?.unit ?? "ชิ้น",
+    }
+  })
+}
+
+export async function receiveFromBorrow(
+  items: Array<{
+    product_id: string
+    lot_number: string
+    quantity: number
+    expiry_date: string | null
+    invoice_number: string | null
+  }>,
+  borrowId: string
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  for (const item of items) {
+    if (!item.lot_number?.trim()) throw new Error("กรุณาระบุ LOT Number ของสินค้าทุกรายการ")
+    if (item.quantity <= 0) throw new Error("จำนวนต้องมากกว่า 0")
+  }
+
+  // Get borrow to find linked case_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: borrow } = await (supabase as any)
+    .from("inventory_borrows")
+    .select("case_id")
+    .eq("id", borrowId)
+    .single()
+
+  // Insert inventory rows
+  const rows = items.map((item) => ({
+    product_id: item.product_id,
+    lot_number: item.lot_number.trim(),
+    quantity: item.quantity,
+    reserved_quantity: 0,
+    expiry_date: item.expiry_date || null,
+    received_date: new Date().toISOString().split("T")[0],
+    invoice_number: item.invoice_number || null,
+  }))
+
+  const { error: invError } = await supabase.from("inventory").insert(rows)
+  if (invError) throw invError
+
+  // Mark borrow as received
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("inventory_borrows")
+    .update({ status: "borrowed" })
+    .eq("id", borrowId)
+
+  // Re-evaluate case status so it can move to pending_preparation / ready
+  if (borrow?.case_id) {
+    const { revalidateCaseReadyStatus } = await import("./cases")
+    await revalidateCaseReadyStatus(borrow.case_id)
+    revalidatePath(`/cases/${borrow.case_id}`)
+  }
+
+  revalidatePath("/inventory")
+  revalidatePath("/inventory/borrows")
   revalidatePath("/dashboard")
 }
 

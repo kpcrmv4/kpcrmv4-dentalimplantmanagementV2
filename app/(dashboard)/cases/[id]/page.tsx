@@ -172,6 +172,20 @@ export default async function CaseDetailPage({
         reservations={reservations.map((r) => {
           const product = r.products as Record<string, unknown> | null
           const inventory = r.inventory as Record<string, unknown> | null
+          const specParts: string[] = []
+          const dia = product?.diameter as number | null | undefined
+          const len = product?.length as number | null | undefined
+          if (dia != null && len != null) specParts.push(`Ø${dia} × ${len}mm`)
+          else if (dia != null) specParts.push(`Ø${dia}mm`)
+          else if (len != null) specParts.push(`${len}mm`)
+          const w = product?.weight as string | null | undefined
+          const dim = product?.dimension as string | null | undefined
+          const ah = product?.abutment_height as number | null | undefined
+          const gh = product?.gingival_height as number | null | undefined
+          if (w) specParts.push(`${w}g`)
+          if (dim) specParts.push(dim)
+          if (ah != null) specParts.push(`AH: ${ah}`)
+          if (gh != null) specParts.push(`GH: ${gh}`)
           return {
             id: r.id as string,
             status: r.status as string,
@@ -180,6 +194,7 @@ export default async function CaseDetailPage({
             productBrand: String(product?.brand ?? ""),
             productRef: String(product?.ref ?? ""),
             productUnit: String(product?.unit ?? "ชิ้น"),
+            productSpecs: specParts.join(" · "),
             quantityReserved: Number(r.quantity_reserved),
             quantityUsed: r.quantity_used != null ? Number(r.quantity_used) : null,
             lotNumber: inventory ? String(inventory.lot_number) : null,

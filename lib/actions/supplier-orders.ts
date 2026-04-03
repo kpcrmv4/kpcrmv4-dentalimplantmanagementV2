@@ -16,7 +16,7 @@ function formatProductLine(p: Record<string, unknown>, qty: number): string {
     p.length != null ? `${p.length}mm` : null,
   ].filter(Boolean).join(" / ")
   const unit = String(p.unit ?? "ชิ้น")
-  return `  - ${parts} × ${qty} ${unit}`
+  return `  - ${parts} : ${qty} ${unit}`
 }
 
 function generateBorrowNumber(): string {
@@ -131,6 +131,20 @@ export async function createSupplierOrder(params: {
 
   if (itemsError) throw itemsError
 
+  // Update case status: if case was pending_order, move to pending_preparation (items are being sourced)
+  const { data: currentCase } = await supabase
+    .from("cases")
+    .select("case_status")
+    .eq("id", params.caseId)
+    .single()
+
+  if (currentCase?.case_status === "pending_order") {
+    await supabase
+      .from("cases")
+      .update({ case_status: "pending_preparation" })
+      .eq("id", params.caseId)
+  }
+
   // Send LINE to supplier (for borrow: immediately, for purchase: after approval)
   // Check supplier LINE borrow setting
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,7 +161,7 @@ export async function createSupplierOrder(params: {
 
     const itemLines = params.items.map((item) => {
       const p = productMap.get(item.productId) as Record<string, unknown> | undefined
-      return p ? formatProductLine(p, item.quantity) : `  - สินค้า × ${item.quantity}`
+      return p ? formatProductLine(p, item.quantity) : `  - สินค้า : ${item.quantity}`
     }).join("\n")
 
     const scheduledInfo = caseData?.scheduled_date
@@ -264,7 +278,7 @@ export async function approveSupplierOrder(orderId: string) {
 
     const itemLines = ((items ?? []) as Array<Record<string, unknown>>).map((item) => {
       const p = item.products as Record<string, unknown> | null
-      return p ? formatProductLine(p, Number(item.quantity)) : `  - สินค้า × ${item.quantity}`
+      return p ? formatProductLine(p, Number(item.quantity)) : `  - สินค้า : ${item.quantity}`
     }).join("\n")
 
     const caseNumber = caseData?.case_number ?? ""

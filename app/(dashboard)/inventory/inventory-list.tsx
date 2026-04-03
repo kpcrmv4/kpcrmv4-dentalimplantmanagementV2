@@ -17,6 +17,10 @@ type Product = {
   model: string | null
   diameter: number | null
   length: number | null
+  weight: string | null
+  dimension: string | null
+  abutment_height: number | null
+  gingival_height: number | null
   totalStock: number
   isLowStock: boolean
   supplierName: string | null
@@ -230,6 +234,30 @@ function ProductView({ products }: { products: Product[] }) {
                           ? `Ø${product.diameter}mm`
                           : `${product.length}mm`}
                       </span>
+                    </>
+                  )}
+                  {product.weight && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">{product.weight}g</span>
+                    </>
+                  )}
+                  {product.dimension && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">{product.dimension}</span>
+                    </>
+                  )}
+                  {product.abutment_height != null && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">AH: {product.abutment_height}</span>
+                    </>
+                  )}
+                  {product.gingival_height != null && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground">GH: {product.gingival_height}</span>
                     </>
                   )}
                   {product.supplierName && (

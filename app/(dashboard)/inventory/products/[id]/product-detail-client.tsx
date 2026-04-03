@@ -103,6 +103,12 @@ type ProductData = Product & {
     total_available: number
   }
   pending_order_quantity: number
+  // extra specs from migration 020 (not yet in generated types)
+  volume?: string | null
+  weight?: string | null
+  dimension?: string | null
+  abutment_height?: number | null
+  gingival_height?: number | null
 }
 
 // ─── Status Config ──────────────────────────────────────────────────
