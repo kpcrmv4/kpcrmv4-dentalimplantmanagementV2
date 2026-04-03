@@ -315,10 +315,32 @@ export async function approveSupplierOrder(orderId: string) {
     sendDiscordWebhook("ใบสั่งซื้อ — อนุมัติแล้ว", message).catch(() => {})
   }
 
+  // Update item statuses to "sent"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("inventory_borrow_items")
+    .update({ status: "sent" })
+    .eq("borrow_id", orderId)
+
+  // Send in-app notification (same pattern as standard PO approval)
+  const { smartNotify } = await import("./notifications")
+  smartNotify({
+    type: "po_approved" as Parameters<typeof smartNotify>[0]["type"],
+    title: "ใบสั่งซื้อ Supplier อนุมัติแล้ว",
+    message: `ใบสั่งซื้อ ${order.borrow_number} (${supplier?.name ?? "-"}) ได้รับการอนุมัติและส่งไปยัง Supplier แล้ว`,
+    data: { po_id: orderId, borrow_number: String(order.borrow_number) },
+  }).catch(() => {})
+
+  // Revalidate case status (stock availability may have changed context)
+  if (order.case_id) {
+    const { revalidateCaseReadyStatus } = await import("./cases")
+    revalidateCaseReadyStatus(order.case_id).catch(() => {})
+  }
+
   revalidatePath("/inventory/borrows")
   revalidatePath("/orders")
   revalidatePath(`/orders/supplier/${orderId}`)
-  revalidatePath(`/cases/${order.case_id}`)
+  if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
 }
 
 /**
@@ -677,10 +699,22 @@ export async function getSupplierPurchaseOrderById(id: string) {
     0
   )
 
+  // Fetch linked case info if case_id exists
+  let caseInfo: Record<string, unknown> | null = null
+  if (order.case_id) {
+    const { data: caseData } = await supabase
+      .from("cases")
+      .select("id, case_number, scheduled_date, scheduled_time, patients(full_name, hn), users!cases_dentist_id_fkey(full_name)")
+      .eq("id", order.case_id)
+      .single()
+    caseInfo = caseData as Record<string, unknown> | null
+  }
+
   return {
     ...order,
     items: itemsWithProducts,
     total_amount: totalAmount,
+    case_info: caseInfo,
   }
 }
 
@@ -695,23 +729,39 @@ export async function cancelSupplierOrder(orderId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: order } = await (supabase as any)
     .from("inventory_borrows")
-    .select("id, order_type, status, case_id")
+    .select("id, order_type, status, case_id, borrow_number")
     .eq("id", orderId)
     .single()
 
   if (!order) throw new Error("ไม่พบใบสั่ง")
   if (order.order_type !== "purchase") throw new Error("ใบนี้ไม่ใช่ใบซื้อ")
-  if (!["pending_approval", "draft"].includes(order.status)) throw new Error("ไม่สามารถยกเลิกสถานะนี้ได้")
+  if (!["pending_approval", "draft", "sent"].includes(order.status)) throw new Error("ไม่สามารถยกเลิกสถานะนี้ได้")
 
+  // Update order status to cancelled
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("inventory_borrows")
-    .update({ status: "cancelled" })
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", orderId)
 
   if (error) throw error
 
+  // Update all item statuses to cancelled
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("inventory_borrow_items")
+    .update({ status: "cancelled" })
+    .eq("borrow_id", orderId)
+
+  // Revalidate case status — cancelling a PO means stock is still missing,
+  // so case may need to go back to pending_order
+  if (order.case_id) {
+    const { revalidateCaseReadyStatus } = await import("./cases")
+    await revalidateCaseReadyStatus(order.case_id)
+  }
+
   revalidatePath("/orders")
+  revalidatePath("/inventory/borrows")
   revalidatePath(`/orders/supplier/${orderId}`)
   if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
 }

@@ -605,6 +605,7 @@ export type StockDemandItem = {
     status: string
     quantityOrdered: number
     expectedDeliveryDate: string | null
+    isSupplierPO?: boolean
   } | null
   cases: Array<{
     caseId: string
@@ -648,21 +649,31 @@ export async function getStockDemands(): Promise<StockDemandItem[]> {
     stockByProduct.set(inv.product_id, current + inv.quantity - inv.reserved_quantity)
   }
 
-  // Check active POs for these products
+  // Check active POs for these products (standard purchase_orders)
   const { data: activePOItems } = await supabase
     .from("purchase_order_items")
     .select("product_id, quantity, purchase_orders!inner(id, po_number, status, expected_delivery_date)")
     .in("product_id", productIds)
     .in("purchase_orders.status", ["draft", "pending_approval", "approved", "ordered"])
 
+  // Also check supplier POs (inventory_borrows with order_type='purchase')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: activeSupplierPOItems } = await (supabase as any)
+    .from("inventory_borrow_items")
+    .select("product_id, quantity, inventory_borrows!inner(id, borrow_number, status, expected_delivery_date, order_type)")
+    .in("product_id", productIds)
+    .eq("inventory_borrows.order_type", "purchase")
+    .in("inventory_borrows.status", ["pending_approval", "sent"])
+
   const poByProduct = new Map<string, StockDemandItem["activePO"]>()
+  // Status ranking: higher = more advanced
+  const statusRank: Record<string, number> = { draft: 0, pending_approval: 1, approved: 2, sent: 3, ordered: 4 }
+
   for (const item of activePOItems ?? []) {
     const po = item.purchase_orders as unknown as {
       id: string; po_number: string; status: string; expected_delivery_date: string | null
     }
     const existing = poByProduct.get(item.product_id)
-    // Keep the most advanced PO status (ordered > approved > pending_approval > draft)
-    const statusRank: Record<string, number> = { draft: 0, pending_approval: 1, approved: 2, ordered: 3 }
     if (!existing || (statusRank[po.status] ?? 0) > (statusRank[existing.status] ?? 0)) {
       poByProduct.set(item.product_id, {
         poId: po.id,
@@ -670,6 +681,24 @@ export async function getStockDemands(): Promise<StockDemandItem[]> {
         status: po.status,
         quantityOrdered: item.quantity,
         expectedDeliveryDate: po.expected_delivery_date,
+        isSupplierPO: false,
+      })
+    }
+  }
+
+  for (const item of (activeSupplierPOItems ?? []) as Array<Record<string, unknown>>) {
+    const bo = item.inventory_borrows as unknown as {
+      id: string; borrow_number: string; status: string; expected_delivery_date: string | null
+    }
+    const existing = poByProduct.get(item.product_id as string)
+    if (!existing || (statusRank[bo.status] ?? 0) > (statusRank[existing.status] ?? 0)) {
+      poByProduct.set(item.product_id as string, {
+        poId: bo.id,
+        poNumber: bo.borrow_number,
+        status: bo.status,
+        quantityOrdered: Number(item.quantity),
+        expectedDeliveryDate: bo.expected_delivery_date,
+        isSupplierPO: true,
       })
     }
   }

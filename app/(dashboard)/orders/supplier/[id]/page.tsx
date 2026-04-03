@@ -8,6 +8,8 @@ import {
   Phone,
   Mail,
   User,
+  Stethoscope,
+  ClipboardList,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -43,6 +45,9 @@ export default async function SupplierPODetailPage({
   const supplier = po.suppliers as Record<string, unknown> | null
   const requester = po.requester as Record<string, unknown> | null
   const approver = po.approver as Record<string, unknown> | null
+  const caseInfo = po.case_info as Record<string, unknown> | null
+  const casePatient = caseInfo?.patients as Record<string, unknown> | null
+  const caseDentist = caseInfo?.users as Record<string, unknown> | null
   const items = (po.items ?? []) as Array<Record<string, unknown>>
   const isAdmin = currentUser?.role === "admin"
   const isClosed = ["borrowed", "cancelled", "closed"].includes(po.status as string)
@@ -146,6 +151,55 @@ export default async function SupplierPODetailPage({
           </>
         ) : null}
       </div>
+
+      {/* Case info */}
+      {caseInfo && (
+        <Link
+          href={`/cases/${String(caseInfo.id)}`}
+          className="block rounded-xl border bg-card p-3 space-y-1.5 hover:bg-muted/30 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-sm font-semibold">เคสที่เกี่ยวข้อง</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+            <div>
+              <span className="text-xs text-muted-foreground">เลขเคส</span>
+              <p className="text-sm font-medium leading-tight text-primary">
+                {String(caseInfo.case_number)}
+              </p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">ผู้ป่วย</span>
+              <p className="text-sm font-medium leading-tight">
+                {String(casePatient?.full_name ?? "-")}
+                {casePatient?.hn ? (
+                  <span className="text-xs text-muted-foreground ml-1">HN: {String(casePatient.hn)}</span>
+                ) : null}
+              </p>
+            </div>
+            {caseDentist?.full_name ? (
+              <div>
+                <span className="text-xs text-muted-foreground">แพทย์</span>
+                <p className="flex items-center gap-1 text-sm font-medium leading-tight">
+                  <Stethoscope className="h-3 w-3 text-muted-foreground" />
+                  {String(caseDentist.full_name)}
+                </p>
+              </div>
+            ) : null}
+            {caseInfo.scheduled_date ? (
+              <div>
+                <span className="text-xs text-muted-foreground">วันนัด</span>
+                <p className="flex items-center gap-1 text-sm font-medium leading-tight">
+                  <Calendar className="h-3 w-3 text-muted-foreground" />
+                  {formatDate(String(caseInfo.scheduled_date))}
+                  {caseInfo.scheduled_time ? ` ${String(caseInfo.scheduled_time).slice(0, 5)}` : ""}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </Link>
+      )}
 
       {/* Items */}
       <div className="rounded-xl border bg-card p-3">
