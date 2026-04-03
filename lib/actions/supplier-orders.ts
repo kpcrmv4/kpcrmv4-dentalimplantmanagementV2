@@ -677,10 +677,22 @@ export async function getSupplierPurchaseOrderById(id: string) {
     0
   )
 
+  // Fetch linked case info if case_id exists
+  let caseInfo: Record<string, unknown> | null = null
+  if (order.case_id) {
+    const { data: caseData } = await supabase
+      .from("cases")
+      .select("id, case_number, scheduled_date, scheduled_time, patients(full_name, hn), users!cases_dentist_id_fkey(full_name)")
+      .eq("id", order.case_id)
+      .single()
+    caseInfo = caseData as Record<string, unknown> | null
+  }
+
   return {
     ...order,
     items: itemsWithProducts,
     total_amount: totalAmount,
+    case_info: caseInfo,
   }
 }
 
