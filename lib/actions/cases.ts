@@ -24,9 +24,21 @@ export async function getCases(filters?: {
     query = query.eq("dentist_id", filters.dentist_id)
   }
   if (filters?.search) {
-    query = query.or(
-      `case_number.ilike.%${filters.search}%,patients.full_name.ilike.%${filters.search}%,patients.hn.ilike.%${filters.search}%`
-    )
+    // Find patient IDs that match name or HN, then OR with case_number
+    const { data: matchingPatients } = await supabase
+      .from("patients")
+      .select("id")
+      .or(`full_name.ilike.%${filters.search}%,hn.ilike.%${filters.search}%`)
+
+    const patientIds = (matchingPatients ?? []).map((p) => p.id)
+
+    if (patientIds.length > 0) {
+      query = query.or(
+        `case_number.ilike.%${filters.search}%,patient_id.in.(${patientIds.join(",")})`
+      )
+    } else {
+      query = query.ilike("case_number", `%${filters.search}%`)
+    }
   }
 
   const { data, error } = await query.limit(50)
