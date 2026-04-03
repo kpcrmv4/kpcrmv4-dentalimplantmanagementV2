@@ -45,6 +45,7 @@ interface ReservationItem {
   productBrand: string
   productRef: string
   productUnit: string
+  productSpecs: string
   quantityReserved: number
   quantityUsed: number | null
   lotNumber: string | null
@@ -58,6 +59,7 @@ interface DraftItem {
   productBrand: string
   productRef: string
   productUnit: string
+  productSpecs: string
   quantity: number
 }
 
@@ -72,6 +74,10 @@ interface ProductOption {
   model: string | null
   diameter: number | null
   length: number | null
+  weight: string | null
+  dimension: string | null
+  abutment_height: number | null
+  gingival_height: number | null
 }
 
 interface CategoryOption {
@@ -117,6 +123,25 @@ export function CaseMaterialsEditor({
   const [allFilteredProducts, setAllFilteredProducts] = useState<ProductOption[]>([])
 
   const canEdit = ["ready", "pending_preparation", "pending_order"].includes(caseStatus)
+
+function buildSpecs(p: {
+  diameter?: number | null
+  length?: number | null
+  weight?: string | null
+  dimension?: string | null
+  abutment_height?: number | null
+  gingival_height?: number | null
+}): string {
+  const parts: string[] = []
+  if (p.diameter != null && p.length != null) parts.push(`Ø${p.diameter} × ${p.length}mm`)
+  else if (p.diameter != null) parts.push(`Ø${p.diameter}mm`)
+  else if (p.length != null) parts.push(`${p.length}mm`)
+  if (p.weight) parts.push(`${p.weight}g`)
+  if (p.dimension) parts.push(p.dimension)
+  if (p.abutment_height != null) parts.push(`AH: ${p.abutment_height}`)
+  if (p.gingival_height != null) parts.push(`GH: ${p.gingival_height}`)
+  return parts.join(" · ")
+}
   const isClosed = ["completed", "cancelled"].includes(caseStatus)
   const activeReservations = isClosed
     ? reservations // Show all reservations for completed/cancelled cases (history)
@@ -191,6 +216,10 @@ export function CaseMaterialsEditor({
         model: (p as Record<string, unknown>).model as string | null,
         diameter: (p as Record<string, unknown>).diameter as number | null,
         length: (p as Record<string, unknown>).length as number | null,
+        weight: (p as Record<string, unknown>).weight as string | null,
+        dimension: (p as Record<string, unknown>).dimension as string | null,
+        abutment_height: (p as Record<string, unknown>).abutment_height as number | null,
+        gingival_height: (p as Record<string, unknown>).gingival_height as number | null,
       }))
       setSearchResults(mapped)
       if (!search) setAllFilteredProducts(mapped)
@@ -263,6 +292,7 @@ export function CaseMaterialsEditor({
         productBrand: selectedProduct.brand ?? "",
         productRef: selectedProduct.ref,
         productUnit: selectedProduct.unit,
+        productSpecs: buildSpecs(selectedProduct),
         quantity: qty,
       },
     ])
@@ -353,6 +383,9 @@ export function CaseMaterialsEditor({
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {r.productBrand} · REF: {r.productRef}
                     </p>
+                    {r.productSpecs && (
+                      <p className="text-[11px] text-muted-foreground">{r.productSpecs}</p>
+                    )}
                     {r.status === "consumed" && r.quantityUsed != null ? (
                       <p className="text-[11px] text-muted-foreground">
                         จอง: {r.quantityReserved} → ใช้จริง: {r.quantityUsed} {r.productUnit}
@@ -407,6 +440,9 @@ export function CaseMaterialsEditor({
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {d.productBrand} · REF: {d.productRef}
                   </p>
+                  {d.productSpecs && (
+                    <p className="text-[11px] text-muted-foreground">{d.productSpecs}</p>
+                  )}
                   <p className="text-[11px] text-muted-foreground">จำนวน: {d.quantity} {d.productUnit}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -540,6 +576,7 @@ export function CaseMaterialsEditor({
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium leading-tight">{p.name}</p>
                       <p className="text-[11px] text-muted-foreground">{p.brand ?? ""}{p.model ? ` · ${p.model}` : ""} · REF: {p.ref}</p>
+                      {buildSpecs(p) && <p className="text-[11px] text-muted-foreground">{buildSpecs(p)}</p>}
                     </div>
                     <div className="text-right shrink-0 ml-2">
                       <p className={`text-xs font-medium ${p.totalStock > 0 ? "text-green-600" : "text-destructive"}`}>
@@ -555,6 +592,9 @@ export function CaseMaterialsEditor({
               <div className="rounded-lg border p-3 bg-muted/50">
                 <p className="text-sm font-medium">{selectedProduct.name}</p>
                 <p className="text-[11px] text-muted-foreground">{selectedProduct.brand ?? ""} · REF: {selectedProduct.ref}</p>
+                {buildSpecs(selectedProduct) && (
+                  <p className="text-[11px] text-muted-foreground">{buildSpecs(selectedProduct)}</p>
+                )}
                 <p className={`text-xs mt-1 ${selectedProduct.totalStock > 0 ? "text-green-600" : "text-destructive"}`}>
                   สต๊อกคงเหลือ: {selectedProduct.totalStock} {selectedProduct.unit}
                 </p>

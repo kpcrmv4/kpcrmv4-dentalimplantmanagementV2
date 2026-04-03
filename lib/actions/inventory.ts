@@ -49,6 +49,10 @@ export type StockSummaryItem = {
   model: string | null
   diameter: number | null
   length: number | null
+  weight: string | null
+  dimension: string | null
+  abutment_height: number | null
+  gingival_height: number | null
   totalStock: number
   isLowStock: boolean
   isOutOfStock: boolean
@@ -64,7 +68,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, supplier_id,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -90,6 +94,10 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
       model: p.model ?? null,
       diameter: p.diameter ?? null,
       length: p.length ?? null,
+      weight: p.weight ?? null,
+      dimension: p.dimension ?? null,
+      abutment_height: p.abutment_height ?? null,
+      gingival_height: p.gingival_height ?? null,
       totalStock,
       isLowStock,
       isOutOfStock,
@@ -106,7 +114,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, supplier_id,
+      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -132,6 +140,10 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
       model: p.model ?? null,
       diameter: p.diameter ?? null,
       length: p.length ?? null,
+      weight: p.weight ?? null,
+      dimension: p.dimension ?? null,
+      abutment_height: p.abutment_height ?? null,
+      gingival_height: p.gingival_height ?? null,
       totalStock,
       isLowStock,
       isOutOfStock,
