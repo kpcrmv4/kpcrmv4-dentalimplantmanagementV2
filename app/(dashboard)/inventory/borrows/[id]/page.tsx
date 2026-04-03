@@ -167,7 +167,7 @@ export default async function BorrowDetailPage({
                             )}
 
                             {/* Exchange product */}
-                            {settlementType === "exchange" && settlementProduct && (
+                            {settlementType === "exchange" && settlementProduct != null ? (
                               <div className="flex items-center gap-1">
                                 <span>สินค้าที่แลก:</span>
                                 <span className="font-medium text-foreground">
@@ -175,23 +175,23 @@ export default async function BorrowDetailPage({
                                   {settlementProduct.ref ? ` (${settlementProduct.ref})` : ""}
                                 </span>
                               </div>
-                            )}
+                            ) : null}
 
                             {/* Settlement date */}
-                            {item.settled_at && (
+                            {item.settled_at != null ? (
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 <span>วันที่ชำระ: {new Date(item.settled_at as string).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                               </div>
-                            )}
+                            ) : null}
 
                             {/* Settlement note */}
-                            {item.settlement_note && (
+                            {item.settlement_note != null ? (
                               <div className="mt-0.5">
                                 <span>หมายเหตุ: </span>
-                                <span className="italic">{item.settlement_note as string}</span>
+                                <span className="italic">{String(item.settlement_note)}</span>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </>
