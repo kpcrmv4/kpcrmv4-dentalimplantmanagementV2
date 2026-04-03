@@ -1,3 +1,4 @@
+-- no transaction
 -- 023: Add stock_received notification type
 -- Triggered when items arrive (via PO or borrow receive) and a case moves to pending_preparation
 
