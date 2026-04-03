@@ -107,7 +107,8 @@ type ProductData = Product & {
   volume?: string | null
   weight?: string | null
   dimension?: string | null
-  abutment_height?: string | null
+  abutment_height?: number | null
+  gingival_height?: number | null
 }
 
 // ─── Status Config ──────────────────────────────────────────────────
