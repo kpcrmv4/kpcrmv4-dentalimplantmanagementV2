@@ -319,13 +319,27 @@ export async function getBorrowItems(borrowId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("inventory_borrow_items")
-    .select("id, product_id, quantity, products(name, ref, brand, category, unit)")
+    .select("id, product_id, quantity")
     .eq("borrow_id", borrowId)
 
   if (error) throw error
 
-  return (data ?? []).map((item: Record<string, unknown>) => {
-    const product = item.products as { name: string; ref: string; brand: string | null; category: string; unit: string } | null
+  // Fetch product details separately to avoid ambiguous FK
+  // (inventory_borrow_items has two FKs to products: product_id and settlement_product_id)
+  const items = data ?? []
+  const productIds = Array.from(new Set(items.map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
+
+  let productMap = new Map<string, { name: string; ref: string; brand: string | null; category: string; unit: string }>()
+  if (productIds.length > 0) {
+    const { data: products } = await supabase
+      .from("products")
+      .select("id, name, ref, brand, category, unit")
+      .in("id", productIds)
+    productMap = new Map((products ?? []).map((p) => [p.id, p]))
+  }
+
+  return items.map((item: Record<string, unknown>) => {
+    const product = productMap.get(item.product_id as string) ?? null
     return {
       id: item.id as string,
       product_id: item.product_id as string,

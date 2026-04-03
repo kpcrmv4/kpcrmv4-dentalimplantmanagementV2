@@ -258,12 +258,26 @@ export async function approveSupplierOrder(orderId: string) {
 
   const supplier = order.suppliers as unknown as { name: string; line_id: string | null } | null
   if (supplier?.line_id && purchaseLineEnabled) {
-    // Get items and case info
+    // Get items and case info (fetch products separately to avoid ambiguous FK)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: items } = await (supabase as any)
+    const { data: rawItems } = await (supabase as any)
       .from("inventory_borrow_items")
-      .select("quantity, unit_price, products(name, ref, brand, unit, model, diameter, length)")
+      .select("product_id, quantity, unit_price")
       .eq("borrow_id", orderId)
+
+    const itemProductIds = Array.from(new Set((rawItems ?? []).map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
+    let itemProductMap = new Map<string, Record<string, unknown>>()
+    if (itemProductIds.length > 0) {
+      const { data: itemProducts } = await supabase
+        .from("products")
+        .select("id, name, ref, brand, unit, model, diameter, length")
+        .in("id", itemProductIds)
+      itemProductMap = new Map((itemProducts ?? []).map((p) => [p.id, p]))
+    }
+    const items = (rawItems ?? []).map((item: Record<string, unknown>) => ({
+      ...item,
+      products: itemProductMap.get(item.product_id as string) ?? null,
+    }))
 
     const { data: caseData } = order.case_id
       ? await supabase
