@@ -178,7 +178,7 @@ export default async function SupplierPODetailPage({
                 ) : null}
               </p>
             </div>
-            {caseDentist?.full_name && (
+            {caseDentist?.full_name ? (
               <div>
                 <span className="text-xs text-muted-foreground">แพทย์</span>
                 <p className="flex items-center gap-1 text-sm font-medium leading-tight">
@@ -186,8 +186,8 @@ export default async function SupplierPODetailPage({
                   {String(caseDentist.full_name)}
                 </p>
               </div>
-            )}
-            {caseInfo.scheduled_date && (
+            ) : null}
+            {caseInfo.scheduled_date ? (
               <div>
                 <span className="text-xs text-muted-foreground">วันนัด</span>
                 <p className="flex items-center gap-1 text-sm font-medium leading-tight">
@@ -196,7 +196,7 @@ export default async function SupplierPODetailPage({
                   {caseInfo.scheduled_time ? ` ${String(caseInfo.scheduled_time).slice(0, 5)}` : ""}
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
         </Link>
       )}
