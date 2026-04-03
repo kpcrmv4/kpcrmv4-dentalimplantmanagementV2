@@ -262,7 +262,7 @@ export async function approveSupplierOrder(orderId: string) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: items } = await (supabase as any)
       .from("inventory_borrow_items")
-      .select("quantity, unit_price, products(name, ref, brand, unit, model, diameter, length)")
+      .select("quantity, unit_price, products!inventory_borrow_items_product_id_fkey(name, ref, brand, unit, model, diameter, length)")
       .eq("borrow_id", orderId)
 
     const { data: caseData } = order.case_id

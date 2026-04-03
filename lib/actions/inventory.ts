@@ -319,7 +319,7 @@ export async function getBorrowItems(borrowId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from("inventory_borrow_items")
-    .select("id, product_id, quantity, products(name, ref, brand, category, unit)")
+    .select("id, product_id, quantity, products!inventory_borrow_items_product_id_fkey(name, ref, brand, category, unit)")
     .eq("borrow_id", borrowId)
 
   if (error) throw error

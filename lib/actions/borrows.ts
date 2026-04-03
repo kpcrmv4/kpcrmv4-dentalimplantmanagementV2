@@ -63,7 +63,7 @@ export async function getBorrowById(id: string) {
       .single(),
     supabase
       .from("inventory_borrow_items")
-      .select("*, products(name, ref, brand, unit), cases(case_number), inventory(lot_number)")
+      .select("*, products!inventory_borrow_items_product_id_fkey(name, ref, brand, unit), cases(case_number), inventory(lot_number)")
       .eq("borrow_id", id)
       .order("created_at"),
     supabase
@@ -74,6 +74,9 @@ export async function getBorrowById(id: string) {
   ])
 
   if (borrowResult.error) throw borrowResult.error
+  if (itemsResult.error) {
+    console.error("Error fetching borrow items:", itemsResult.error)
+  }
 
   return {
     ...borrowResult.data,
