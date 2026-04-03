@@ -78,7 +78,7 @@ export async function getBorrowById(id: string) {
   // Fetch product details separately to avoid ambiguous FK
   // (inventory_borrow_items has two FKs to products: product_id and settlement_product_id)
   const items = itemsResult.data ?? []
-  const productIds = [...new Set(items.map((i: Record<string, unknown>) => i.product_id).filter(Boolean))] as string[]
+  const productIds = Array.from(new Set(items.map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
 
   let productMap = new Map<string, Record<string, unknown>>()
   if (productIds.length > 0) {

@@ -265,7 +265,7 @@ export async function approveSupplierOrder(orderId: string) {
       .select("product_id, quantity, unit_price")
       .eq("borrow_id", orderId)
 
-    const itemProductIds = [...new Set((rawItems ?? []).map((i: Record<string, unknown>) => i.product_id).filter(Boolean))] as string[]
+    const itemProductIds = Array.from(new Set((rawItems ?? []).map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
     let itemProductMap = new Map<string, Record<string, unknown>>()
     if (itemProductIds.length > 0) {
       const { data: itemProducts } = await supabase
