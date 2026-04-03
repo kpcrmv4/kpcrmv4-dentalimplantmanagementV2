@@ -141,7 +141,7 @@ async function getCases(
   let query = supabase
     .from("cases")
     .select("*, patients!inner(hn, full_name), users!cases_dentist_id_fkey(full_name), case_reservations(id, status)")
-    .limit(100)
+    .limit(search ? 500 : 100)
 
   if (status === "waiting_doctor") {
     // Virtual status: pending_order cases with no reservations (doctor hasn't ordered)
@@ -152,14 +152,13 @@ async function getCases(
   if (appt && appt !== "all") {
     query = query.eq("appointment_status", appt as "pending" | "confirmed" | "cancelled")
   }
-  if (search) {
-    query = query.or(`case_number.ilike.%${search}%,patients.full_name.ilike.%${search}%,patients.hn.ilike.%${search}%`)
-  }
-
-  // Apply date range filter
-  const range = getDateRange(period ?? "today", customDate)
-  if (range) {
-    query = query.gte("scheduled_date", range.from).lte("scheduled_date", range.to)
+  // When searching, skip date range filter to search across all time periods
+  if (!search) {
+    // Apply date range filter only when not searching
+    const range = getDateRange(period ?? "today", customDate)
+    if (range) {
+      query = query.gte("scheduled_date", range.from).lte("scheduled_date", range.to)
+    }
   }
 
   // Sort by scheduled_date ASC (nearest first), then scheduled_time ASC
@@ -170,6 +169,21 @@ async function getCases(
   const { data, error } = await query
   if (error) return []
   let results = data ?? []
+
+  // Client-side search: filter across case_number, patient name, patient HN, and dentist name
+  if (search) {
+    const q = search.toLowerCase()
+    results = results.filter((c) => {
+      const patient = c.patients as Record<string, string> | null
+      const dentist = c.users as Record<string, string> | null
+      return (
+        (c.case_number as string)?.toLowerCase().includes(q) ||
+        patient?.full_name?.toLowerCase().includes(q) ||
+        patient?.hn?.toLowerCase().includes(q) ||
+        dentist?.full_name?.toLowerCase().includes(q)
+      )
+    })
+  }
 
   // Post-filter for virtual statuses
   if (status === "waiting_doctor" || status === "pending_order") {
