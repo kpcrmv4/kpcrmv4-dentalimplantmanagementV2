@@ -68,6 +68,7 @@ export function CaseSupplierOrder({
     supplier_name: string
     items: Array<{ product_id: string; quantity: number }>
   }>>([])
+  const [fetchCount, setFetchCount] = useState(0)
 
   // Map product_id → order info for quick lookup
   const orderedProductMap = new Map<string, { borrow_number: string; order_type: string; status: string; supplier_name: string }>()
@@ -98,7 +99,7 @@ export function CaseSupplierOrder({
         }))
       )
     }).catch(() => {})
-  }, [caseId])
+  }, [caseId, fetchCount])
 
   if (outOfStockItems.length === 0) return null
 
@@ -158,6 +159,7 @@ export function CaseSupplierOrder({
             ? `ส่งใบยืม ${result.borrowNumber} ไป ${dialog.supplierName} ทาง LINE แล้ว`
             : `สร้างใบซื้อ ${result.borrowNumber} รออนุมัติ`
         )
+        setFetchCount((c) => c + 1)
         router.refresh()
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด")
@@ -168,11 +170,18 @@ export function CaseSupplierOrder({
   return (
     <>
       <div className="rounded-xl border border-red-200 dark:border-red-500/30 bg-red-50/50 dark:bg-red-500/5 p-3 space-y-3">
-        <div className="flex items-center gap-1.5">
-          <Truck className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-          <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">
-            สั่งของจาก Supplier ({outOfStockItems.length} รายการขาด)
-          </h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Truck className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+            <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">
+              สั่งของจาก Supplier ({outOfStockItems.length} รายการขาด)
+            </h2>
+          </div>
+          {orderedProductMap.size > 0 && (
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+              สั่งแล้ว {orderedProductMap.size}/{outOfStockItems.length}
+            </span>
+          )}
         </div>
 
         {/* Existing orders summary */}

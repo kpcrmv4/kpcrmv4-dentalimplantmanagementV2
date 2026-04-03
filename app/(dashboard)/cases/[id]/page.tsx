@@ -203,8 +203,8 @@ export default async function CaseDetailPage({
         })}
       />
 
-      {/* Supplier Order - for stock_staff/admin when case has out-of-stock items */}
-      {isActive && ["stock_staff", "admin"].includes(userRole) && caseData.case_status === "pending_order" && (
+      {/* Supplier Order - for stock_staff/admin when case has reserved items (not yet prepared) */}
+      {isActive && ["stock_staff", "admin"].includes(userRole) && ["pending_order", "pending_preparation"].includes(caseData.case_status) && reservations.some((r) => r.status === "reserved") && (
         <CaseSupplierOrder
           caseId={id}
           outOfStockItems={reservations
