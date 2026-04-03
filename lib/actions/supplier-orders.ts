@@ -19,12 +19,13 @@ function formatProductLine(p: Record<string, unknown>, qty: number): string {
   return `  - ${parts} : ${qty} ${unit}`
 }
 
-function generateBorrowNumber(): string {
+function generateOrderNumber(orderType: "borrow" | "purchase" = "borrow"): string {
   const now = new Date()
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, "0")
-  const random = String(Math.floor(Math.random() * 9999)).padStart(4, "0")
-  return `BRW${year}${month}${random}`
+  const random = String(Math.floor(Math.random() * 99999)).padStart(5, "0")
+  const prefix = orderType === "purchase" ? "PO" : "BRW"
+  return `${prefix}${year}${month}${random}`
 }
 
 /**
@@ -88,7 +89,7 @@ export async function createSupplierOrder(params: {
   const { data: order, error: orderError } = await (supabase as any)
     .from("inventory_borrows")
     .insert({
-      borrow_number: generateBorrowNumber(),
+      borrow_number: generateOrderNumber(params.orderType),
       source_type: "supplier",
       source_name: supplier.name,
       supplier_id: supplier.id,
@@ -315,6 +316,8 @@ export async function approveSupplierOrder(orderId: string) {
   }
 
   revalidatePath("/inventory/borrows")
+  revalidatePath("/orders")
+  revalidatePath(`/orders/supplier/${orderId}`)
   revalidatePath(`/cases/${order.case_id}`)
 }
 
@@ -543,7 +546,7 @@ export async function convertBorrowToPurchase(borrowId: string, notes?: string) 
   const { data: purchaseOrder, error: poError } = await (supabase as any)
     .from("inventory_borrows")
     .insert({
-      borrow_number: generateBorrowNumber(),
+      borrow_number: generateOrderNumber("purchase"),
       source_type: "supplier",
       source_name: borrow.source_name,
       supplier_id: borrow.supplier_id,
@@ -620,4 +623,95 @@ export async function closeBorrowOrder(borrowId: string) {
 
   if (error) throw error
   revalidatePath("/inventory/borrows")
+}
+
+/**
+ * Get a supplier purchase order by ID (for PO detail page)
+ */
+export async function getSupplierPurchaseOrderById(id: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = (await createClient()) as any
+
+  const { data: order, error: orderError } = await supabase
+    .from("inventory_borrows")
+    .select(`
+      *,
+      suppliers(id, name, code, contact_person, phone, email),
+      requester:users!inventory_borrows_requested_by_fkey(full_name),
+      approver:users!inventory_borrows_approved_by_fkey(full_name)
+    `)
+    .eq("id", id)
+    .eq("order_type", "purchase")
+    .single()
+
+  if (orderError) throw orderError
+  if (!order) return null
+
+  // Fetch items separately to avoid ambiguous FK
+  const { data: rawItems } = await supabase
+    .from("inventory_borrow_items")
+    .select("id, product_id, quantity, unit_price, status, case_id")
+    .eq("borrow_id", id)
+    .order("created_at")
+
+  const items = rawItems ?? []
+  const productIds = Array.from(new Set(items.map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
+
+  let productMap = new Map<string, Record<string, unknown>>()
+  if (productIds.length > 0) {
+    const { data: products } = await supabase
+      .from("products")
+      .select("id, name, ref, brand, unit")
+      .in("id", productIds)
+    productMap = new Map((products ?? []).map((p: Record<string, unknown>) => [p.id as string, p]))
+  }
+
+  const itemsWithProducts = items.map((item: Record<string, unknown>) => ({
+    ...item,
+    products: productMap.get(item.product_id as string) ?? null,
+    total_price: (Number(item.quantity) || 0) * (Number(item.unit_price) || 0),
+  }))
+
+  const totalAmount = itemsWithProducts.reduce(
+    (sum: number, item: Record<string, unknown>) => sum + (Number(item.total_price) || 0),
+    0
+  )
+
+  return {
+    ...order,
+    items: itemsWithProducts,
+    total_amount: totalAmount,
+  }
+}
+
+/**
+ * Cancel a supplier purchase order
+ */
+export async function cancelSupplierOrder(orderId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: order } = await (supabase as any)
+    .from("inventory_borrows")
+    .select("id, order_type, status, case_id")
+    .eq("id", orderId)
+    .single()
+
+  if (!order) throw new Error("ไม่พบใบสั่ง")
+  if (order.order_type !== "purchase") throw new Error("ใบนี้ไม่ใช่ใบซื้อ")
+  if (!["pending_approval", "draft"].includes(order.status)) throw new Error("ไม่สามารถยกเลิกสถานะนี้ได้")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("inventory_borrows")
+    .update({ status: "cancelled" })
+    .eq("id", orderId)
+
+  if (error) throw error
+
+  revalidatePath("/orders")
+  revalidatePath(`/orders/supplier/${orderId}`)
+  if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
 }

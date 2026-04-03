@@ -40,7 +40,7 @@ export async function getPurchaseOrders(filters?: {
   return data ?? []
 }
 
-export async function getSupplierPurchaseOrders(filters?: { search?: string }) {
+export async function getSupplierPurchaseOrders(filters?: { status?: string; search?: string }) {
   const supabase = await createClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
@@ -55,6 +55,9 @@ export async function getSupplierPurchaseOrders(filters?: { search?: string }) {
     .order("created_at", { ascending: false })
     .limit(50)
 
+  if (filters?.status) {
+    query = query.eq("status", filters.status)
+  }
   if (filters?.search) {
     query = query.ilike("borrow_number", `%${filters.search}%`)
   }

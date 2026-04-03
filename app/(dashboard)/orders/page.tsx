@@ -24,7 +24,7 @@ export default async function OrdersPage({
   const params = await searchParams
   const [orders, supplierOrders] = await Promise.all([
     getPurchaseOrders({ status: params.status as never, search: params.q }),
-    getSupplierPurchaseOrders({ search: params.q }),
+    getSupplierPurchaseOrders({ status: params.status, search: params.q }),
   ])
 
   return (
@@ -55,7 +55,7 @@ export default async function OrdersPage({
             const itemCount = (so.inventory_borrow_items as unknown[])?.length ?? 0
 
             return (
-              <Link key={so.id as string} href={`/inventory/borrows/${so.id}`}>
+              <Link key={so.id as string} href={`/orders/supplier/${so.id}`}>
                 <Card className="transition-colors hover:bg-muted/50">
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between">
