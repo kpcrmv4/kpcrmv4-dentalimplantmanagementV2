@@ -8,7 +8,6 @@ import {
   Check,
   Clock,
   Loader2,
-  Package,
   Send,
   ShoppingCart,
   Truck,
