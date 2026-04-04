@@ -342,6 +342,19 @@ export async function settleBorrowItem(
     },
   }).catch(() => {})
 
+  // ── Revalidate case status if borrow is linked to a case ──
+  const { data: borrowForCase } = await supabase
+    .from("inventory_borrows")
+    .select("case_id")
+    .eq("id", item.borrow_id)
+    .single()
+
+  if (borrowForCase?.case_id) {
+    const { revalidateCaseReadyStatus } = await import("./cases")
+    await revalidateCaseReadyStatus(borrowForCase.case_id)
+    revalidatePath(`/cases/${borrowForCase.case_id}`)
+  }
+
   // ── Revalidate ────────────────────────────────────────
   revalidatePath("/inventory/borrows")
   revalidatePath(`/inventory/borrows/${item.borrow_id}`)

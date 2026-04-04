@@ -719,7 +719,7 @@ export async function getSupplierPurchaseOrderById(id: string) {
 }
 
 /**
- * Cancel a supplier purchase order
+ * Cancel a supplier order (purchase or borrow)
  */
 export async function cancelSupplierOrder(orderId: string) {
   const supabase = await createClient()
@@ -734,8 +734,10 @@ export async function cancelSupplierOrder(orderId: string) {
     .single()
 
   if (!order) throw new Error("ไม่พบใบสั่ง")
-  if (order.order_type !== "purchase") throw new Error("ใบนี้ไม่ใช่ใบซื้อ")
-  if (!["pending_approval", "draft", "sent"].includes(order.status)) throw new Error("ไม่สามารถยกเลิกสถานะนี้ได้")
+  const allowedStatuses = order.order_type === "borrow"
+    ? ["sent", "borrowed"]
+    : ["pending_approval", "draft", "sent"]
+  if (!allowedStatuses.includes(order.status)) throw new Error("ไม่สามารถยกเลิกสถานะนี้ได้")
 
   // Update order status to cancelled
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -763,5 +765,6 @@ export async function cancelSupplierOrder(orderId: string) {
   revalidatePath("/orders")
   revalidatePath("/inventory/borrows")
   revalidatePath(`/orders/supplier/${orderId}`)
+  revalidatePath(`/inventory/borrows/${orderId}`)
   if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
 }
