@@ -63,16 +63,24 @@ interface LotOption {
   available: number
 }
 
+interface OrderInfo {
+  borrowNumber: string
+  orderType: string
+  status: string
+}
+
 export function CaseActions({
   caseId,
   caseStatus,
   canCancel,
   reservations,
+  orderedProducts = {},
 }: {
   caseId: string
   caseStatus: string
   canCancel: boolean
   reservations: Reservation[]
+  orderedProducts?: Record<string, OrderInfo>
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -358,22 +366,53 @@ export function CaseActions({
             <h2 className="text-sm font-semibold">รอจัด LOT ({reservedItems.length})</h2>
           </div>
           <div className="space-y-1.5">
-            {reservedItems.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => openAssignDialog(r)}
-                className="flex w-full items-center gap-3 rounded-lg border-2 border-dashed border-orange-300 dark:border-orange-500/40 bg-orange-50 dark:bg-orange-500/10 p-3 text-left active:scale-[0.98] transition-transform"
-              >
-                <Package className="h-5 w-5 shrink-0 text-orange-500" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{r.productName}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {r.productBrand} · จำนวน {r.quantityReserved} {r.productUnit}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            ))}
+            {reservedItems.map((r) => {
+              const orderInfo = orderedProducts[r.productId]
+              const hasPendingOrder = orderInfo && !["cancelled", "closed", "borrowed"].includes(orderInfo.status)
+              const orderStatusLabels: Record<string, string> = {
+                pending_approval: "รออนุมัติPO",
+                sent: "รอรับสินค้า",
+              }
+
+              if (hasPendingOrder) {
+                // Item has a pending supplier order - disable LOT assignment
+                return (
+                  <div
+                    key={r.id}
+                    className="flex w-full items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-500/40 bg-gray-50 dark:bg-gray-500/10 p-3 opacity-60 cursor-not-allowed"
+                  >
+                    <Package className="h-5 w-5 shrink-0 text-gray-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{r.productName}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {r.productBrand} · จำนวน {r.quantityReserved} {r.productUnit}
+                      </p>
+                      <p className="text-[10px] text-orange-600 dark:text-orange-400 mt-0.5">
+                        {orderStatusLabels[orderInfo.status] ?? orderInfo.status} ({orderInfo.borrowNumber})
+                      </p>
+                    </div>
+                    <Ban className="h-4 w-4 shrink-0 text-gray-400" />
+                  </div>
+                )
+              }
+
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => openAssignDialog(r)}
+                  className="flex w-full items-center gap-3 rounded-lg border-2 border-dashed border-orange-300 dark:border-orange-500/40 bg-orange-50 dark:bg-orange-500/10 p-3 text-left active:scale-[0.98] transition-transform"
+                >
+                  <Package className="h-5 w-5 shrink-0 text-orange-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{r.productName}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {r.productBrand} · จำนวน {r.quantityReserved} {r.productUnit}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

@@ -37,6 +37,21 @@ const RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
   returned: { label: "คืนแล้ว", color: "bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400" },
 }
 
+// Status display for out-of-stock items based on supplier order status
+const ORDER_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
+  pending_approval: { label: "รออนุมัติPO", color: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" },
+  sent: { label: "รอรับสินค้า", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400" },
+  borrowed: { label: "รอจัดเตรียม", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400" },
+}
+
+const WAITING_ORDER_STATUS = { label: "รอสั่งซื้อ", color: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400" }
+
+interface OrderInfo {
+  borrowNumber: string
+  orderType: string
+  status: string
+}
+
 interface ReservationItem {
   id: string
   status: string
@@ -89,10 +104,12 @@ export function CaseMaterialsEditor({
   caseId,
   caseStatus,
   reservations,
+  orderedProducts = {},
 }: {
   caseId: string
   caseStatus: string
   reservations: ReservationItem[]
+  orderedProducts?: Record<string, OrderInfo>
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -375,7 +392,21 @@ function buildSpecs(p: {
           <div className="space-y-1.5">
             {/* Existing items */}
             {displayedExisting.map((r) => {
-              const rStatus = RESERVATION_STATUS[r.status] ?? RESERVATION_STATUS.reserved
+              // Determine effective status display for reserved items
+              const orderInfo = orderedProducts[r.productId]
+              const hasActiveOrder = orderInfo && !["cancelled", "closed"].includes(orderInfo.status)
+              let rStatus: { label: string; color: string }
+              if (r.status === "reserved" && caseStatus === "pending_order") {
+                if (hasActiveOrder) {
+                  rStatus = ORDER_STATUS_DISPLAY[orderInfo.status] ?? RESERVATION_STATUS.reserved
+                } else {
+                  rStatus = WAITING_ORDER_STATUS
+                }
+              } else {
+                rStatus = RESERVATION_STATUS[r.status] ?? RESERVATION_STATUS.reserved
+              }
+              // Prevent removing items that have active supplier orders
+              const canRemoveItem = r.status === "reserved" && !hasActiveOrder
               return (
                 <div key={r.id} className="flex items-start gap-2 rounded-lg border p-2.5">
                   <div className="min-w-0 flex-1">
@@ -402,15 +433,23 @@ function buildSpecs(p: {
                         LOT: {r.lotNumber}{r.expiryDate ? ` · Exp: ${formatDate(r.expiryDate)}` : ""}
                       </p>
                     )}
+                    {hasActiveOrder && r.status === "reserved" && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {orderInfo.orderType === "purchase" ? "ซื้อ" : "ยืม"}: {orderInfo.borrowNumber}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${rStatus.color}`}>
                       {rStatus.label}
                     </span>
-                    {isEditing && r.status === "reserved" && (
+                    {isEditing && canRemoveItem && (
                       <button onClick={() => removeExisting(r.id)} className="rounded-full p-1 text-destructive hover:bg-destructive/10 transition-colors" title="ลบรายการ">
                         <Minus className="h-3.5 w-3.5" />
                       </button>
+                    )}
+                    {isEditing && r.status === "reserved" && hasActiveOrder && (
+                      <span className="text-[9px] text-muted-foreground" title="สั่งซื้อแล้ว ไม่สามารถลบได้">🔒</span>
                     )}
                   </div>
                 </div>
