@@ -19,6 +19,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secon
   sent: { label: "ส่งแล้ว", variant: "secondary" },
   pending_approval: { label: "รออนุมัติ", variant: "outline" },
   closed: { label: "ปิดแล้ว", variant: "default" },
+  cancelled: { label: "ยกเลิก", variant: "destructive" },
 }
 
 export default async function BorrowDetailPage({
