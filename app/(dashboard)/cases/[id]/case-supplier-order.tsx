@@ -192,7 +192,6 @@ export function CaseSupplierOrder({
                 sent: "สั่งแล้ว",
                 borrowed: "รับแล้ว",
                 cancelled: "ยกเลิก",
-                cancelled: "ยกเลิก",
                 closed: "ปิดแล้ว",
               }
               return (
