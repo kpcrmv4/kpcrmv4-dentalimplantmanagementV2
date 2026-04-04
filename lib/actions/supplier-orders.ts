@@ -340,6 +340,88 @@ export async function approveSupplierOrder(orderId: string) {
   revalidatePath("/inventory/borrows")
   revalidatePath("/orders")
   revalidatePath(`/orders/supplier/${orderId}`)
+  revalidatePath("/dashboard")
+  revalidatePath("/calendar")
+  if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
+}
+
+/**
+ * Reject / send back a supplier purchase order for revision
+ */
+export async function rejectSupplierOrder(orderId: string, reason?: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Unauthorized")
+
+  // Verify admin
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  if (currentUser?.role !== "admin") throw new Error("Admin only")
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: order } = await (supabase as any)
+    .from("inventory_borrows")
+    .select("id, borrow_number, order_type, status, case_id, source_name, supplier_id, requested_by")
+    .eq("id", orderId)
+    .single()
+
+  if (!order) throw new Error("ไม่พบใบสั่ง")
+  if (order.status !== "pending_approval") throw new Error("ใบนี้ไม่ได้อยู่ในสถานะรออนุมัติ")
+
+  // Update status back to draft (requires enum value)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("inventory_borrows")
+    .update({
+      status: "cancelled",
+      notes: reason ? `ส่งกลับแก้ไข: ${reason}` : "ส่งกลับแก้ไข",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId)
+
+  if (error) throw error
+
+  // Update item statuses
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any)
+    .from("inventory_borrow_items")
+    .update({ status: "cancelled" })
+    .eq("borrow_id", orderId)
+
+  // Notify the requester
+  const { createNotification, smartNotify } = await import("./notifications")
+
+  if (order.requested_by) {
+    createNotification({
+      user_id: order.requested_by,
+      type: "system",
+      title: "ใบสั่งซื้อถูกส่งกลับแก้ไข",
+      message: `${order.borrow_number} (${order.source_name}) ถูกส่งกลับ${reason ? `: ${reason}` : ""}`,
+      data: { borrow_id: orderId, borrow_number: order.borrow_number },
+    }).catch(() => {})
+  }
+
+  smartNotify({
+    type: "system",
+    title: "ใบสั่งซื้อถูกส่งกลับแก้ไข",
+    message: `${order.borrow_number} (${order.source_name}) ถูกส่งกลับ${reason ? `: ${reason}` : ""}`,
+    data: { borrow_id: orderId, borrow_number: order.borrow_number },
+  }).catch(() => {})
+
+  // Revalidate case status
+  if (order.case_id) {
+    const { revalidateCaseReadyStatus } = await import("./cases")
+    await revalidateCaseReadyStatus(order.case_id)
+  }
+
+  revalidatePath("/orders")
+  revalidatePath("/inventory/borrows")
+  revalidatePath(`/orders/supplier/${orderId}`)
+  revalidatePath("/dashboard")
+  revalidatePath("/calendar")
   if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
 }
 
@@ -785,16 +867,28 @@ export async function cancelSupplierOrder(orderId: string) {
     .update({ status: "cancelled" })
     .eq("borrow_id", orderId)
 
-  // Revalidate case status — cancelling a PO means stock is still missing,
+  // Revalidate case status — cancelling means stock is still missing,
   // so case may need to go back to pending_order
   if (order.case_id) {
     const { revalidateCaseReadyStatus } = await import("./cases")
     await revalidateCaseReadyStatus(order.case_id)
   }
 
+  // Notify about cancellation
+  const { smartNotify } = await import("./notifications")
+  const orderTypeLabel = order.order_type === "purchase" ? "ใบสั่งซื้อ" : "ใบยืม"
+  smartNotify({
+    type: "system",
+    title: `${orderTypeLabel}ถูกยกเลิก`,
+    message: `${order.borrow_number} ถูกยกเลิก`,
+    data: { borrow_id: orderId, borrow_number: order.borrow_number },
+  }).catch(() => {})
+
   revalidatePath("/orders")
   revalidatePath("/inventory/borrows")
   revalidatePath(`/orders/supplier/${orderId}`)
   revalidatePath(`/inventory/borrows/${orderId}`)
+  revalidatePath("/dashboard")
+  revalidatePath("/calendar")
   if (order.case_id) revalidatePath(`/cases/${order.case_id}`)
 }

@@ -29,9 +29,14 @@ export function BottomNav({ role }: BottomNavProps) {
       !visibleHrefs.has(item.href)
   )
 
+  // Collect all menu hrefs for longest-prefix matching
+  const allHrefs = [...visibleItems, ...moreItems].map((i) => i.href)
+  const activeHref = allHrefs
+    .filter((href) => pathname === href || pathname.startsWith(href + "/"))
+    .sort((a, b) => b.length - a.length)[0] ?? null
+
   function isActive(href: string): boolean {
-    if (href === "/dashboard") return pathname === "/dashboard"
-    return pathname === href || pathname.startsWith(href + "/")
+    return href === activeHref
   }
 
   return (
