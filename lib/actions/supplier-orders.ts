@@ -368,25 +368,55 @@ export async function markOrderReceived(orderId: string) {
 export async function getSupplierOrdersForCase(caseId: string) {
   const supabase = await createClient()
 
-  // Use raw query to access new columns not yet in generated types
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data: orders, error: ordersError } = await (supabase as any)
     .from("inventory_borrows")
     .select(`
       id, borrow_number, source_type, source_name, status, borrow_date, notes,
       order_type, case_id, approved_by, approved_at, line_sent_at,
       converted_to_id, converted_from_id, created_at,
-      suppliers(name, line_id),
-      inventory_borrow_items(
-        id, product_id, quantity, unit_price, status, lot_number,
-        products(name, ref, brand, unit)
-      )
+      suppliers(name, line_id)
     `)
     .eq("case_id", caseId)
     .order("created_at", { ascending: false })
 
-  if (error) throw error
-  return (data ?? []) as Array<Record<string, unknown>>
+  if (ordersError) throw ordersError
+  if (!orders || orders.length === 0) return []
+
+  // Fetch items separately to avoid ambiguous FK (product_id vs settlement_product_id → products)
+  const orderIds = orders.map((o: Record<string, unknown>) => o.id)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rawItems } = await (supabase as any)
+    .from("inventory_borrow_items")
+    .select("id, borrow_id, product_id, quantity, unit_price, status, lot_number")
+    .in("borrow_id", orderIds)
+
+  // Fetch product details
+  const productIds = Array.from(new Set((rawItems ?? []).map((i: Record<string, unknown>) => i.product_id).filter(Boolean))) as string[]
+  let productMap = new Map<string, Record<string, unknown>>()
+  if (productIds.length > 0) {
+    const { data: products } = await supabase
+      .from("products")
+      .select("id, name, ref, brand, unit")
+      .in("id", productIds)
+    productMap = new Map((products ?? []).map((p) => [p.id, p]))
+  }
+
+  // Attach items with products to each order
+  const itemsByBorrow = new Map<string, Array<Record<string, unknown>>>()
+  for (const item of (rawItems ?? []) as Array<Record<string, unknown>>) {
+    const borrowId = item.borrow_id as string
+    if (!itemsByBorrow.has(borrowId)) itemsByBorrow.set(borrowId, [])
+    itemsByBorrow.get(borrowId)!.push({
+      ...item,
+      products: productMap.get(item.product_id as string) ?? null,
+    })
+  }
+
+  return orders.map((o: Record<string, unknown>) => ({
+    ...o,
+    inventory_borrow_items: itemsByBorrow.get(o.id as string) ?? [],
+  })) as Array<Record<string, unknown>>
 }
 
 // ═══════════════════════════════════════

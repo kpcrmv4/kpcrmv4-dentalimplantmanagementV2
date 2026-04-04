@@ -369,13 +369,19 @@ export function CaseActions({
             {reservedItems.map((r) => {
               const orderInfo = orderedProducts[r.productId]
               const hasPendingOrder = orderInfo && !["cancelled", "closed", "borrowed"].includes(orderInfo.status)
+              // Disable LOT assignment if: has pending order OR case is pending_order (no stock)
+              const isOutOfStock = caseStatus === "pending_order"
+              const isDisabled = hasPendingOrder || isOutOfStock
               const orderStatusLabels: Record<string, string> = {
                 pending_approval: "รออนุมัติPO",
                 sent: "รอรับสินค้า",
               }
 
-              if (hasPendingOrder) {
-                // Item has a pending supplier order - disable LOT assignment
+              if (isDisabled) {
+                const statusText = hasPendingOrder
+                  ? `${orderStatusLabels[orderInfo.status] ?? orderInfo.status} (${orderInfo.borrowNumber})`
+                  : "สินค้าไม่มีในสต๊อก — กรุณาสั่งซื้อก่อน"
+
                 return (
                   <div
                     key={r.id}
@@ -388,7 +394,7 @@ export function CaseActions({
                         {r.productBrand} · จำนวน {r.quantityReserved} {r.productUnit}
                       </p>
                       <p className="text-[10px] text-orange-600 dark:text-orange-400 mt-0.5">
-                        {orderStatusLabels[orderInfo.status] ?? orderInfo.status} ({orderInfo.borrowNumber})
+                        {statusText}
                       </p>
                     </div>
                     <Ban className="h-4 w-4 shrink-0 text-gray-400" />
