@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { getBorrowById } from "@/lib/actions/borrows"
 import { formatCurrency } from "@/lib/utils"
 import { SettleButton, PhotoUploadButton } from "./settle-button"
+import { CancelBorrowButton } from "./cancel-borrow-button"
 
 const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   borrowed: { label: "ยืมอยู่", variant: "destructive" },
@@ -52,6 +53,11 @@ export default async function BorrowDetailPage({
             {borrow.source_type === "clinic" ? "คลินิก" : "Supplier"}: {borrow.source_name}
           </p>
         </div>
+        <CancelBorrowButton
+          borrowId={id}
+          borrowNumber={borrow.borrow_number as string}
+          status={borrow.status as string}
+        />
       </div>
 
       {/* Info */}

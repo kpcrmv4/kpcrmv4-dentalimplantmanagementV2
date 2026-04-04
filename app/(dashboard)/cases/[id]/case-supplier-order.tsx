@@ -8,7 +8,6 @@ import {
   Check,
   Clock,
   Loader2,
-  Package,
   Send,
   ShoppingCart,
   Truck,
@@ -393,14 +392,12 @@ export function CaseSupplierOrder({
 /* ─── Order Progress Bar ─── */
 
 const ORDER_STEPS_PURCHASE = [
-  { key: "pending_approval", label: "รออนุมัติ", icon: Clock },
-  { key: "sent", label: "สั่งแล้ว", icon: Truck },
-  { key: "borrowed", label: "รับของแล้ว", icon: Package },
+  { key: "pending_approval", label: "รออนุมัติPO", icon: Clock },
+  { key: "sent", label: "สั่งซื้อแล้ว", icon: Truck },
 ] as const
 
 const ORDER_STEPS_BORROW = [
-  { key: "sent", label: "ส่งยืมแล้ว", icon: Send },
-  { key: "borrowed", label: "รับของแล้ว", icon: Package },
+  { key: "sent", label: "สั่งซื้อแล้ว", icon: Send },
 ] as const
 
 function OrderProgressBar({

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { getCaseById } from "@/lib/actions/cases"
 import { getCurrentUser } from "@/lib/actions/auth"
+import { getSupplierOrdersForCase } from "@/lib/actions/supplier-orders"
 import { formatDate } from "@/lib/utils"
 import { CaseActions } from "./case-actions"
 import { CaseMaterialsEditor } from "./case-materials-editor"
@@ -35,9 +36,10 @@ export default async function CaseDetailPage({
 }) {
   const { id } = await params
 
-  const [caseResult, currentUser] = await Promise.all([
+  const [caseResult, currentUser, supplierOrders] = await Promise.all([
     getCaseById(id).catch(() => null),
     getCurrentUser(),
+    getSupplierOrdersForCase(id).catch(() => [] as Array<Record<string, unknown>>),
   ])
 
   if (!caseResult) notFound()
@@ -60,6 +62,24 @@ export default async function CaseDetailPage({
   const status = STATUS_CONFIG[effectiveStatus] ?? STATUS_CONFIG.pending_order
   const canCancel = canManageStock && !["completed", "cancelled"].includes(caseData.case_status)
   const isActive = !["completed", "cancelled"].includes(caseData.case_status)
+
+  // Build product → order info map from supplier orders
+  const orderedProducts: Record<string, { borrowNumber: string; orderType: string; status: string }> = {}
+  for (const order of supplierOrders) {
+    const status = String(order.status ?? "")
+    if (status === "cancelled") continue
+    const items = (order.inventory_borrow_items as Array<Record<string, unknown>>) ?? []
+    for (const item of items) {
+      const productId = String(item.product_id ?? "")
+      if (productId) {
+        orderedProducts[productId] = {
+          borrowNumber: String(order.borrow_number ?? ""),
+          orderType: String(order.order_type ?? "borrow"),
+          status,
+        }
+      }
+    }
+  }
 
   return (
     <div className="mx-auto max-w-lg space-y-3 p-4 pb-8">
@@ -169,6 +189,7 @@ export default async function CaseDetailPage({
       <CaseMaterialsEditor
         caseId={id}
         caseStatus={canEditMaterials ? caseData.case_status : "completed"}
+        orderedProducts={orderedProducts}
         reservations={reservations.map((r) => {
           const product = r.products as Record<string, unknown> | null
           const inventory = r.inventory as Record<string, unknown> | null
@@ -232,6 +253,7 @@ export default async function CaseDetailPage({
           caseId={id}
           caseStatus={caseData.case_status}
           canCancel={canCancel}
+          orderedProducts={orderedProducts}
           reservations={reservations.map((r) => {
             const product = r.products as Record<string, unknown> | null
             const inventory = r.inventory as Record<string, unknown> | null
