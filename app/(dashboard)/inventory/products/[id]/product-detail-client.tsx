@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
@@ -749,6 +750,13 @@ export function ProductDetailClient({
                   min={0}
                   defaultValue={product.min_stock_level}
                 />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit-track-stock-alert" className="text-sm font-medium">แจ้งเตือนสต๊อกต่ำ</Label>
+                  <p className="text-xs text-muted-foreground">เปิดเพื่อแจ้งเตือนเมื่อสินค้าหมดหรือใกล้หมด</p>
+                </div>
+                <Switch id="edit-track-stock-alert" name="track_stock_alert" value="true" defaultChecked={product.track_stock_alert} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-cost">ราคาต้นทุน (฿)</Label>

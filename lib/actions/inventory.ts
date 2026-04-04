@@ -56,6 +56,7 @@ export type StockSummaryItem = {
   totalStock: number
   isLowStock: boolean
   isOutOfStock: boolean
+  trackStockAlert: boolean
   supplierName: string | null
   supplier_id: string | null
 }
@@ -68,7 +69,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
+      id, ref, name, brand, category, unit, min_stock_level, track_stock_alert, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -81,8 +82,9 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
   return (data ?? []).map((p: any) => {
     const rows = (p.inventory as Array<{ quantity: number; reserved_quantity: number }>) ?? []
     const totalStock = rows.reduce((sum: number, r: { quantity: number; reserved_quantity: number }) => sum + r.quantity - r.reserved_quantity, 0)
-    const isLowStock = totalStock <= p.min_stock_level
-    const isOutOfStock = totalStock <= 0
+    const trackAlert = !!p.track_stock_alert
+    const isLowStock = trackAlert && totalStock <= p.min_stock_level
+    const isOutOfStock = trackAlert && totalStock <= 0
     return {
       id: p.id,
       ref: p.ref,
@@ -101,6 +103,7 @@ export async function getStockSummary(): Promise<StockSummaryItem[]> {
       totalStock,
       isLowStock,
       isOutOfStock,
+      trackStockAlert: trackAlert,
       supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
       supplier_id: p.supplier_id ?? null,
     }
@@ -114,7 +117,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
   const { data, error } = await (supabase as any)
     .from("products")
     .select(`
-      id, ref, name, brand, category, unit, min_stock_level, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
+      id, ref, name, brand, category, unit, min_stock_level, track_stock_alert, model, diameter, length, weight, dimension, abutment_height, gingival_height, supplier_id,
       suppliers(name),
       inventory(quantity, reserved_quantity)
     `)
@@ -127,8 +130,9 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
   return (data ?? []).map((p: any) => {
     const rows = (p.inventory as Array<{ quantity: number; reserved_quantity: number }>) ?? []
     const totalStock = rows.reduce((sum: number, r: { quantity: number; reserved_quantity: number }) => sum + r.quantity - r.reserved_quantity, 0)
-    const isLowStock = totalStock <= p.min_stock_level
-    const isOutOfStock = totalStock <= 0
+    const trackAlert = !!p.track_stock_alert
+    const isLowStock = trackAlert && totalStock <= p.min_stock_level
+    const isOutOfStock = trackAlert && totalStock <= 0
     return {
       id: p.id,
       ref: p.ref,
@@ -147,6 +151,7 @@ export async function getInactiveProducts(): Promise<StockSummaryItem[]> {
       totalStock,
       isLowStock,
       isOutOfStock,
+      trackStockAlert: trackAlert,
       supplierName: (p.suppliers as unknown as { name: string } | null)?.name ?? null,
       supplier_id: p.supplier_id ?? null,
     }
@@ -157,8 +162,9 @@ export async function getLowStockCount() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("products")
-    .select("id, min_stock_level, inventory(quantity, reserved_quantity)")
+    .select("id, min_stock_level, track_stock_alert, inventory(quantity, reserved_quantity)")
     .eq("is_active", true)
+    .eq("track_stock_alert", true)
 
   if (error) throw error
 
@@ -787,11 +793,12 @@ export async function getStockDemands(): Promise<StockDemandItem[]> {
 export async function checkAutoReorder() {
   const supabase = await createClient()
 
-  // Get products below min stock
+  // Get products below min stock (only those with stock alert tracking enabled)
   const { data: products, error } = await supabase
     .from("products")
     .select("id, ref, name, min_stock_level, supplier_id, inventory(quantity, reserved_quantity)")
     .eq("is_active", true)
+    .eq("track_stock_alert", true)
 
   if (error) throw error
 

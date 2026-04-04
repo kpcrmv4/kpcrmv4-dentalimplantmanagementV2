@@ -457,6 +457,7 @@ export type Database = {
           ref: string
           selling_price: number | null
           supplier_id: string | null
+          track_stock_alert: boolean
           unit: string
           updated_at: string
         }
@@ -477,6 +478,7 @@ export type Database = {
           ref: string
           selling_price?: number | null
           supplier_id?: string | null
+          track_stock_alert?: boolean
           unit: string
           updated_at?: string
         }
@@ -497,6 +499,7 @@ export type Database = {
           ref?: string
           selling_price?: number | null
           supplier_id?: string | null
+          track_stock_alert?: boolean
           unit?: string
           updated_at?: string
         }

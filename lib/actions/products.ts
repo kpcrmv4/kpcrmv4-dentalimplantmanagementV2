@@ -155,6 +155,7 @@ export async function createProduct(formData: FormData) {
     dimension: (formData.get("dimension") as string | null)?.trim() || null,
     abutment_height: formData.get("abutment_height") ? parseFloat(formData.get("abutment_height") as string) : null,
     gingival_height: formData.get("gingival_height") ? parseFloat(formData.get("gingival_height") as string) : null,
+    track_stock_alert: formData.get("track_stock_alert") === "true",
   }
 
   const { data, error } = await supabase
@@ -217,6 +218,7 @@ export async function updateProduct(id: string, formData: FormData) {
     dimension: (formData.get("dimension") as string | null)?.trim() || null,
     abutment_height: formData.get("abutment_height") ? parseFloat(formData.get("abutment_height") as string) : null,
     gingival_height: formData.get("gingival_height") ? parseFloat(formData.get("gingival_height") as string) : null,
+    track_stock_alert: formData.get("track_stock_alert") === "true",
   }
 
   const { data, error } = await supabase

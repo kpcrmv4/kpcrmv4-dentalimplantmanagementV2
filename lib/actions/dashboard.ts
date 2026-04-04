@@ -205,6 +205,7 @@ export async function getLowStockItems(): Promise<LowStockItem[]> {
     .from("products")
     .select("id, ref, name, brand, unit, min_stock_level, inventory(quantity, reserved_quantity)")
     .eq("is_active", true)
+    .eq("track_stock_alert", true)
     .order("name")
 
   if (error) throw error
